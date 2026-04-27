@@ -20,8 +20,9 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if current URL contains the admin GUID
-    if (window.location.pathname.includes(ADMIN_GUID)) {
+    // Check if current URL contains the admin GUID (supports both path and ?admin=)
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
       setIsAdmin(true);
     }
 
@@ -41,12 +42,12 @@ const App = () => {
 
   const handleAddTask = async (e) => {
     e.preventDefault();
-    if (!newTask.title || !newTask.assignee) return;
+    if (!newTask.title) return;
     try {
       await addDoc(collection(db, "tasks"), {
         title: newTask.title,
         description: newTask.description,
-        assignee: newTask.assignee,
+        assignee: newTask.assignee || 'ללא שיוך',
         isDone: false,
         isVerified: false,
         createdAt: new Date()
@@ -54,6 +55,28 @@ const App = () => {
       setNewTask({ title: '', description: '', assignee: '' });
     } catch (e) {
       console.error("Error adding document: ", e);
+    }
+  };
+
+  const resetAllTasks = async () => {
+    if (!window.confirm('האם לאפס את כל המשימות ליום חדש?')) return;
+    try {
+      const promises = tasks.map(task => {
+        const taskRef = doc(db, "tasks", task.id);
+        return updateDoc(taskRef, { isDone: false, isVerified: false });
+      });
+      await Promise.all(promises);
+    } catch (e) {
+      console.error("Error resetting tasks: ", e);
+    }
+  };
+
+  const updateAssignee = async (id, newName) => {
+    try {
+      const taskRef = doc(db, "tasks", id);
+      await updateDoc(taskRef, { assignee: newName });
+    } catch (e) {
+      console.error("Error updating assignee: ", e);
     }
   };
 
@@ -82,6 +105,7 @@ const App = () => {
   };
 
   const deleteTask = async (id) => {
+    if (!window.confirm('למחוק את המשימה?')) return;
     try {
       await deleteDoc(doc(db, "tasks", id));
     } catch (e) {
@@ -98,6 +122,7 @@ const App = () => {
   }, {});
 
   const sortedAssignees = Object.keys(groupedTasks).sort();
+  const allNames = Array.from(new Set(tasks.map(t => t.assignee).filter(Boolean)));
 
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
@@ -105,38 +130,39 @@ const App = () => {
     <div>
       <header className="header">
         <h1>מנהל משימות</h1>
-        {isAdmin && <span className="status-badge" style={{marginBottom:0, fontSize:'0.7rem', padding:'0.2rem 0.5rem', background:'rgba(99, 102, 241, 0.2)'}}>ניהול</span>}
+        {isAdmin && (
+          <div style={{display:'flex', gap:'10px'}}>
+            <button onClick={resetAllTasks} className="btn-verify" style={{background:'rgba(16, 185, 129, 0.1)', borderColor:'var(--accent-success)'}}>איפוס יום</button>
+            <span className="status-badge" style={{marginBottom:0, fontSize:'0.7rem', padding:'0.4rem 0.6rem', background:'rgba(99, 102, 241, 0.2)'}}>ניהול</span>
+          </div>
+        )}
       </header>
 
       <main className="container">
         {isAdmin && (
-          <section className="admin-controls">
-            <h2 style={{fontSize:'1rem', marginBottom:'1rem'}}>הוספת משימה חדשה</h2>
-            <form onSubmit={handleAddTask}>
-              <input 
-                className="input-field" 
-                placeholder="שם המשימה" 
-                value={newTask.title} 
-                onChange={e => setNewTask({...newTask, title: e.target.value})}
-              />
-              <input 
-                className="input-field" 
-                placeholder="תיאור (אופציונלי)" 
-                value={newTask.description} 
-                onChange={e => setNewTask({...newTask, description: e.target.value})}
-              />
-              <input 
-                className="input-field" 
-                placeholder="שם האחראי" 
-                value={newTask.assignee} 
-                onChange={e => setNewTask({...newTask, assignee: e.target.value})}
-              />
-              <button className="btn" type="submit">הוסף משימה</button>
-            </form>
+          <section className="admin-controls" style={{padding:'0.75rem'}}>
+            <details>
+              <summary style={{cursor:'pointer', fontSize:'0.9rem', color: 'var(--primary)'}}>+ הוסף תבנית משימה חדשה</summary>
+              <form onSubmit={handleAddTask} style={{marginTop:'1rem'}}>
+                <input 
+                  className="input-field" 
+                  placeholder="שם המשימה (למשל: בדיקת מלאי)" 
+                  value={newTask.title} 
+                  onChange={e => setNewTask({...newTask, title: e.target.value})}
+                />
+                <input 
+                  className="input-field" 
+                  placeholder="תיאור קצר" 
+                  value={newTask.description} 
+                  onChange={e => setNewTask({...newTask, description: e.target.value})}
+                />
+                <button className="btn" type="submit">שמור תבנית</button>
+              </form>
+            </details>
           </section>
         )}
 
-        {sortedAssignees.length === 0 && <p style={{textAlign:'center', color:'var(--text-muted)'}}>אין משימות כרגע</p>}
+        {sortedAssignees.length === 0 && <p style={{textAlign:'center', color:'var(--text-muted)', marginTop:'2rem'}}>אין משימות במערכת</p>}
 
         {sortedAssignees.map(assignee => (
           <div key={assignee} className="group-section">
@@ -158,23 +184,36 @@ const App = () => {
                 
                 <div className="task-content">
                   <div className="task-title">{task.title}</div>
-                  {task.description && <div className="task-desc">{task.description}</div>}
+                  {isAdmin ? (
+                    <input 
+                      list="names-list"
+                      className="task-desc" 
+                      style={{background:'transparent', border:'none', borderBottom:'1px dashed var(--text-muted)', color:'var(--primary)', width:'100%', padding:'2px 0'}}
+                      value={task.assignee}
+                      onChange={(e) => updateAssignee(task.id, e.target.value)}
+                      placeholder="שייך ל..."
+                    />
+                  ) : (
+                    task.description && <div className="task-desc">{task.description}</div>
+                  )}
                 </div>
 
                 {isAdmin && (
-                  <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
+                  <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
                     {!task.isVerified && task.isDone && (
                       <button className="btn-verify" onClick={() => verifyTask(task.id)}>אשר</button>
                     )}
-                    <button className="delete-btn" onClick={() => deleteTask(task.id)}>
-                      🗑️
-                    </button>
+                    <button className="delete-btn" style={{fontSize:'0.8rem'}} onClick={() => deleteTask(task.id)}>🗑️</button>
                   </div>
                 )}
               </div>
             ))}
           </div>
         ))}
+
+        <datalist id="names-list">
+          {allNames.map(name => <option key={name} value={name} />)}
+        </datalist>
       </main>
     </div>
   );
