@@ -185,14 +185,24 @@ const App = () => {
                 <div className="task-content">
                   <div className="task-title">{task.title}</div>
                   {isAdmin ? (
-                    <input 
-                      list="names-list"
-                      className="task-desc" 
-                      style={{background:'transparent', border:'none', borderBottom:'1px dashed var(--text-muted)', color:'var(--primary)', width:'100%', padding:'2px 0'}}
-                      value={task.assignee}
-                      onChange={(e) => updateAssignee(task.id, e.target.value)}
-                      placeholder="שייך ל..."
-                    />
+                    <div style={{position:'relative', marginTop:'8px'}}>
+                      <input 
+                        list="names-list"
+                        className="input-field" 
+                        style={{marginBottom:0, padding:'12px', paddingLeft:'40px', fontSize:'1.1rem', background:'rgba(255,255,255,0.05)', color:'var(--text-main)', border:'1px solid var(--glass-border)'}}
+                        defaultValue={task.assignee}
+                        onBlur={(e) => updateAssignee(task.id, e.target.value)}
+                        placeholder="הכנס שם..."
+                      />
+                      {task.assignee && (
+                        <button 
+                          onClick={() => updateAssignee(task.id, '')}
+                          style={{position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'1.2rem', padding:'5px'}}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     task.description && <div className="task-desc">{task.description}</div>
                   )}
