@@ -59,15 +59,20 @@ const App = () => {
   };
 
   const resetAllTasks = async () => {
-    if (!window.confirm('האם לאפס את כל המשימות ליום חדש?')) return;
+    if (!window.confirm('האם לאפס את כל המשימות ליום חדש? (זה ימחק גם את כל השמות)')) return;
     try {
       const promises = tasks.map(task => {
         const taskRef = doc(db, "tasks", task.id);
-        return updateDoc(taskRef, { isDone: false, isVerified: false });
+        return updateDoc(taskRef, { 
+          isDone: false, 
+          isVerified: false, 
+          assignee: '' 
+        });
       });
       await Promise.all(promises);
     } catch (e) {
       console.error("Error resetting tasks: ", e);
+      alert('שגיאה באיפוס המשימות');
     }
   };
 
@@ -162,74 +167,80 @@ const App = () => {
           </section>
         )}
 
-        {sortedAssignees.length === 0 && <p style={{textAlign:'center', color:'var(--text-muted)', marginTop:'2rem'}}>אין משימות במערכת</p>}
-
-        {sortedAssignees.map(assignee => (
-          <div key={assignee} className="group-section">
-            <h2 className="group-title">{assignee}</h2>
-            {groupedTasks[assignee].map(task => (
+        {isAdmin ? (
+          // STABLE SPEED-ASSIGN MODE for ADMIN
+          <div className="group-section">
+            {tasks.sort((a,b) => a.title.localeCompare(b.title)).map((task, index) => (
               <div key={task.id} className="task-item">
-                <div className="check-wrapper">
-                  {task.isVerified ? (
-                    <span className="v-mark">V</span>
-                  ) : (
-                    <div 
-                      className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} 
-                      onClick={() => toggleDone(task)}
-                    >
-                      {task.isDone && <span style={{color:'white', fontSize:'14px'}}>✓</span>}
-                    </div>
-                  )}
-                </div>
-                
                 <div className="task-content">
-                  <div className="task-title">{task.title}</div>
-                  {isAdmin ? (
-                    <div style={{position:'relative', marginTop:'8px'}}>
-                      <input 
-                        list="names-list"
-                        className="input-field" 
-                        style={{marginBottom:0, padding:'12px', paddingLeft:'40px', fontSize:'1.1rem', background:'rgba(255,255,255,0.05)', color:'var(--text-main)', border:'1px solid var(--glass-border)'}}
-                        defaultValue={task.assignee}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            updateAssignee(task.id, e.target.value);
-                            e.target.blur(); // Triggers a final save and hides keyboard
-                          }
-                        }}
-                        onBlur={(e) => updateAssignee(task.id, e.target.value)}
-                        placeholder="הכנס שם..."
-                      />
-                      {task.assignee && (
-                        <button 
-                          onClick={() => {
-                            updateAssignee(task.id, '');
-                            // We need to use state or forced re-render here to clear the defaultValue input
-                            // For simplicity in this pattern, we'll suggest a refresh if it doesn't clear instantly
-                          }}
-                          style={{position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'1.2rem', padding:'5px'}}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    task.description && <div className="task-desc">{task.description}</div>
-                  )}
+                  <div className="task-title" style={{fontSize:'0.9rem'}}>{task.title}</div>
+                  <div style={{position:'relative', marginTop:'4px'}}>
+                    <input 
+                      id={`assignee-${index}`}
+                      key={task.id + task.assignee}
+                      list="names-list"
+                      className="input-field" 
+                      style={{marginBottom:0, padding:'10px', paddingLeft:'40px', fontSize:'1rem', background:'rgba(255,255,255,0.05)', color:'var(--text-main)', border:'1px solid var(--glass-border)'}}
+                      defaultValue={task.assignee}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          updateAssignee(task.id, e.target.value);
+                          // Focus the NEXT input for rapid-fire assignment
+                          const nextInput = document.getElementById(`assignee-${index + 1}`);
+                          if (nextInput) nextInput.focus();
+                        }
+                      }}
+                      onBlur={(e) => updateAssignee(task.id, e.target.value)}
+                      placeholder="הכנס שם..."
+                    />
+                    {task.assignee && task.assignee !== 'ללא שיוך' && (
+                      <button 
+                        onClick={() => updateAssignee(task.id, '')}
+                        style={{position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'1.2rem'}}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
-
-                {isAdmin && (
-                  <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
                     {!task.isVerified && task.isDone && (
                       <button className="btn-verify" onClick={() => verifyTask(task.id)}>אשר</button>
                     )}
                     <button className="delete-btn" style={{fontSize:'0.8rem'}} onClick={() => deleteTask(task.id)}>🗑️</button>
-                  </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
-        ))}
+        ) : (
+          // GROUPED MODE for WORKERS
+          sortedAssignees.map(assignee => (
+            <div key={assignee} className="group-section">
+              <h2 className="group-title">{assignee}</h2>
+              {groupedTasks[assignee].map(task => (
+                <div key={task.id} className="task-item">
+                  <div className="check-wrapper">
+                    {task.isVerified ? (
+                      <span className="v-mark">V</span>
+                    ) : (
+                      <div 
+                        className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} 
+                        onClick={() => toggleDone(task)}
+                      >
+                        {task.isDone && <span style={{color:'white', fontSize:'14px'}}>✓</span>}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="task-content">
+                    <div className="task-title">{task.title}</div>
+                    {task.description && <div className="task-desc">{task.description}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
 
         <datalist id="names-list">
           {allNames.map(name => <option key={name} value={name} />)}
