@@ -204,8 +204,12 @@ const App = () => {
                   </div>
                 </div>
                 <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                    {!task.isVerified && task.isDone && (
-                      <button className="btn-verify" onClick={() => verifyTask(task.id)}>אשר</button>
+                    {task.isVerified ? (
+                      <span className="v-mark" style={{fontSize:'1.2rem'}}>V</span>
+                    ) : (
+                      task.isDone && (
+                        <button className="btn-verify" onClick={() => verifyTask(task.id)}>אשר</button>
+                      )
                     )}
                     <button className="delete-btn" style={{fontSize:'0.8rem'}} onClick={() => deleteTask(task.id)}>🗑️</button>
                 </div>
