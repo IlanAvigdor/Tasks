@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tasks manager - Under Construction. A powerful, modern way to manage your workflow.">
+    <title>Tasks manager (under construction...)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="container">
+        <main class="glass-card">
+            <div class="icon-wrapper">
+                <i data-lucide="layout-list"></i>
+            </div>
+            
+            <span class="status-badge">Development Phase</span>
+            
+            <h1>Tasks manager</h1>
+            <p>We're crafting a premium experience to help you master your productivity. Something powerful is arriving soon.</p>
+            
+            <div class="loader">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Subtle interactive effect on mouse move
+        document.addEventListener('mousemove', (e) => {
+            const card = document.querySelector('.glass-card');
+            const { clientX, clientY } = e;
+            const { innerWidth, innerHeight } = window;
+            
+            const xRotation = ((clientY / innerHeight) - 0.5) * 10;
+            const yRotation = ((clientX / innerWidth) - 0.5) * -10;
+            
+            card.style.transform = `rotateX(${xRotation}deg) rotateY(${yRotation}deg) translateY(-5px)`;
+        });
+
+        // Reset transform on mouse leave
+        document.addEventListener('mouseleave', () => {
+            const card = document.querySelector('.glass-card');
+            card.style.transform = `rotateX(0deg) rotateY(0deg) translateY(0px)`;
+        });
+    </script>
+</body>
+</html>
