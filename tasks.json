@@ -1,0 +1,20 @@
+{
+  "tasks": [
+    {
+      "id": "1777319254634",
+      "title": "להגיד תודה לאבא",
+      "description": "לצלצל ולהגיד תודה",
+      "assignee": "לירי",
+      "isDone": true,
+      "isVerified": true
+    },
+    {
+      "id": "1777319306116",
+      "title": "לנשק את אבא",
+      "description": "",
+      "assignee": "אמא",
+      "isDone": false,
+      "isVerified": false
+    }
+  ]
+}

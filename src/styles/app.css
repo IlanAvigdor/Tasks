@@ -1,0 +1,189 @@
+:root {
+    --primary: #6366f1;
+    --primary-glow: rgba(99, 102, 241, 0.4);
+    --bg-dark: #0f172a;
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent-success: #10b981;
+    --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Assistant', sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    min-height: 100vh;
+    padding-bottom: 2rem;
+    overflow-x: hidden;
+    line-height: 1.5;
+}
+
+/* Compact Header */
+.header {
+    background: var(--card-bg);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Sections */
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.group-section {
+    margin-bottom: 1.5rem;
+}
+
+.group-title {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    padding-right: 0.5rem;
+    border-right: 3px solid var(--primary);
+}
+
+/* Task Item */
+.task-item {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s ease;
+}
+
+.task-content {
+    flex: 1;
+}
+
+.task-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.task-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Checkbox and V Mark */
+.check-wrapper {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--glass-border);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.custom-checkbox.checked {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.v-mark {
+    color: var(--accent-success);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* Admin Panel */
+.admin-controls {
+    background: rgba(99, 102, 241, 0.05);
+    border: 1px dashed var(--primary);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+}
+
+.input-field {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: white;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.btn {
+    width: 100%;
+    background: var(--primary);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn:active {
+    opacity: 0.8;
+}
+
+.btn-verify {
+    background: transparent;
+    border: 1px solid var(--accent-success);
+    color: var(--accent-success);
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.delete-btn {
+    color: #ef4444;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .container {
+        padding: 0.75rem;
+    }
+}
