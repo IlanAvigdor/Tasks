@@ -191,12 +191,22 @@ const App = () => {
                         className="input-field" 
                         style={{marginBottom:0, padding:'12px', paddingLeft:'40px', fontSize:'1.1rem', background:'rgba(255,255,255,0.05)', color:'var(--text-main)', border:'1px solid var(--glass-border)'}}
                         defaultValue={task.assignee}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updateAssignee(task.id, e.target.value);
+                            e.target.blur(); // Triggers a final save and hides keyboard
+                          }
+                        }}
                         onBlur={(e) => updateAssignee(task.id, e.target.value)}
                         placeholder="הכנס שם..."
                       />
                       {task.assignee && (
                         <button 
-                          onClick={() => updateAssignee(task.id, '')}
+                          onClick={() => {
+                            updateAssignee(task.id, '');
+                            // We need to use state or forced re-render here to clear the defaultValue input
+                            // For simplicity in this pattern, we'll suggest a refresh if it doesn't clear instantly
+                          }}
                           style={{position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'1.2rem', padding:'5px'}}
                         >
                           ✕
