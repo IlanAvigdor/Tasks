@@ -1,4 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { db } from './firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  orderBy 
+} from "firebase/firestore";
 
 const ADMIN_GUID = 'admin-987654';
 
@@ -13,87 +24,88 @@ const App = () => {
     if (window.location.pathname.includes(ADMIN_GUID)) {
       setIsAdmin(true);
     }
-    fetchTasks();
+
+    // Real-time listener for Firestore
+    const q = query(collection(db, "tasks"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const taskList = [];
+      querySnapshot.forEach((doc) => {
+        taskList.push({ id: doc.id, ...doc.data() });
+      });
+      setTasks(taskList);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const fetchTasks = async () => {
-    try {
-      const res = await fetch('/api/tasks');
-      const data = await res.json();
-      setTasks(data);
-      setLoading(false);
-    } catch (err) {
-      console.error('Failed to fetch tasks', err);
-    }
-  };
-
-  const saveTasks = async (updatedTasks) => {
-    try {
-      await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedTasks)
-      });
-      setTasks(updatedTasks);
-    } catch (err) {
-      console.error('Failed to save tasks', err);
-    }
-  };
-
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.title || !newTask.assignee) return;
-    const task = {
-      id: Date.now().toString(),
-      ...newTask,
-      isDone: false,
-      isVerified: false
-    };
-    saveTasks([...tasks, task]);
-    setNewTask({ title: '', description: '', assignee: '' });
+    try {
+      await addDoc(collection(db, "tasks"), {
+        title: newTask.title,
+        description: newTask.description,
+        assignee: newTask.assignee,
+        isDone: false,
+        isVerified: false,
+        createdAt: new Date()
+      });
+      setNewTask({ title: '', description: '', assignee: '' });
+    } catch (e) {
+      console.error("Error adding document: ", e);
+    }
   };
 
-  const toggleDone = (id) => {
-    const updated = tasks.map(t => {
-      if (t.id === id && !t.isVerified) {
-        return { ...t, isDone: !t.isDone };
-      }
-      return t;
-    });
-    saveTasks(updated);
+  const toggleDone = async (task) => {
+    if (task.isVerified) return;
+    try {
+      const taskRef = doc(db, "tasks", task.id);
+      await updateDoc(taskRef, {
+        isDone: !task.isDone
+      });
+    } catch (e) {
+      console.error("Error updating document: ", e);
+    }
   };
 
-  const verifyTask = (id) => {
-    const updated = tasks.map(t => {
-      if (t.id === id) {
-        return { ...t, isVerified: true, isDone: true };
-      }
-      return t;
-    });
-    saveTasks(updated);
+  const verifyTask = async (id) => {
+    try {
+      const taskRef = doc(db, "tasks", id);
+      await updateDoc(taskRef, {
+        isVerified: true,
+        isDone: true
+      });
+    } catch (e) {
+      console.error("Error verifying document: ", e);
+    }
   };
 
-  const deleteTask = (id) => {
-    const updated = tasks.filter(t => t.id !== id);
-    saveTasks(updated);
+  const deleteTask = async (id) => {
+    try {
+      await deleteDoc(doc(db, "tasks", id));
+    } catch (e) {
+      console.error("Error deleting document: ", e);
+    }
   };
 
   // Group and sort tasks by assignee
   const groupedTasks = tasks.reduce((acc, task) => {
-    if (!acc[task.assignee]) acc[task.assignee] = [];
-    acc[task.assignee].push(task);
+    const assignee = task.assignee || 'ללא שיוך';
+    if (!acc[assignee]) acc[assignee] = [];
+    acc[assignee].push(task);
     return acc;
   }, {});
 
   const sortedAssignees = Object.keys(groupedTasks).sort();
 
-  if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען...</div>;
+  if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
   return (
     <div>
       <header className="header">
         <h1>מנהל משימות</h1>
-        {isAdmin && <span className="status-badge" style={{marginBottom:0, fontSize:'0.7rem', padding:'0.2rem 0.5rem'}}>ניהול</span>}
+        {isAdmin && <span className="status-badge" style={{marginBottom:0, fontSize:'0.7rem', padding:'0.2rem 0.5rem', background:'rgba(99, 102, 241, 0.2)'}}>ניהול</span>}
       </header>
 
       <main className="container">
@@ -137,7 +149,7 @@ const App = () => {
                   ) : (
                     <div 
                       className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} 
-                      onClick={() => toggleDone(task.id)}
+                      onClick={() => toggleDone(task)}
                     >
                       {task.isDone && <span style={{color:'white', fontSize:'14px'}}>✓</span>}
                     </div>
