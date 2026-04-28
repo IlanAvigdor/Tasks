@@ -20,54 +20,58 @@ const App = () => {
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
   
   const isInitialLoad = useRef(true);
-  const prevDoneIdsRef = useRef(new Set());
+  const prevDoneStatus = useRef({});
+  const isAdminRef = useRef(false);
+  const isMutedRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => { isAdminRef.current = isAdmin; }, [isAdmin]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   const playNotification = () => {
-    if (isMuted) return;
+    if (isMutedRef.current) return;
+    console.log('Playing notification...');
     const audio = new Audio(NOTIFICATION_SOUND);
-    audio.play().catch(e => console.log('Audio failed:', e));
+    audio.play().catch(e => console.error('Audio failed:', e));
+    setAlertCount(prev => prev + 1);
   };
 
   const testNotification = () => {
     playNotification();
-    alert('הצליל אמור להתנגן כעת.');
   };
-
-  // Detect newly done tasks by comparing state
-  useEffect(() => {
-    if (!isAdmin || loading) return;
-
-    const currentDoneIds = new Set(tasks.filter(t => t.isDone).map(t => t.id));
-    
-    // Only play if this isn't the first time we're loading tasks
-    if (!isInitialLoad.current && !isMuted) {
-      const newlyDone = Array.from(currentDoneIds).filter(id => !prevDoneIdsRef.current.has(id));
-      if (newlyDone.length > 0) {
-        console.log('Alerting for tasks:', newlyDone);
-        playNotification();
-      }
-    }
-
-    // Update the ref immediately
-    prevDoneIdsRef.current = currentDoneIds;
-    
-    if (tasks.length > 0 && loading === false) {
-      isInitialLoad.current = false;
-    }
-  }, [tasks, isAdmin, isMuted, loading]);
 
   useEffect(() => {
     // Real-time listener for Firestore
     const q = query(collection(db, "tasks"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const taskList = [];
+      
+      snapshot.docChanges().forEach(change => {
+        const data = change.doc.data();
+        const id = change.doc.id;
+        
+        // Logical check: Is it a modification, not initial load, and is now done?
+        if (change.type === 'modified' && !isInitialLoad.current) {
+          if (isAdminRef.current && !isMutedRef.current && data.isDone && !prevDoneStatus.current[id]) {
+            playNotification();
+          }
+        }
+        prevDoneStatus.current[id] = data.isDone;
+      });
+
       snapshot.forEach((doc) => {
         taskList.push({ id: doc.id, ...doc.data() });
       });
+      
       setTasks(taskList);
       setLoading(false);
+      
+      if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+      }
     });
 
     // Check for admin status
@@ -192,13 +196,10 @@ const App = () => {
           <div style={{display:'flex', gap:'10px'}}>
             <button onClick={resetAllTasks} className="btn-verify" style={{background:'rgba(16, 185, 129, 0.1)', borderColor:'var(--accent-success)'}}>איפוס יום</button>
             <button onClick={testNotification} className="btn-verify" style={{borderColor:'var(--text-muted)', color:'var(--text-muted)'}}>בדיקת צליל</button>
-            <button 
-              onClick={() => setIsMuted(!isMuted)} 
-              className="mute-btn"
-              title={isMuted ? "בטל השתקה" : "השתק התראות"}
-            >
-              {isMuted ? '🔇' : '🔊'}
-            </button>
+            <div className="mute-btn" style={{fontSize:'0.8rem', gap:'4px', padding:'0.4rem 0.6rem'}}>
+              <span onClick={() => setIsMuted(!isMuted)} style={{cursor:'pointer'}}>{isMuted ? '🔇' : '🔊'}</span>
+              {alertCount > 0 && <span style={{color:'var(--accent-success)', fontWeight:'bold'}}>{alertCount}</span>}
+            </div>
             <span className="status-badge" style={{marginBottom:0, fontSize:'0.7rem', padding:'0.4rem 0.6rem', background:'rgba(99, 102, 241, 0.2)'}}>ניהול</span>
           </div>
         )}
