@@ -20,25 +20,55 @@ const App = () => {
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [prevDoneIds, setPrevDoneIds] = useState(new Set());
   
   const isInitialLoad = useRef(true);
-  const prevDoneStatus = useRef({});
 
   const playNotification = () => {
     if (isMuted) return;
-    console.log('Playing notification sound...');
     const audio = new Audio(NOTIFICATION_SOUND);
-    audio.play().catch(e => console.error('Audio play failed:', e));
+    audio.play().catch(e => console.log('Audio failed:', e));
   };
 
   const testNotification = () => {
-    console.log('Manual sound test triggered');
     playNotification();
     alert('הצליל אמור להתנגן כעת.');
   };
 
+  // Detect newly done tasks by comparing state
   useEffect(() => {
-    // Check if current URL contains the admin GUID
+    if (!isAdmin || loading) return;
+
+    const currentDoneIds = new Set(tasks.filter(t => t.isDone).map(t => t.id));
+    
+    // Only play if this isn't the first time we're loading tasks
+    if (!isInitialLoad.current && !isMuted) {
+      const newlyDone = Array.from(currentDoneIds).filter(id => !prevDoneIds.has(id));
+      if (newlyDone.length > 0) {
+        console.log('New task(s) done:', newlyDone);
+        playNotification();
+      }
+    }
+
+    setPrevDoneIds(currentDoneIds);
+    if (tasks.length > 0 && loading === false) {
+      isInitialLoad.current = false;
+    }
+  }, [tasks, isAdmin, isMuted, loading]);
+
+  useEffect(() => {
+    // Real-time listener for Firestore
+    const q = query(collection(db, "tasks"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const taskList = [];
+      snapshot.forEach((doc) => {
+        taskList.push({ id: doc.id, ...doc.data() });
+      });
+      setTasks(taskList);
+      setLoading(false);
+    });
+
+    // Check for admin status
     const params = new URLSearchParams(window.location.search);
     if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
       setIsAdmin(true);
@@ -53,49 +83,13 @@ const App = () => {
     };
     window.addEventListener('click', unlockAudio);
     window.addEventListener('touchstart', unlockAudio);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
   }, []);
-
-  useEffect(() => {
-    // Real-time listener for Firestore (Stable, doesn't restart)
-    const q = query(collection(db, "tasks"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const taskList = [];
-      
-      snapshot.docChanges().forEach(change => {
-        const data = change.doc.data();
-        const id = change.doc.id;
-        
-        if (change.type === 'modified' && !isInitialLoad.current) {
-          // Check isAdmin and isMuted inside the callback to use latest state
-          if (window.isAdminGlobal && !window.isMutedGlobal && data.isDone && !prevDoneStatus.current[id]) {
-            console.log('Task done! Playing...');
-            const audio = new Audio(NOTIFICATION_SOUND);
-            audio.play().catch(e => console.error('Play failed:', e));
-          }
-        }
-        prevDoneStatus.current[id] = data.isDone;
-      });
-
-      snapshot.forEach((doc) => {
-        taskList.push({ id: doc.id, ...doc.data() });
-      });
-      
-      setTasks(taskList);
-      setLoading(false);
-      
-      if (isInitialLoad.current) {
-        isInitialLoad.current = false;
-      }
-    });
-
-    return () => unsubscribe();
-  }, []); // Run once on mount
-
-  // Sync state to window for the listener to access latest values without restarts
-  useEffect(() => {
-    window.isAdminGlobal = isAdmin;
-    window.isMutedGlobal = isMuted;
-  }, [isAdmin, isMuted]);
 
   const handleAddTask = async (e) => {
     e.preventDefault();
