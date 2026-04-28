@@ -20,9 +20,9 @@ const App = () => {
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [prevDoneIds, setPrevDoneIds] = useState(new Set());
   
   const isInitialLoad = useRef(true);
+  const prevDoneIdsRef = useRef(new Set());
 
   const playNotification = () => {
     if (isMuted) return;
@@ -43,14 +43,16 @@ const App = () => {
     
     // Only play if this isn't the first time we're loading tasks
     if (!isInitialLoad.current && !isMuted) {
-      const newlyDone = Array.from(currentDoneIds).filter(id => !prevDoneIds.has(id));
+      const newlyDone = Array.from(currentDoneIds).filter(id => !prevDoneIdsRef.current.has(id));
       if (newlyDone.length > 0) {
-        console.log('New task(s) done:', newlyDone);
+        console.log('Alerting for tasks:', newlyDone);
         playNotification();
       }
     }
 
-    setPrevDoneIds(currentDoneIds);
+    // Update the ref immediately
+    prevDoneIdsRef.current = currentDoneIds;
+    
     if (tasks.length > 0 && loading === false) {
       isInitialLoad.current = false;
     }
