@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 const ADMIN_GUID = 'admin-987654';
-const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3';
+const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 const App = () => {
   const [tasks, setTasks] = useState([]);
@@ -20,30 +20,17 @@ const App = () => {
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [alertCount, setAlertCount] = useState(0);
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
-  const isAdminRef = useRef(false);
-  const isMutedRef = useRef(false);
-
-  // Keep refs in sync with state
-  useEffect(() => { isAdminRef.current = isAdmin; }, [isAdmin]);
-  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
-
-  const playNotification = () => {
-    if (isMutedRef.current) return;
-    console.log('Playing notification...');
-    const audio = new Audio(NOTIFICATION_SOUND);
-    audio.play().catch(e => console.error('Audio failed:', e));
-    setAlertCount(prev => prev + 1);
-  };
-
-  const testNotification = () => {
-    playNotification();
-  };
 
   useEffect(() => {
+    // Check if current URL contains the admin GUID
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
+      setIsAdmin(true);
+    }
+
     // Real-time listener for Firestore
     const q = query(collection(db, "tasks"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -53,10 +40,9 @@ const App = () => {
         const data = change.doc.data();
         const id = change.doc.id;
         
-        // Logical check: Is it a modification, not initial load, and is now done?
-        if (change.type === 'modified' && !isInitialLoad.current) {
-          if (isAdminRef.current && !isMutedRef.current && data.isDone && !prevDoneStatus.current[id]) {
-            playNotification();
+        if (change.type === 'modified' && isAdmin && !isMuted && !isInitialLoad.current) {
+          if (data.isDone && !prevDoneStatus.current[id]) {
+            new Audio(NOTIFICATION_SOUND).play().catch(e => console.log('Audio failed:', e));
           }
         }
         prevDoneStatus.current[id] = data.isDone;
@@ -74,28 +60,8 @@ const App = () => {
       }
     });
 
-    // Check for admin status
-    const params = new URLSearchParams(window.location.search);
-    if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
-      setIsAdmin(true);
-    }
-
-    // Silent "Prime" for iOS
-    const unlockAudio = () => {
-      const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhAAQABAAgAZGF0YQAAAAA=');
-      silentAudio.play().catch(() => {});
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
-    };
-    window.addEventListener('click', unlockAudio);
-    window.addEventListener('touchstart', unlockAudio);
-
-    return () => {
-      unsubscribe();
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
-    };
-  }, []);
+    return () => unsubscribe();
+  }, [isAdmin, isMuted]);
 
   const handleAddTask = async (e) => {
     e.preventDefault();
@@ -194,12 +160,13 @@ const App = () => {
         <h1>מנהל משימות</h1>
         {isAdmin && (
           <div style={{display:'flex', gap:'10px'}}>
-            <button onClick={resetAllTasks} className="btn-verify" style={{background:'rgba(16, 185, 129, 0.1)', borderColor:'var(--accent-success)'}}>איפוס יום</button>
-            <button onClick={testNotification} className="btn-verify" style={{borderColor:'var(--text-muted)', color:'var(--text-muted)'}}>בדיקת צליל</button>
-            <div className="mute-btn" style={{fontSize:'0.8rem', gap:'4px', padding:'0.4rem 0.6rem'}}>
-              <span onClick={() => setIsMuted(!isMuted)} style={{cursor:'pointer'}}>{isMuted ? '🔇' : '🔊'}</span>
-              {alertCount > 0 && <span style={{color:'var(--accent-success)', fontWeight:'bold'}}>{alertCount}</span>}
-            </div>
+            <button onClick={() => window.confirm('לאפס?') && resetAllTasks()} className="btn-verify" style={{background:'rgba(16, 185, 129, 0.1)', borderColor:'var(--accent-success)'}}>איפוס יום</button>
+            <button 
+              onClick={() => setIsMuted(!isMuted)} 
+              className="mute-btn"
+            >
+              {isMuted ? '🔇' : '🔊'}
+            </button>
             <span className="status-badge" style={{marginBottom:0, fontSize:'0.7rem', padding:'0.4rem 0.6rem', background:'rgba(99, 102, 241, 0.2)'}}>ניהול</span>
           </div>
         )}
