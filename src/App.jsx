@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 const ADMIN_GUID = 'admin-987654';
-const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
+const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3';
 
 const App = () => {
   const [tasks, setTasks] = useState([]);
@@ -38,13 +38,13 @@ const App = () => {
   };
 
   useEffect(() => {
-    // Check if current URL contains the admin GUID (supports both path and ?admin=)
+    // Check if current URL contains the admin GUID
     const params = new URLSearchParams(window.location.search);
     if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
       setIsAdmin(true);
     }
 
-    // "Prime" audio on first interaction for mobile browsers using a silent 1ms sound
+    // Silent "Prime" for iOS
     const unlockAudio = () => {
       const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhAAQABAAgAZGF0YQAAAAA=');
       silentAudio.play().catch(() => {});
@@ -53,8 +53,10 @@ const App = () => {
     };
     window.addEventListener('click', unlockAudio);
     window.addEventListener('touchstart', unlockAudio);
+  }, []);
 
-    // Real-time listener for Firestore
+  useEffect(() => {
+    // Real-time listener for Firestore (Stable, doesn't restart)
     const q = query(collection(db, "tasks"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const taskList = [];
@@ -63,11 +65,12 @@ const App = () => {
         const data = change.doc.data();
         const id = change.doc.id;
         
-        // Play sound if task was marked done (only if not initial load and user is admin)
-        if (change.type === 'modified' && isAdmin && !isMuted && !isInitialLoad.current) {
-          if (data.isDone && !prevDoneStatus.current[id]) {
-            console.log(`Task "${data.title}" marked as done! Playing alert.`);
-            playNotification();
+        if (change.type === 'modified' && !isInitialLoad.current) {
+          // Check isAdmin and isMuted inside the callback to use latest state
+          if (window.isAdminGlobal && !window.isMutedGlobal && data.isDone && !prevDoneStatus.current[id]) {
+            console.log('Task done! Playing...');
+            const audio = new Audio(NOTIFICATION_SOUND);
+            audio.play().catch(e => console.error('Play failed:', e));
           }
         }
         prevDoneStatus.current[id] = data.isDone;
@@ -86,6 +89,12 @@ const App = () => {
     });
 
     return () => unsubscribe();
+  }, []); // Run once on mount
+
+  // Sync state to window for the listener to access latest values without restarts
+  useEffect(() => {
+    window.isAdminGlobal = isAdmin;
+    window.isMutedGlobal = isMuted;
   }, [isAdmin, isMuted]);
 
   const handleAddTask = async (e) => {
