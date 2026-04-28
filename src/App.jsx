@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 
 const ADMIN_GUID = 'admin-987654';
+const APP_VERSION = '1.01';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
 const getAssigneeColor = (name) => {
@@ -242,7 +243,7 @@ const App = () => {
   return (
     <div>
       <header className="header">
-        <h1>מנהל משימות</h1>
+        <h1>מנהל משימות <span style={{fontSize:'0.7rem', verticalAlign:'middle', opacity:0.5, marginRight:'8px'}}>v{APP_VERSION}</span></h1>
         {isAdmin && (
           <div style={{display:'flex', gap:'10px'}}>
             <button onClick={resetAllTasks} className="btn-verify" style={{background:'rgba(16, 185, 129, 0.1)', borderColor:'var(--accent-success)'}}>איפוס יום</button>
@@ -292,19 +293,20 @@ const App = () => {
                 <div className="task-content">
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px'}}>
                     <div className="task-title" style={{fontSize:'0.9rem', marginBottom:0}}>{task.title}</div>
-                    <div style={{display:'flex', gap:'4px'}}>
+                    <div style={{display:'flex', gap:'12px'}}>
                       {['red', 'yellow', 'green'].map(c => (
                         <button
                           key={c}
                           onClick={() => updateTaskColor(task.id, task.color === c ? '' : c)}
                           style={{
-                            width:'12px', 
-                            height:'12px', 
+                            width:'20px', 
+                            height:'20px', 
                             borderRadius:'50%', 
                             background: c === 'red' ? '#ef4444' : c === 'yellow' ? '#f59e0b' : '#10b981',
-                            border: task.color === c ? '2px solid white' : 'none',
+                            border: task.color === c ? '2px solid white' : '1px solid rgba(255,255,255,0.2)',
                             cursor:'pointer',
-                            padding:0
+                            padding:0,
+                            boxShadow: task.color === c ? '0 0 8px rgba(255,255,255,0.4)' : 'none'
                           }}
                         />
                       ))}
