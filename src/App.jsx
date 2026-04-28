@@ -23,6 +23,12 @@ const App = () => {
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
+  const isAdminRef = useRef(false);
+  const isMutedRef = useRef(false);
+
+  // Sync refs with state
+  useEffect(() => { isAdminRef.current = isAdmin; }, [isAdmin]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   useEffect(() => {
     // Check if current URL contains the admin GUID
@@ -30,6 +36,16 @@ const App = () => {
     if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
       setIsAdmin(true);
     }
+
+    // Silent "Prime" for iOS - Unlocks audio on first tap
+    const unlockAudio = () => {
+      const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhAAQABAAgAZGF0YQAAAAA=');
+      silentAudio.play().catch(() => {});
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
 
     // Real-time listener for Firestore
     const q = query(collection(db, "tasks"));
@@ -40,7 +56,8 @@ const App = () => {
         const data = change.doc.data();
         const id = change.doc.id;
         
-        if (change.type === 'modified' && isAdmin && !isMuted && !isInitialLoad.current) {
+        // Direct logic from the first working version, using refs to be stable
+        if (change.type === 'modified' && !isInitialLoad.current && isAdminRef.current && !isMutedRef.current) {
           if (data.isDone && !prevDoneStatus.current[id]) {
             new Audio(NOTIFICATION_SOUND).play().catch(e => console.log('Audio failed:', e));
           }
@@ -60,8 +77,12 @@ const App = () => {
       }
     });
 
-    return () => unsubscribe();
-  }, [isAdmin, isMuted]);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
 
   const handleAddTask = async (e) => {
     e.preventDefault();
