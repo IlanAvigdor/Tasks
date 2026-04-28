@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.01';
+const APP_VERSION = '1.03';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
 const getAssigneeColor = (name) => {
@@ -244,8 +244,8 @@ const App = () => {
     <div>
       <header className="header">
         <div style={{display:'flex', alignItems:'baseline', gap:'8px'}}>
+          <span style={{fontSize:'0.85rem', color:'var(--text-muted)'}}>v{APP_VERSION}</span>
           <h1>מנהל משימות</h1>
-          <span style={{fontSize:'0.7rem', opacity:0.5}}>v{APP_VERSION}</span>
         </div>
         {isAdmin && (
           <div style={{display:'flex', gap:'10px'}}>
@@ -258,7 +258,6 @@ const App = () => {
             >
               {isMuted ? '🔇' : '🔊'}
             </button>
-            <span className="status-badge" style={{marginBottom:0, fontSize:'0.7rem', padding:'0.4rem 0.6rem', background:'rgba(99, 102, 241, 0.2)'}}>ניהול</span>
           </div>
         )}
       </header>
