@@ -155,11 +155,12 @@ const App = () => {
                   value={newTask.title} 
                   onChange={e => setNewTask({...newTask, title: e.target.value})}
                 />
-                <input 
+                <textarea 
                   className="input-field" 
-                  placeholder="תיאור קצר" 
+                  placeholder="תיאור המשימה" 
                   value={newTask.description} 
                   onChange={e => setNewTask({...newTask, description: e.target.value})}
+                  rows={3}
                 />
                 <button className="btn" type="submit">שמור תבנית</button>
               </form>
