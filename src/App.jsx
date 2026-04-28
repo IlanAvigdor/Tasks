@@ -23,24 +23,18 @@ const App = () => {
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
-  const audioRef = useRef(null);
-
-  // Initialize audio object once
-  useEffect(() => {
-    audioRef.current = new Audio(NOTIFICATION_SOUND);
-  }, []);
 
   const playNotification = () => {
-    if (isMuted || !audioRef.current) return;
-    console.log('Attempting to play sound...');
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch(e => console.error('Audio play failed:', e));
+    if (isMuted) return;
+    console.log('Playing notification sound...');
+    const audio = new Audio(NOTIFICATION_SOUND);
+    audio.play().catch(e => console.error('Audio play failed:', e));
   };
 
   const testNotification = () => {
     console.log('Manual sound test triggered');
     playNotification();
-    alert('הצליל אמור להתנגן כעת. אם לא שמעת כלום, בדוק שהטלפון לא על שקט או שהדפדפן לא חוסם אודיו.');
+    alert('הצליל אמור להתנגן כעת.');
   };
 
   useEffect(() => {
@@ -50,14 +44,10 @@ const App = () => {
       setIsAdmin(true);
     }
 
-    // "Prime" audio on first click for mobile browsers
+    // "Prime" audio on first interaction for mobile browsers using a silent 1ms sound
     const unlockAudio = () => {
-      if (audioRef.current) {
-        audioRef.current.play().then(() => {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        }).catch(() => {});
-      }
+      const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhAAQABAAgAZGF0YQAAAAA=');
+      silentAudio.play().catch(() => {});
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
     };
