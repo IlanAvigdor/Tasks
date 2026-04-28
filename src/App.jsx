@@ -243,7 +243,10 @@ const App = () => {
   return (
     <div>
       <header className="header">
-        <h1>מנהל משימות <span style={{fontSize:'0.7rem', verticalAlign:'middle', opacity:0.5, marginRight:'8px'}}>v{APP_VERSION}</span></h1>
+        <div style={{display:'flex', alignItems:'baseline', gap:'8px'}}>
+          <h1>מנהל משימות</h1>
+          <span style={{fontSize:'0.7rem', opacity:0.5}}>v{APP_VERSION}</span>
+        </div>
         {isAdmin && (
           <div style={{display:'flex', gap:'10px'}}>
             <button onClick={resetAllTasks} className="btn-verify" style={{background:'rgba(16, 185, 129, 0.1)', borderColor:'var(--accent-success)'}}>איפוס יום</button>
