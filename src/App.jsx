@@ -14,6 +14,28 @@ import {
 const ADMIN_GUID = 'admin-987654';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
+const getAssigneeColor = (name) => {
+  const colors = [
+    '#6366f1', // Indigo
+    '#10b981', // Emerald
+    '#f59e0b', // Amber
+    '#f43f5e', // Rose
+    '#0ea5e9', // Sky
+    '#8b5cf6', // Violet
+    '#f97316', // Orange
+    '#ec4899', // Pink
+  ];
+  if (!name || name === 'ללא שיוך') return '#94a3b8'; // Muted for unassigned
+  
+  // Simple hash to consistently pick a color for a name
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+};
+
 const App = () => {
   const [tasks, setTasks] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -108,6 +130,7 @@ const App = () => {
         assignee: newTask.assignee || 'ללא שיוך',
         isDone: false,
         isVerified: false,
+        color: '',
         createdAt: new Date()
       });
       setNewTask({ title: '', description: '', assignee: '' });
@@ -140,6 +163,15 @@ const App = () => {
       await updateDoc(taskRef, { assignee: newName });
     } catch (e) {
       console.error("Error updating assignee: ", e);
+    }
+  };
+
+  const updateTaskColor = async (id, color) => {
+    try {
+      const taskRef = doc(db, "tasks", id);
+      await updateDoc(taskRef, { color: color });
+    } catch (e) {
+      console.error("Error updating color: ", e);
     }
   };
 
@@ -186,6 +218,24 @@ const App = () => {
 
   const sortedAssignees = Object.keys(groupedTasks).sort();
   const allNames = Array.from(new Set(tasks.map(t => t.assignee).filter(Boolean)));
+
+  const getTaskStyle = (color) => {
+    if (!color) return {};
+    const palette = {
+      red: 'rgba(239, 68, 68, 0.15)',
+      yellow: 'rgba(245, 158, 11, 0.15)',
+      green: 'rgba(16, 185, 129, 0.15)'
+    };
+    const borders = {
+      red: '#ef4444',
+      yellow: '#f59e0b',
+      green: '#10b981'
+    };
+    return { 
+      background: palette[color],
+      borderRight: `4px solid ${borders[color]}` // Right border for RTL
+    };
+  };
 
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
@@ -238,9 +288,28 @@ const App = () => {
           // STABLE SPEED-ASSIGN MODE for ADMIN
           <div className="group-section">
             {tasks.sort((a,b) => a.title.localeCompare(b.title)).map((task, index) => (
-              <div key={task.id} className="task-item">
+              <div key={task.id} className="task-item" style={getTaskStyle(task.color)}>
                 <div className="task-content">
-                  <div className="task-title" style={{fontSize:'0.9rem'}}>{task.title}</div>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px'}}>
+                    <div className="task-title" style={{fontSize:'0.9rem', marginBottom:0}}>{task.title}</div>
+                    <div style={{display:'flex', gap:'4px'}}>
+                      {['red', 'yellow', 'green'].map(c => (
+                        <button
+                          key={c}
+                          onClick={() => updateTaskColor(task.id, task.color === c ? '' : c)}
+                          style={{
+                            width:'12px', 
+                            height:'12px', 
+                            borderRadius:'50%', 
+                            background: c === 'red' ? '#ef4444' : c === 'yellow' ? '#f59e0b' : '#10b981',
+                            border: task.color === c ? '2px solid white' : 'none',
+                            cursor:'pointer',
+                            padding:0
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                   <div style={{position:'relative', marginTop:'4px'}}>
                     <input 
                       id={`assignee-${index}`}
@@ -257,6 +326,7 @@ const App = () => {
                           if (nextInput) nextInput.focus();
                         }
                       }}
+                      onFocus={(e) => { if (e.target.value === 'ללא שיוך') e.target.value = ''; }}
                       onBlur={(e) => updateAssignee(task.id, e.target.value)}
                       placeholder="הכנס שם..."
                     />
@@ -287,9 +357,17 @@ const App = () => {
           // GROUPED MODE for WORKERS
           sortedAssignees.map(assignee => (
             <div key={assignee} className="group-section">
-              <h2 className="group-title">{assignee}</h2>
+              <h2 
+                className="group-title" 
+                style={{ 
+                  color: getAssigneeColor(assignee),
+                  borderColor: getAssigneeColor(assignee)
+                }}
+              >
+                {assignee}
+              </h2>
               {groupedTasks[assignee].map(task => (
-                <div key={task.id} className="task-item">
+                <div key={task.id} className="task-item" style={getTaskStyle(task.color)}>
                   <div className="check-wrapper">
                     {task.isVerified ? (
                       <span className="v-mark">V</span>
