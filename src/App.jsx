@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 const ADMIN_GUID = 'admin-987654';
-const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3';
+const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
 const App = () => {
   const [tasks, setTasks] = useState([]);
@@ -49,6 +49,20 @@ const App = () => {
     if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
       setIsAdmin(true);
     }
+
+    // "Prime" audio on first click for mobile browsers
+    const unlockAudio = () => {
+      if (audioRef.current) {
+        audioRef.current.play().then(() => {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }).catch(() => {});
+      }
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
 
     // Real-time listener for Firestore
     const q = query(collection(db, "tasks"));
