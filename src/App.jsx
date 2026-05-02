@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.03';
+const APP_VERSION = '1.04';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
 const getAssigneeColor = (name) => {
