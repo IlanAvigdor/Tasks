@@ -206,6 +206,14 @@ textarea.input-field {
     padding: 5px;
 }
 
+.edit-btn {
+    color: var(--primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
     .container {

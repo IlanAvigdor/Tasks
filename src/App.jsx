@@ -43,6 +43,8 @@ const App = () => {
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
@@ -125,19 +127,47 @@ const App = () => {
     e.preventDefault();
     if (!newTask.title) return;
     try {
-      await addDoc(collection(db, "tasks"), {
-        title: newTask.title,
-        description: newTask.description,
-        assignee: newTask.assignee || 'ללא שיוך',
-        isDone: false,
-        isVerified: false,
-        color: '',
-        createdAt: new Date()
-      });
+      if (editingTaskId) {
+        const taskRef = doc(db, "tasks", editingTaskId);
+        await updateDoc(taskRef, {
+          title: newTask.title,
+          description: newTask.description,
+          assignee: newTask.assignee || 'ללא שיוך'
+        });
+        setEditingTaskId(null);
+      } else {
+        await addDoc(collection(db, "tasks"), {
+          title: newTask.title,
+          description: newTask.description,
+          assignee: newTask.assignee || 'ללא שיוך',
+          isDone: false,
+          isVerified: false,
+          color: '',
+          createdAt: new Date()
+        });
+      }
       setNewTask({ title: '', description: '', assignee: '' });
+      setIsFormOpen(false);
     } catch (e) {
-      console.error("Error adding document: ", e);
+      console.error("Error saving document: ", e);
     }
+  };
+
+  const startEditing = (task) => {
+    setEditingTaskId(task.id);
+    setNewTask({
+      title: task.title,
+      description: task.description || '',
+      assignee: task.assignee === 'ללא שיוך' ? '' : (task.assignee || '')
+    });
+    setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingTaskId(null);
+    setNewTask({ title: '', description: '', assignee: '' });
+    setIsFormOpen(false);
   };
 
   const resetAllTasks = async () => {
@@ -265,8 +295,10 @@ const App = () => {
       <main className="container">
         {isAdmin && (
           <section className="admin-controls" style={{padding:'0.75rem'}}>
-            <details>
-              <summary style={{cursor:'pointer', fontSize:'0.9rem', color: 'var(--primary)'}}>+ הוסף תבנית משימה חדשה</summary>
+            <details open={isFormOpen} onToggle={(e) => setIsFormOpen(e.target.open)}>
+              <summary style={{cursor:'pointer', fontSize:'0.9rem', color: 'var(--primary)'}}>
+                {editingTaskId ? '📝 עריכת תבנית' : '+ הוסף תבנית משימה חדשה'}
+              </summary>
               <form onSubmit={handleAddTask} style={{marginTop:'1rem'}}>
                 <input 
                   className="input-field" 
@@ -281,7 +313,21 @@ const App = () => {
                   onChange={e => setNewTask({...newTask, description: e.target.value})}
                   rows={3}
                 />
-                <button className="btn" type="submit">שמור תבנית</button>
+                <div style={{display:'flex', gap:'10px'}}>
+                  <button className="btn" type="submit">
+                    {editingTaskId ? 'עדכן תבנית' : 'שמור תבנית'}
+                  </button>
+                  {editingTaskId && (
+                    <button 
+                      className="btn" 
+                      type="button" 
+                      onClick={cancelEditing}
+                      style={{background:'rgba(255,255,255,0.1)', color:'var(--text-main)'}}
+                    >
+                      ביטול
+                    </button>
+                  )}
+                </div>
               </form>
             </details>
           </section>
@@ -352,6 +398,7 @@ const App = () => {
                         <button className="btn-verify" onClick={() => verifyTask(task.id)}>אשר</button>
                       )
                     )}
+                    <button className="edit-btn" style={{fontSize:'0.8rem'}} onClick={() => startEditing(task)}>✏️</button>
                     <button className="delete-btn" style={{fontSize:'0.8rem'}} onClick={() => deleteTask(task.id)}>🗑️</button>
                 </div>
               </div>
