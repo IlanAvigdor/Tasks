@@ -8,7 +8,10 @@ import {
   deleteDoc, 
   doc, 
   query, 
-  orderBy 
+  orderBy,
+  setDoc,
+  getDocs,
+  writeBatch
 } from "firebase/firestore";
 
 const ADMIN_GUID = 'admin-987654';
@@ -45,6 +48,10 @@ const App = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [registeredWorkers, setRegisteredWorkers] = useState([]);
+  const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [registrationName, setRegistrationName] = useState('');
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
@@ -89,19 +96,15 @@ const App = () => {
     window.addEventListener('click', unlockAudio);
     window.addEventListener('touchstart', unlockAudio);
 
-    // Real-time listener for Firestore
-    const q = query(collection(db, "tasks"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    // Real-time listener for Firestore tasks
+    const tasksQuery = query(collection(db, "tasks"));
+    const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
       const taskList = [];
-      
       snapshot.docChanges().forEach(change => {
         const data = change.doc.data();
         const id = change.doc.id;
-        
-        // Play sound if task was marked done (only if not initial load and user is admin)
         if (change.type === 'modified' && isAdmin && !isMuted && !isInitialLoad.current) {
           if (data.isDone && !prevDoneStatus.current[id]) {
-            console.log(`Task "${data.title}" marked as done! Playing alert.`);
             playNotification();
           }
         }
@@ -111,16 +114,22 @@ const App = () => {
       snapshot.forEach((doc) => {
         taskList.push({ id: doc.id, ...doc.data() });
       });
-      
       setTasks(taskList);
       setLoading(false);
-      
-      if (isInitialLoad.current) {
-        isInitialLoad.current = false;
-      }
+      if (isInitialLoad.current) isInitialLoad.current = false;
+    });
+    
+    // Listener for workers
+    const workersUnsubscribe = onSnapshot(collection(db, "workers"), (snapshot) => {
+      const workersList = [];
+      snapshot.forEach((doc) => workersList.push({ id: doc.id, ...doc.data() }));
+      setRegisteredWorkers(workersList);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      workersUnsubscribe();
+    };
   }, [isAdmin, isMuted]);
 
   const handleAddTask = async (e) => {
@@ -139,7 +148,7 @@ const App = () => {
         await addDoc(collection(db, "tasks"), {
           title: newTask.title,
           description: newTask.description,
-          assignee: newTask.assignee || 'ללא שיוך',
+          assignees: [], // New structure: array of names
           isDone: false,
           isVerified: false,
           color: '',
@@ -178,13 +187,55 @@ const App = () => {
         return updateDoc(taskRef, { 
           isDone: false, 
           isVerified: false, 
-          assignee: '' 
+          assignees: [] 
         });
       });
       await Promise.all(promises);
+
+      // Clear workers collection
+      const workersSnapshot = await getDocs(collection(db, "workers"));
+      const batch = writeBatch(db);
+      workersSnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+
     } catch (e) {
       console.error("Error resetting tasks: ", e);
       alert('שגיאה באיפוס המשימות');
+    }
+  };
+
+  const registerWorker = async (e) => {
+    e.preventDefault();
+    if (!registrationName) return;
+    try {
+      await addDoc(collection(db, "workers"), {
+        name: registrationName,
+        createdAt: new Date()
+      });
+      localStorage.setItem('workerName', registrationName);
+      setUserName(registrationName);
+    } catch (e) {
+      console.error("Error registering worker: ", e);
+    }
+  };
+
+  const toggleAssignment = async (taskId, workerName) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const currentAssignees = task.assignees || [];
+    const isAssigned = currentAssignees.includes(workerName);
+    
+    const newAssignees = isAssigned 
+      ? currentAssignees.filter(name => name !== workerName)
+      : [...currentAssignees, workerName];
+
+    try {
+      await updateDoc(doc(db, "tasks", taskId), { assignees: newAssignees });
+    } catch (e) {
+      console.error("Error toggling assignment: ", e);
     }
   };
 
@@ -239,16 +290,11 @@ const App = () => {
     }
   };
 
-  // Group and sort tasks by assignee
-  const groupedTasks = tasks.reduce((acc, task) => {
-    const assignee = task.assignee || 'ללא שיוך';
-    if (!acc[assignee]) acc[assignee] = [];
-    acc[assignee].push(task);
-    return acc;
-  }, {});
-
-  const sortedAssignees = Object.keys(groupedTasks).sort();
-  const allNames = Array.from(new Set(tasks.map(t => t.assignee).filter(Boolean)));
+  // Prepare data for rendering
+  const myTasks = tasks.filter(t => t.assignees?.includes(userName));
+  const otherTasks = tasks.filter(t => !t.assignees?.includes(userName));
+  
+  const allNames = Array.from(new Set(tasks.flatMap(t => t.assignees || []).filter(Boolean)));
 
   const getTaskStyle = (color) => {
     if (!color) return {};
@@ -292,159 +338,175 @@ const App = () => {
         )}
       </header>
 
-      <main className="container">
+      <main className="container" style={isAdmin ? {maxWidth:'900px'} : {}}>
         {isAdmin && (
-          <section className="admin-controls" style={{padding:'0.75rem'}}>
-            <details open={isFormOpen} onToggle={(e) => setIsFormOpen(e.target.open)}>
-              <summary style={{cursor:'pointer', fontSize:'0.9rem', color: 'var(--primary)'}}>
-                {editingTaskId ? '📝 עריכת תבנית' : '+ הוסף תבנית משימה חדשה'}
-              </summary>
-              <form onSubmit={handleAddTask} style={{marginTop:'1rem'}}>
-                <input 
-                  className="input-field" 
-                  placeholder="שם המשימה (למשל: בדיקת מלאי)" 
-                  value={newTask.title} 
-                  onChange={e => setNewTask({...newTask, title: e.target.value})}
-                />
-                <textarea 
-                  className="input-field" 
-                  placeholder="תיאור המשימה" 
-                  value={newTask.description} 
-                  onChange={e => setNewTask({...newTask, description: e.target.value})}
-                  rows={3}
-                />
-                <div style={{display:'flex', gap:'10px'}}>
-                  <button className="btn" type="submit">
-                    {editingTaskId ? 'עדכן תבנית' : 'שמור תבנית'}
-                  </button>
-                  {editingTaskId && (
-                    <button 
-                      className="btn" 
-                      type="button" 
-                      onClick={cancelEditing}
-                      style={{background:'rgba(255,255,255,0.1)', color:'var(--text-main)'}}
-                    >
-                      ביטול
-                    </button>
-                  )}
-                </div>
-              </form>
-            </details>
+          <section className="admin-header-actions" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem', padding:'0 0.5rem'}}>
+            <button 
+              className="add-task-fab" 
+              onClick={() => setIsFormOpen(!isFormOpen)}
+              title="הוסף משימה"
+            >
+              {isFormOpen ? '✕' : '+'}
+            </button>
+            
+            {isFormOpen && (
+              <div className="compact-form-overlay">
+                <form onSubmit={handleAddTask} className="glass-card compact-form">
+                  <h3>{editingTaskId ? 'עריכת משימה' : 'משימה חדשה'}</h3>
+                  <input 
+                    className="input-field" 
+                    placeholder="שם המשימה" 
+                    value={newTask.title} 
+                    onChange={e => setNewTask({...newTask, title: e.target.value})}
+                    autoFocus
+                  />
+                  <textarea 
+                    className="input-field" 
+                    placeholder="תיאור" 
+                    value={newTask.description} 
+                    onChange={e => setNewTask({...newTask, description: e.target.value})}
+                    rows={2}
+                  />
+                  <div style={{display:'flex', gap:'10px'}}>
+                    <button className="btn" type="submit">שמור</button>
+                    <button className="btn secondary" type="button" onClick={cancelEditing}>ביטול</button>
+                  </div>
+                </form>
+              </div>
+            )}
           </section>
         )}
 
+        {!isAdmin && !userName && (
+          <div className="registration-overlay">
+            <div className="glass-card" style={{padding:'2rem', maxWidth:'400px', margin:'2rem auto'}}>
+              <h2>ברוך הבא!</h2>
+              <form onSubmit={registerWorker} style={{marginTop:'1.5rem'}}>
+                <p style={{fontSize:'1rem', marginBottom:'1rem'}}>אנא הכנס את שמך כדי להתחיל:</p>
+                <input 
+                  className="input-field" 
+                  placeholder="השם שלך" 
+                  value={registrationName}
+                  onChange={(e) => setRegistrationName(e.target.value)}
+                  required
+                />
+                <button className="btn" type="submit">הירשם למשמרת</button>
+              </form>
+            </div>
+          </div>
+        )}
+
         {isAdmin ? (
-          // STABLE SPEED-ASSIGN MODE for ADMIN
-          <div className="group-section">
-            {tasks.sort((a,b) => a.title.localeCompare(b.title)).map((task, index) => (
-              <div key={task.id} className="task-item" style={getTaskStyle(task.color)}>
-                <div className="task-content">
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px'}}>
-                    <div className="task-title" style={{fontSize:'0.9rem', marginBottom:0}}>{task.title}</div>
-                    <div style={{display:'flex', gap:'12px'}}>
-                      {['red', 'yellow', 'green'].map(c => (
-                        <button
-                          key={c}
-                          onClick={() => updateTaskColor(task.id, task.color === c ? '' : c)}
-                          style={{
-                            width:'20px', 
-                            height:'20px', 
-                            borderRadius:'50%', 
-                            background: c === 'red' ? '#ef4444' : c === 'yellow' ? '#f59e0b' : '#10b981',
-                            border: task.color === c ? '2px solid white' : '1px solid rgba(255,255,255,0.2)',
-                            cursor:'pointer',
-                            padding:0,
-                            boxShadow: task.color === c ? '0 0 8px rgba(255,255,255,0.4)' : 'none'
-                          }}
-                        />
-                      ))}
+          <div className="admin-split-view">
+            <div className="tasks-column">
+              <h3 className="column-title">משימות ({tasks.length})</h3>
+              {tasks.sort((a,b) => a.title.localeCompare(b.title)).map((task) => (
+                <div 
+                  key={task.id} 
+                  className={`task-item admin-task ${selectedTaskId === task.id ? 'active-task' : ''}`} 
+                  onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
+                  style={{...getTaskStyle(task.color), cursor:'pointer'}}
+                >
+                  <div className="task-content">
+                    <div className="task-header-row">
+                      <div className="task-title" style={{fontSize:'0.95rem'}}>{task.title}</div>
+                      <div className="color-dots">
+                        {['red', 'yellow', 'green'].map(c => (
+                          <div
+                            key={c}
+                            onClick={(e) => { e.stopPropagation(); updateTaskColor(task.id, task.color === c ? '' : c); }}
+                            className={`color-dot ${c} ${task.color === c ? 'selected' : ''}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="task-assignees-row">
+                      {task.assignees?.length > 0 ? (
+                        task.assignees.map(name => (
+                          <span key={name} className="assignee-tag">{name}</span>
+                        ))
+                      ) : (
+                        <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>ללא שיוך</span>
+                      )}
                     </div>
                   </div>
-                  <div style={{position:'relative', marginTop:'4px'}}>
-                    <input 
-                      id={`assignee-${index}`}
-                      key={task.id + task.assignee}
-                      list="names-list"
-                      className="input-field" 
-                      style={{marginBottom:0, padding:'10px', paddingLeft:'40px', fontSize:'1rem', background:'rgba(255,255,255,0.05)', color:'var(--text-main)', border:'1px solid var(--glass-border)'}}
-                      defaultValue={task.assignee}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          updateAssignee(task.id, e.target.value);
-                          // Focus the NEXT input for rapid-fire assignment
-                          const nextInput = document.getElementById(`assignee-${index + 1}`);
-                          if (nextInput) nextInput.focus();
-                        }
-                      }}
-                      onFocus={(e) => { if (e.target.value === 'ללא שיוך') e.target.value = ''; }}
-                      onBlur={(e) => updateAssignee(task.id, e.target.value)}
-                      placeholder="הכנס שם..."
-                    />
-                    {task.assignee && task.assignee !== 'ללא שיוך' && (
-                      <button 
-                        onClick={() => updateAssignee(task.id, '')}
-                        style={{position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'1.2rem'}}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                    {task.isVerified ? (
-                      <span className="v-mark" style={{fontSize:'1.2rem'}}>V</span>
-                    ) : (
-                      task.isDone && (
-                        <button className="btn-verify" onClick={() => verifyTask(task.id)}>אשר</button>
-                      )
-                    )}
-                    <button className="edit-btn" style={{fontSize:'0.8rem'}} onClick={() => startEditing(task)}>✏️</button>
-                    <button className="delete-btn" style={{fontSize:'0.8rem'}} onClick={() => deleteTask(task.id)}>🗑️</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          // GROUPED MODE for WORKERS
-          sortedAssignees.map(assignee => (
-            <div key={assignee} className="group-section">
-              <h2 
-                className="group-title" 
-                style={{ 
-                  color: getAssigneeColor(assignee),
-                  borderColor: getAssigneeColor(assignee)
-                }}
-              >
-                {assignee}
-              </h2>
-              {groupedTasks[assignee].map(task => (
-                <div key={task.id} className="task-item" style={getTaskStyle(task.color)}>
-                  <div className="check-wrapper">
+                  <div className="task-actions">
                     {task.isVerified ? (
                       <span className="v-mark">V</span>
                     ) : (
-                      <div 
-                        className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} 
-                        onClick={() => toggleDone(task)}
-                      >
-                        {task.isDone && <span style={{color:'white', fontSize:'14px'}}>✓</span>}
-                      </div>
+                      task.isDone && (
+                        <button className="btn-verify" onClick={(e) => { e.stopPropagation(); verifyTask(task.id); }}>אשר</button>
+                      )
                     )}
-                  </div>
-                  
-                  <div className="task-content">
-                    <div className="task-title">{task.title}</div>
-                    {task.description && <div className="task-desc">{task.description}</div>}
+                    <button className="edit-btn" onClick={(e) => { e.stopPropagation(); startEditing(task); }}>✏️</button>
+                    <button className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}>🗑️</button>
                   </div>
                 </div>
               ))}
             </div>
-          ))
-        )}
 
-        <datalist id="names-list">
-          {allNames.map(name => <option key={name} value={name} />)}
-        </datalist>
+            <div className="workers-column">
+              <h3 className="column-title">עובדים ({registeredWorkers.length})</h3>
+              <div className="worker-list">
+                {registeredWorkers.map(worker => (
+                  <div 
+                    key={worker.id} 
+                    className={`worker-chip ${selectedTaskId && tasks.find(t => t.id === selectedTaskId)?.assignees?.includes(worker.name) ? 'assigned' : ''}`}
+                    onClick={() => selectedTaskId && toggleAssignment(selectedTaskId, worker.name)}
+                    style={{
+                      cursor: selectedTaskId ? 'pointer' : 'default',
+                      opacity: selectedTaskId ? 1 : 0.7
+                    }}
+                  >
+                    {worker.name}
+                    {selectedTaskId && tasks.find(t => t.id === selectedTaskId)?.assignees?.includes(worker.name) && <span style={{marginRight:'8px'}}>✓</span>}
+                  </div>
+                ))}
+                {registeredWorkers.length === 0 && <div style={{color:'var(--text-muted)', fontSize:'0.9rem'}}>אין עובדים רשומים</div>}
+              </div>
+            </div>
+          </div>
+        ) : (
+          userName && (
+            <div className="worker-view">
+              <div className="worker-header">
+                <h2>שלום, {userName}</h2>
+                <div style={{fontSize:'0.9rem', color:'var(--text-muted)'}}>המשימות שלך להיום:</div>
+              </div>
+              
+              {myTasks.length > 0 ? (
+                <div className="group-section">
+                  {myTasks.map(task => (
+                    <div key={task.id} className="task-item" style={getTaskStyle(task.color)}>
+                      <div className="check-wrapper">
+                        {task.isVerified ? (
+                          <span className="v-mark">V</span>
+                        ) : (
+                          <div 
+                            className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} 
+                            onClick={() => toggleDone(task)}
+                          >
+                            {task.isDone && <span style={{color:'white', fontSize:'14px'}}>✓</span>}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="task-content">
+                        <div className="task-title">{task.title}</div>
+                        {task.description && <div className="task-desc">{task.description}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="glass-card" style={{padding:'2rem', marginTop:'2rem'}}>
+                  <p>אין לך משימות משויכות כרגע.</p>
+                  <p style={{fontSize:'0.9rem'}}>חכה שהמנהל ישבץ אותך.</p>
+                </div>
+              )}
+            </div>
+          )
+        )}
       </main>
     </div>
   );
