@@ -13,6 +13,24 @@ import {
   getDocs,
   writeBatch
 } from "firebase/firestore";
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import {CSS} from '@dnd-kit/utilities';
+
 
 const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.04';
@@ -40,7 +58,268 @@ const getAssigneeColor = (name) => {
   return colors[index];
 };
 
+const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, onUpdateColor, getTaskStyle }) => {
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [localTitle, setLocalTitle] = useState(task.title);
+  const [localDesc, setLocalDesc] = useState(task.description || '');
+  const pointerStartX = useRef(0);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({id: task.id});
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ...getTaskStyle(task.color),
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
+    position: 'relative',
+    overflow: 'hidden',
+    touchAction: isEditing ? 'auto' : 'pan-y'
+  };
+
+  const handlePointerDown = (e) => {
+    if (isEditing) return;
+    if (e.target.closest('.color-dot') || e.target.closest('.btn-verify')) return;
+    pointerStartX.current = e.clientX;
+    setIsSwiping(true);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isSwiping || isEditing || isDragging) return;
+    const currentX = e.clientX;
+    const diff = currentX - pointerStartX.current;
+    
+    if (Math.abs(diff) > 10) {
+       if (diff < 0) {
+         setSwipeOffset(Math.max(diff, -80));
+       } else {
+         setSwipeOffset(0);
+       }
+    }
+  };
+
+  const handlePointerUp = () => {
+    setIsSwiping(false);
+    if (swipeOffset < -40) {
+      setSwipeOffset(-80);
+    } else {
+      setSwipeOffset(0);
+    }
+  };
+
+  const handleTaskTap = (e) => {
+    if (isEditing) return;
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+      setIsEditing(true);
+    } else {
+      onToggleSelect();
+    }
+    lastTap.current = now;
+  };
+
+  const handleSave = async () => {
+    if (localTitle !== task.title || localDesc !== (task.description || '')) {
+      try {
+        await updateDoc(doc(db, "tasks", task.id), {
+          title: localTitle,
+          description: localDesc
+        });
+      } catch (err) {
+        console.error("Error updating task:", err);
+      }
+    }
+    setIsEditing(false);
+  };
+
+  const handleTaskDoubleClick = (e) => {
+    if (isEditing) return;
+    e.stopPropagation();
+    setIsEditing(true);
+  };
+
+  const handleTaskClick = (e) => {
+    if (isEditing) return;
+    // Don't trigger selection if double-clicking (though hard to distinguish without delay)
+    // For now, let it select.
+    onToggleSelect();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSave();
+    }
+    if (e.key === 'Escape') {
+      setLocalTitle(task.title);
+      setLocalDesc(task.description || '');
+      setIsEditing(false);
+    }
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`task-item admin-task ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onClick={handleTaskClick}
+      onDoubleClick={handleTaskDoubleClick}
+      {...attributes}
+      {...listeners}
+    >
+      <div 
+        className="delete-swipe-bg" 
+        style={{
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: '80px',
+          background: '#ef4444',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '1.2rem',
+          zIndex: 0,
+          transform: `translateX(${80 + swipeOffset}px)`,
+          transition: isSwiping ? 'none' : 'transform 0.2s',
+          cursor: 'pointer'
+        }}
+        onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+      >
+        🗑️
+      </div>
+
+      <div 
+        className="task-inner-content"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          width: '100%',
+          transform: `translateX(${swipeOffset}px)`,
+          transition: isSwiping ? 'none' : 'transform 0.2s',
+          background: 'inherit',
+          zIndex: 1,
+          position: 'relative',
+          padding: '1rem'
+        }}
+      >
+        <div className="task-content" style={{flex:1, minWidth:0}}>
+          <div className="task-header-row">
+            {isEditing ? (
+              <input
+                className="inline-edit-input"
+                autoFocus
+                value={localTitle}
+                onChange={(e) => setLocalTitle(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={handleKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: 'rgba(0,0,0,0.2)',
+                  border: '1px solid var(--primary)',
+                  borderRadius: '4px',
+                  color: 'white',
+                  padding: '2px 4px',
+                  fontSize: '0.95rem',
+                  width: '100%',
+                  outline: 'none'
+                }}
+              />
+            ) : (
+              <div 
+                className="task-title" 
+                style={{fontSize:'0.95rem', fontWeight:'600'}}
+              >
+                {task.title}
+              </div>
+            )}
+            <div className="color-dots" style={{display:'flex', gap:'6px'}}>
+              {['red', 'yellow', 'green'].map(c => (
+                <div
+                  key={c}
+                  onClick={(e) => { e.stopPropagation(); onUpdateColor(task.id, task.color === c ? '' : c); }}
+                  className={`color-dot ${c} ${task.color === c ? 'selected' : ''}`}
+                />
+              ))}
+            </div>
+          </div>
+          
+          {isEditing ? (
+            <textarea
+              className="inline-edit-textarea"
+              value={localDesc}
+              onChange={(e) => setLocalDesc(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="תיאור..."
+              style={{
+                background: 'rgba(0,0,0,0.2)',
+                border: '1px solid var(--primary)',
+                borderRadius: '4px',
+                color: 'var(--text-muted)',
+                padding: '2px 4px',
+                fontSize: '0.85rem',
+                width: '100%',
+                marginTop: '4px',
+                outline: 'none',
+                resize: 'none'
+              }}
+            />
+          ) : (
+            (task.description || isEditing) && (
+              <div 
+                className="task-desc" 
+                style={{fontSize:'0.85rem', color:'var(--text-muted)', marginTop:'4px'}}
+              >
+                {task.description || <span style={{opacity:0.5}}>הוסף תיאור...</span>}
+              </div>
+            )
+          )}
+
+          <div className="task-assignees-row" style={{marginTop:'8px', display:'flex', flexWrap:'wrap', gap:'4px'}}>
+            {task.assignees?.length > 0 ? (
+              task.assignees.map(name => (
+                <span key={name} className="assignee-tag" style={{fontSize:'0.7rem'}}>{name}</span>
+              ))
+            ) : (
+              <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>ללא שיוך</span>
+            )}
+          </div>
+        </div>
+        <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
+          {task.isVerified ? (
+            <span className="v-mark" style={{fontSize:'1.2rem'}}>V</span>
+          ) : (
+            task.isDone && (
+              <button className="btn-verify" onClick={(e) => { e.stopPropagation(); onVerify(task.id); }}>אשר</button>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
+
   const [tasks, setTasks] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
@@ -56,6 +335,50 @@ const App = () => {
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
   const audioRef = useRef(null);
+  const lastTap = useRef(0);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 15, // Increase distance to allow for double-clicking without starting drag
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 300, // Longer delay for touch to allow for scrolling/tapping
+        tolerance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event) => {
+    const {active, over} = event;
+    
+    if (active && over && active.id !== over.id) {
+      setTasks((items) => {
+        const oldIndex = items.findIndex((t) => t.id === active.id);
+        const newIndex = items.findIndex((t) => t.id === over.id);
+        const newTasks = arrayMove(items, oldIndex, newIndex);
+        
+        // Persist to Firestore
+        const batch = writeBatch(db);
+        newTasks.forEach((task, index) => {
+          batch.update(doc(db, "tasks", task.id), { order: index });
+        });
+        batch.commit().catch(err => console.error("Error updating order:", err));
+        
+        return newTasks;
+      });
+    }
+  };
+
+  const handleTaskTap = (task) => {
+    setSelectedTaskId(selectedTaskId === task.id ? null : task.id);
+  };
+
 
   // Initialize audio object once
   useEffect(() => {
@@ -96,9 +419,10 @@ const App = () => {
     window.addEventListener('click', unlockAudio);
     window.addEventListener('touchstart', unlockAudio);
 
-    // Real-time listener for Firestore tasks
-    const tasksQuery = query(collection(db, "tasks"));
+    // Real-time listener for Firestore tasks - sorted by order
+    const tasksQuery = query(collection(db, "tasks"), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
+
       const taskList = [];
       snapshot.docChanges().forEach(change => {
         const data = change.doc.data();
@@ -114,8 +438,11 @@ const App = () => {
       snapshot.forEach((doc) => {
         taskList.push({ id: doc.id, ...doc.data() });
       });
+      // Fallback sort if order field is missing
+      taskList.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.title || "").localeCompare(b.title || ""));
       setTasks(taskList);
       setLoading(false);
+
       if (isInitialLoad.current) isInitialLoad.current = false;
     });
     
@@ -152,8 +479,10 @@ const App = () => {
           isDone: false,
           isVerified: false,
           color: '',
+          order: tasks.length,
           createdAt: new Date()
         });
+
       }
       setNewTask({ title: '', description: '', assignee: '' });
       setIsFormOpen(false);
@@ -400,50 +729,32 @@ const App = () => {
           <div className="admin-split-view">
             <div className="tasks-column">
               <h3 className="column-title">משימות ({tasks.length})</h3>
-              {tasks.sort((a,b) => a.title.localeCompare(b.title)).map((task) => (
-                <div 
-                  key={task.id} 
-                  className={`task-item admin-task ${selectedTaskId === task.id ? 'active-task' : ''}`} 
-                  onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
-                  style={{...getTaskStyle(task.color), cursor:'pointer'}}
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext 
+                  items={tasks.map(t => t.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <div className="task-content">
-                    <div className="task-header-row">
-                      <div className="task-title" style={{fontSize:'0.95rem'}}>{task.title}</div>
-                      <div className="color-dots">
-                        {['red', 'yellow', 'green'].map(c => (
-                          <div
-                            key={c}
-                            onClick={(e) => { e.stopPropagation(); updateTaskColor(task.id, task.color === c ? '' : c); }}
-                            className={`color-dot ${c} ${task.color === c ? 'selected' : ''}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="task-assignees-row">
-                      {task.assignees?.length > 0 ? (
-                        task.assignees.map(name => (
-                          <span key={name} className="assignee-tag">{name}</span>
-                        ))
-                      ) : (
-                        <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>ללא שיוך</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="task-actions">
-                    {task.isVerified ? (
-                      <span className="v-mark">V</span>
-                    ) : (
-                      task.isDone && (
-                        <button className="btn-verify" onClick={(e) => { e.stopPropagation(); verifyTask(task.id); }}>אשר</button>
-                      )
-                    )}
-                    <button className="edit-btn" onClick={(e) => { e.stopPropagation(); startEditing(task); }}>✏️</button>
-                    <button className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}>🗑️</button>
-                  </div>
-                </div>
-              ))}
+                  {tasks.map((task) => (
+                    <SortableTask
+                      key={task.id}
+                      task={task}
+                      isAdmin={isAdmin}
+                      isSelected={selectedTaskId === task.id}
+                      onToggleSelect={() => handleTaskTap(task)}
+                      onVerify={verifyTask}
+                      onDelete={deleteTask}
+                      onUpdateColor={updateTaskColor}
+                      getTaskStyle={getTaskStyle}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
+
 
             <div className="workers-column">
               <h3 className="column-title">עובדים ({registeredWorkers.length})</h3>

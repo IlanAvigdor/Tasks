@@ -77,7 +77,17 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
-    transition: transform 0.2s ease;
+.task-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+}
+
+.task-item.dragging {
+    opacity: 0.5;
+    background: var(--card-bg);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    cursor: grabbing;
+    z-index: 1000;
 }
 
 .task-content {
