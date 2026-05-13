@@ -25,30 +25,27 @@
 }
 
 body.theme-morning {
-    --primary: var(--morning-accent);
-    --bg-1: var(--morning-bg-1);
-    --bg-2: var(--morning-bg-2);
-    --text-main: #3d2b1f;
-    --text-muted: #6b4f3f;
-    --card-bg: rgba(255, 255, 255, 0.3);
+    --primary: #5d6d3e;
+    --bg-image: url('/backgrounds/morning.png');
+    --text-main: #2d3436;
+    --text-muted: #636e72;
+    --card-bg: rgba(255, 255, 255, 0.45);
 }
 
 body.theme-noon {
-    --primary: var(--noon-accent);
-    --bg-1: var(--noon-bg-1);
-    --bg-2: var(--noon-bg-2);
-    --text-main: #4a3728;
-    --text-muted: #7a5c44;
-    --card-bg: rgba(255, 255, 255, 0.2);
+    --primary: #d35400;
+    --bg-image: url('/backgrounds/noon.png');
+    --text-main: #2c3e50;
+    --text-muted: #7f8c8d;
+    --card-bg: rgba(255, 255, 255, 0.35);
 }
 
 body.theme-evening {
-    --primary: var(--evening-accent);
-    --bg-1: var(--evening-bg-1);
-    --bg-2: var(--evening-bg-2);
+    --primary: #fdcb6e;
+    --bg-image: url('/backgrounds/evening.png');
     --text-main: #ffffff;
-    --text-muted: #fcd34d;
-    --card-bg: rgba(0, 0, 0, 0.3);
+    --text-muted: #dfe6e9;
+    --card-bg: rgba(0, 0, 0, 0.45);
 }
 
 * {
@@ -59,13 +56,16 @@ body.theme-evening {
 }
 
 body {
-    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
     background-attachment: fixed;
+    background-repeat: no-repeat;
     color: var(--text-main);
     min-height: 100vh;
-    padding-bottom: 5rem; /* Space for bottom nav */
+    padding-bottom: 5rem;
     overflow-x: hidden;
-    transition: background 0.8s ease, color 0.5s ease;
+    transition: background-image 1.2s ease-in-out;
 }
 
 /* Time Navigation (Icons) */
@@ -118,7 +118,9 @@ body {
 /* Task Item Redesign */
 .task-item {
     background: var(--card-bg);
-    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 16px;
     padding: 1.25rem;
     margin-bottom: 1rem;
@@ -130,7 +132,7 @@ body {
 
 .task-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .task-title {
