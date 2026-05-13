@@ -1,417 +1,278 @@
 :root {
-    --primary: #6366f1;
-    --primary-glow: rgba(99, 102, 241, 0.4);
-    --bg-dark: #0f172a;
-    --card-bg: rgba(30, 41, 59, 0.7);
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --accent-success: #10b981;
-    --glass-border: rgba(255, 255, 255, 0.1);
+    /* Morning Theme (Sunrise) */
+    --morning-bg-1: #ffafbd;
+    --morning-bg-2: #ffc3a0;
+    --morning-accent: #ff8c00;
+    
+    /* Noon Theme (Desert) */
+    --noon-bg-1: #edc9af;
+    --noon-bg-2: #d2b48c;
+    --noon-accent: #c27ba0;
+    
+    /* Evening Theme (Sunset) */
+    --evening-bg-1: #2c3e50;
+    --evening-bg-2: #fd746c;
+    --evening-accent: #ff4e50;
+
+    /* Base Variables (Default to Morning) */
+    --primary: var(--morning-accent);
+    --bg-1: var(--morning-bg-1);
+    --bg-2: var(--morning-bg-2);
+    --card-bg: rgba(255, 255, 255, 0.25);
+    --text-main: #3d2b1f;
+    --text-muted: #6b4f3f;
+    --glass-border: rgba(255, 255, 255, 0.4);
+}
+
+body.theme-morning {
+    --primary: var(--morning-accent);
+    --bg-1: var(--morning-bg-1);
+    --bg-2: var(--morning-bg-2);
+    --text-main: #3d2b1f;
+    --text-muted: #6b4f3f;
+    --card-bg: rgba(255, 255, 255, 0.3);
+}
+
+body.theme-noon {
+    --primary: var(--noon-accent);
+    --bg-1: var(--noon-bg-1);
+    --bg-2: var(--noon-bg-2);
+    --text-main: #4a3728;
+    --text-muted: #7a5c44;
+    --card-bg: rgba(255, 255, 255, 0.2);
+}
+
+body.theme-evening {
+    --primary: var(--evening-accent);
+    --bg-1: var(--evening-bg-1);
+    --bg-2: var(--evening-bg-2);
+    --text-main: #ffffff;
+    --text-muted: #fcd34d;
+    --card-bg: rgba(0, 0, 0, 0.3);
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Assistant', sans-serif;
+    font-family: 'Outfit', sans-serif;
 }
 
 body {
-    background-color: var(--bg-dark);
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    background-attachment: fixed;
     color: var(--text-main);
     min-height: 100vh;
-    padding-bottom: 2rem;
+    padding-bottom: 5rem; /* Space for bottom nav */
     overflow-x: hidden;
-    line-height: 1.5;
+    transition: background 0.8s ease, color 0.5s ease;
 }
 
-/* Compact Header */
-.header {
-    background: var(--card-bg);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--glass-border);
-    padding: 0.75rem 1rem;
+/* Time Navigation (Icons) */
+.time-nav {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
+    gap: 2rem;
+    padding: 1.5rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.time-icon {
+    font-size: 1.8rem;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: grayscale(1);
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    gap: 4px;
 }
 
-.header h1 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+.time-icon span {
+    font-size: 0.7rem;
+    font-weight: 600;
 }
 
-/* Sections */
-.container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 1rem;
+.time-icon.active {
+    opacity: 1;
+    filter: grayscale(0);
+    transform: scale(1.2);
 }
 
-.group-section {
-    margin-bottom: 1.5rem;
-}
-
-.group-title {
+.time-icon.active span {
     color: var(--primary);
-    font-weight: 700;
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
-    padding-right: 0.5rem;
-    border-right: 3px solid var(--primary);
 }
 
-/* Task Item */
+/* Glass Cards (Warm/Parchment) */
+.glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Task Item Redesign */
 .task-item {
     background: var(--card-bg);
     border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 0.75rem;
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 1rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
 .task-item:hover {
     transform: translateY(-2px);
-    border-color: var(--primary);
-}
-
-.task-item.dragging {
-    opacity: 0.5;
-    background: var(--card-bg);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    cursor: grabbing;
-    z-index: 1000;
-}
-
-.task-content {
-    flex: 1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .task-title {
-    font-weight: 600;
-    font-size: 1rem;
+    font-weight: 700;
+    font-size: 1.05rem;
     margin-bottom: 0.25rem;
 }
 
 .task-desc {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    white-space: pre-wrap;
-}
-
-/* Checkbox and V Mark */
-.check-wrapper {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.custom-checkbox {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--glass-border);
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.custom-checkbox.checked {
-    background: var(--primary);
-    border-color: var(--primary);
-}
-
-.v-mark {
-    color: var(--accent-success);
-    font-size: 1.5rem;
-    font-weight: 700;
-}
-
-/* Admin Panel */
-.admin-controls {
-    background: rgba(99, 102, 241, 0.05);
-    border: 1px dashed var(--primary);
-    border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 2rem;
-}
-
-.input-field {
-    width: 100%;
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    padding: 0.75rem;
-    color: white;
-    margin-bottom: 0.75rem;
     font-size: 0.9rem;
-}
-
-.mute-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    padding: 0.4rem 0.6rem;
-    cursor: pointer;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.mute-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.05);
-}
-
-textarea.input-field {
-    resize: vertical;
-    min-height: 80px;
-    font-family: inherit;
-}
-
-.btn {
-    width: 100%;
-    background: var(--primary);
-    border: none;
-    border-radius: 8px;
-    padding: 0.75rem;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.btn:active {
     opacity: 0.8;
 }
 
-.btn-verify {
-    background: transparent;
-    border: 1px solid var(--accent-success);
-    color: var(--accent-success);
-    padding: 0.25rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    cursor: pointer;
-}
-
-.delete-btn {
-    color: #ef4444;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 5px;
-}
-
-.edit-btn {
-    color: var(--primary);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 5px;
-}
-
-/* Split View for Admin */
-.admin-split-view {
-    display: flex;
-    gap: 20px;
-    margin-top: 1rem;
-    height: calc(100vh - 250px);
-}
-
-.workers-column {
-    flex: 0 0 250px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    padding: 1rem;
-    overflow-y: auto;
-}
-
-.tasks-column {
-    flex: 1;
-    overflow-y: auto;
-    padding-right: 5px;
-}
-
-.column-title {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    margin-bottom: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.worker-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.worker-chip {
-    padding: 10px 15px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.worker-chip.assigned {
-    background: rgba(99, 102, 241, 0.2);
-    border-color: var(--primary);
-    color: white;
-}
-
-/* Admin Task Item Tweaks */
-.admin-task.active-task {
-    border-color: var(--primary);
-    box-shadow: 0 0 15px var(--primary-glow);
-}
-
-.task-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.task-assignees-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.assignee-tag {
-    font-size: 0.75rem;
-    background: var(--primary);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-}
-
-.color-dots {
-    display: flex;
-    gap: 8px;
-}
-
-.color-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-.color-dot.red { background: #ef4444; }
-.color-dot.yellow { background: #f59e0b; }
-.color-dot.green { background: #10b981; }
-
-.color-dot.selected {
-    border: 2px solid white;
-    transform: scale(1.2);
-}
-
-/* Registration */
-.registration-overlay {
-    animation: fadeIn 0.5s ease-out;
-}
-
-.worker-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.worker-header h2 {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-}
-
-/* Responsive Split View - Keep Side by Side */
-@media (max-width: 768px) {
-    .admin-split-view {
-        gap: 10px;
-    }
-    .workers-column {
-        flex: 0 0 120px; /* Narrower for mobile */
-        padding: 0.5rem;
-    }
-    .tasks-column {
-        padding-right: 0;
-    }
-    .worker-chip {
-        padding: 8px;
-        font-size: 0.8rem;
-    }
-    .task-title {
-        font-size: 0.85rem;
-    }
-}/* Add Task Button & Form */
-.add-task-fab {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    background: var(--primary);
-    color: white;
-    border: none;
-    font-size: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 4px 12px var(--primary-glow);
-    transition: all 0.2s;
-    z-index: 200;
-}
-
-.add-task-fab:hover {
-    transform: scale(1.1);
-}
-
-.compact-form-overlay {
+/* Bottom Navigation Bar */
+.bottom-nav {
     position: fixed;
-    top: 0;
+    bottom: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    background: rgba(15, 23, 42, 0.8);
-    backdrop-filter: blur(4px);
+    height: 70px;
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+}
+
+.nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.nav-tab.active {
+    color: var(--primary);
+}
+
+.nav-tab i {
+    font-size: 1.4rem;
+}
+
+/* Progress indicator */
+.progress-ring-mini {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
+}
+
+/* Swipe Screen Animation */
+.swipe-container {
+    display: flex;
+    width: 300%;
+    transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.swipe-screen {
+    width: 33.333%;
+    padding: 0 1rem;
+}
+
+/* People View Styles */
+.people-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.person-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+}
+
+.person-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 300;
-    padding: 1rem;
+    font-weight: 700;
+    color: white;
 }
 
-.compact-form {
-    width: 100%;
-    max-width: 400px;
-    padding: 2rem !important;
-    text-align: right !important;
+.status-badges {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
 }
 
-.compact-form h3 {
-    margin-bottom: 1.5rem;
-    font-size: 1.2rem;
+.status-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-weight: 600;
 }
 
-.btn.secondary {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-main);
+.status-badge.pending { background: rgba(255, 140, 0, 0.2); color: #ff8c00; }
+.status-badge.done { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+
+/* Admin FAB */
+.add-task-fab {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 5.5rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    z-index: 900;
+    cursor: pointer;
+}
+
+/* RTL Support for Hebrew names */
+.direction-rtl {
+    direction: rtl;
+}
+
+/* Hide header for a cleaner mobile feel */
+.header {
+    display: none;
 }

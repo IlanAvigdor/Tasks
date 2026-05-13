@@ -9,7 +9,6 @@ import {
   doc, 
   query, 
   orderBy,
-  setDoc,
   getDocs,
   writeBatch
 } from "firebase/firestore";
@@ -31,32 +30,9 @@ import {
 } from '@dnd-kit/sortable';
 import {CSS} from '@dnd-kit/utilities';
 
-
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.04';
+const APP_VERSION = '1.05';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
-
-const getAssigneeColor = (name) => {
-  const colors = [
-    '#6366f1', // Indigo
-    '#10b981', // Emerald
-    '#f59e0b', // Amber
-    '#f43f5e', // Rose
-    '#0ea5e9', // Sky
-    '#8b5cf6', // Violet
-    '#f97316', // Orange
-    '#ec4899', // Pink
-  ];
-  if (!name || name === 'ללא שיוך') return '#94a3b8'; // Muted for unassigned
-  
-  // Simple hash to consistently pick a color for a name
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % colors.length;
-  return colors[index];
-};
 
 const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, onUpdateColor, getTaskStyle }) => {
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -97,74 +73,30 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     if (!isSwiping || isEditing || isDragging) return;
     const currentX = e.clientX;
     const diff = currentX - pointerStartX.current;
-    
     if (Math.abs(diff) > 10) {
-       if (diff < 0) {
-         setSwipeOffset(Math.max(diff, -80));
-       } else {
-         setSwipeOffset(0);
-       }
+       if (diff < 0) setSwipeOffset(Math.max(diff, -80));
+       else setSwipeOffset(0);
     }
   };
 
   const handlePointerUp = () => {
     setIsSwiping(false);
-    if (swipeOffset < -40) {
-      setSwipeOffset(-80);
-    } else {
-      setSwipeOffset(0);
-    }
-  };
-
-  const handleTaskTap = (e) => {
-    if (isEditing) return;
-    const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
-    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-      setIsEditing(true);
-    } else {
-      onToggleSelect();
-    }
-    lastTap.current = now;
+    if (swipeOffset < -40) setSwipeOffset(-80);
+    else setSwipeOffset(0);
   };
 
   const handleSave = async () => {
     if (localTitle !== task.title || localDesc !== (task.description || '')) {
       try {
-        await updateDoc(doc(db, "tasks", task.id), {
-          title: localTitle,
-          description: localDesc
-        });
-      } catch (err) {
-        console.error("Error updating task:", err);
-      }
+        await updateDoc(doc(db, "tasks", task.id), { title: localTitle, description: localDesc });
+      } catch (err) { console.error("Error updating task:", err); }
     }
     setIsEditing(false);
   };
 
-  const handleTaskDoubleClick = (e) => {
-    if (isEditing) return;
-    e.stopPropagation();
-    setIsEditing(true);
-  };
-
-  const handleTaskClick = (e) => {
-    if (isEditing) return;
-    // Don't trigger selection if double-clicking (though hard to distinguish without delay)
-    // For now, let it select.
-    onToggleSelect();
-  };
-
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSave();
-    }
-    if (e.key === 'Escape') {
-      setLocalTitle(task.title);
-      setLocalDesc(task.description || '');
-      setIsEditing(false);
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSave(); }
+    if (e.key === 'Escape') { setLocalTitle(task.title); setLocalDesc(task.description || ''); setIsEditing(false); }
   };
 
   return (
@@ -176,26 +108,17 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onClick={handleTaskClick}
-      onDoubleClick={handleTaskDoubleClick}
+      onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+      onClick={() => !isEditing && onToggleSelect()}
       {...attributes}
       {...listeners}
     >
       <div 
         className="delete-swipe-bg" 
         style={{
-          position: 'absolute',
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: '80px',
-          background: '#ef4444',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontSize: '1.2rem',
-          zIndex: 0,
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: '80px',
+          background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'white', fontSize: '1.2rem', zIndex: 0,
           transform: `translateX(${80 + swipeOffset}px)`,
           transition: isSwiping ? 'none' : 'transform 0.2s',
           cursor: 'pointer'
@@ -208,97 +131,52 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       <div 
         className="task-inner-content"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          width: '100%',
+          display: 'flex', alignItems: 'center', gap: '1rem', width: '100%',
           transform: `translateX(${swipeOffset}px)`,
           transition: isSwiping ? 'none' : 'transform 0.2s',
-          background: 'inherit',
-          zIndex: 1,
-          position: 'relative',
-          padding: '1rem'
+          background: 'inherit', zIndex: 1, position: 'relative', padding: '1rem'
         }}
       >
         <div className="task-content" style={{flex:1, minWidth:0}}>
           <div className="task-header-row">
             {isEditing ? (
               <input
-                className="inline-edit-input"
-                autoFocus
-                value={localTitle}
-                onChange={(e) => setLocalTitle(e.target.value)}
-                onBlur={handleSave}
-                onKeyDown={handleKeyDown}
+                className="inline-edit-input" autoFocus
+                value={localTitle} onChange={(e) => setLocalTitle(e.target.value)}
+                onBlur={handleSave} onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
-                style={{
-                  background: 'rgba(0,0,0,0.2)',
-                  border: '1px solid var(--primary)',
-                  borderRadius: '4px',
-                  color: 'white',
-                  padding: '2px 4px',
-                  fontSize: '0.95rem',
-                  width: '100%',
-                  outline: 'none'
-                }}
+                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary)', borderRadius: '4px', color: 'white', padding: '2px 4px', fontSize: '0.95rem', width: '100%' }}
               />
             ) : (
-              <div 
-                className="task-title" 
-                style={{fontSize:'0.95rem', fontWeight:'600'}}
-              >
-                {task.title}
+              <div className="task-title" style={{fontSize:'0.95rem', fontWeight:'600'}}>{task.title}</div>
+            )}
+            {isAdmin && (
+              <div className="color-dots" style={{display:'flex', gap:'6px'}}>
+                {['red', 'yellow', 'green'].map(c => (
+                  <div key={c} onClick={(e) => { e.stopPropagation(); onUpdateColor(task.id, task.color === c ? '' : c); }}
+                    className={`color-dot ${c} ${task.color === c ? 'selected' : ''}`} />
+                ))}
               </div>
             )}
-            <div className="color-dots" style={{display:'flex', gap:'6px'}}>
-              {['red', 'yellow', 'green'].map(c => (
-                <div
-                  key={c}
-                  onClick={(e) => { e.stopPropagation(); onUpdateColor(task.id, task.color === c ? '' : c); }}
-                  className={`color-dot ${c} ${task.color === c ? 'selected' : ''}`}
-                />
-              ))}
-            </div>
           </div>
           
           {isEditing ? (
             <textarea
-              className="inline-edit-textarea"
-              value={localDesc}
+              className="inline-edit-textarea" value={localDesc}
               onChange={(e) => setLocalDesc(e.target.value)}
-              onBlur={handleSave}
-              onKeyDown={handleKeyDown}
-              onClick={(e) => e.stopPropagation()}
-              placeholder="תיאור..."
-              style={{
-                background: 'rgba(0,0,0,0.2)',
-                border: '1px solid var(--primary)',
-                borderRadius: '4px',
-                color: 'var(--text-muted)',
-                padding: '2px 4px',
-                fontSize: '0.85rem',
-                width: '100%',
-                marginTop: '4px',
-                outline: 'none',
-                resize: 'none'
-              }}
+              onBlur={handleSave} onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()} placeholder="תיאור..."
+              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary)', borderRadius: '4px', color: 'var(--text-muted)', padding: '2px 4px', fontSize: '0.85rem', width: '100%', marginTop: '4px', resize: 'none' }}
             />
           ) : (
-            (task.description || isEditing) && (
-              <div 
-                className="task-desc" 
-                style={{fontSize:'0.85rem', color:'var(--text-muted)', marginTop:'4px'}}
-              >
-                {task.description || <span style={{opacity:0.5}}>הוסף תיאור...</span>}
-              </div>
+            task.description && (
+              <div className="task-desc" style={{fontSize:'0.85rem', color:'var(--text-muted)', marginTop:'4px'}}>{task.description}</div>
             )
           )}
 
           <div className="task-assignees-row" style={{marginTop:'8px', display:'flex', flexWrap:'wrap', gap:'4px'}}>
             {task.assignees?.length > 0 ? (
-              task.assignees.map(name => (
-                <span key={name} className="assignee-tag" style={{fontSize:'0.7rem'}}>{name}</span>
-              ))
+              task.assignees.map(name => ( <span key={name} className="assignee-tag" style={{fontSize:'0.7rem'}}>{name}</span> ))
             ) : (
               <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>ללא שיוך</span>
             )}
@@ -308,9 +186,14 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           {task.isVerified ? (
             <span className="v-mark" style={{fontSize:'1.2rem'}}>V</span>
           ) : (
-            task.isDone && (
+            task.isDone && isAdmin && (
               <button className="btn-verify" onClick={(e) => { e.stopPropagation(); onVerify(task.id); }}>אשר</button>
             )
+          )}
+          {!isAdmin && !task.isVerified && (
+             <div className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
+               {task.isDone && <span style={{color:'white', fontSize:'14px'}}>✓</span>}
+             </div>
           )}
         </div>
       </div>
@@ -319,13 +202,13 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
 };
 
 const App = () => {
-
   const [tasks, setTasks] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [viewTime, setViewTime] = useState('morning');
+  const [activeTab, setActiveTab] = useState('tasks');
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [registeredWorkers, setRegisteredWorkers] = useState([]);
   const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
@@ -335,490 +218,258 @@ const App = () => {
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
   const audioRef = useRef(null);
-  const lastTap = useRef(0);
+  const swipeStartX = useRef(0);
+
+  useEffect(() => {
+    document.body.className = `theme-${viewTime}`;
+  }, [viewTime]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 15, // Increase distance to allow for double-clicking without starting drag
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 300, // Longer delay for touch to allow for scrolling/tapping
-        tolerance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 15 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
-  const handleDragEnd = async (event) => {
-    const {active, over} = event;
-    
-    if (active && over && active.id !== over.id) {
-      setTasks((items) => {
-        const oldIndex = items.findIndex((t) => t.id === active.id);
-        const newIndex = items.findIndex((t) => t.id === over.id);
-        const newTasks = arrayMove(items, oldIndex, newIndex);
-        
-        // Persist to Firestore
-        const batch = writeBatch(db);
-        newTasks.forEach((task, index) => {
-          batch.update(doc(db, "tasks", task.id), { order: index });
-        });
-        batch.commit().catch(err => console.error("Error updating order:", err));
-        
-        return newTasks;
-      });
-    }
-  };
-
-  const handleTaskTap = (task) => {
-    setSelectedTaskId(selectedTaskId === task.id ? null : task.id);
-  };
-
-
-  // Initialize audio object once
-  useEffect(() => {
-    audioRef.current = new Audio(NOTIFICATION_SOUND);
-  }, []);
 
   const playNotification = () => {
     if (isMuted || !audioRef.current) return;
-    console.log('Attempting to play sound...');
     audioRef.current.currentTime = 0;
     audioRef.current.play().catch(e => console.error('Audio play failed:', e));
   };
 
-  const testNotification = () => {
-    console.log('Manual sound test triggered');
-    playNotification();
-    alert('הצליל אמור להתנגן כעת. אם לא שמעת כלום, בדוק שהטלפון לא על שקט או שהדפדפן לא חוסם אודיו.');
-  };
-
   useEffect(() => {
-    // Check if current URL contains the admin GUID (supports both path and ?admin=)
+    audioRef.current = new Audio(NOTIFICATION_SOUND);
     const params = new URLSearchParams(window.location.search);
     if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
       setIsAdmin(true);
     }
 
-    // "Prime" audio on first click for mobile browsers
-    const unlockAudio = () => {
-      if (audioRef.current) {
-        audioRef.current.play().then(() => {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        }).catch(() => {});
-      }
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
-    };
-    window.addEventListener('click', unlockAudio);
-    window.addEventListener('touchstart', unlockAudio);
-
-    // Real-time listener for Firestore tasks - sorted by order
     const tasksQuery = query(collection(db, "tasks"), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
-
       const taskList = [];
       snapshot.docChanges().forEach(change => {
         const data = change.doc.data();
         const id = change.doc.id;
         if (change.type === 'modified' && isAdmin && !isMuted && !isInitialLoad.current) {
-          if (data.isDone && !prevDoneStatus.current[id]) {
-            playNotification();
-          }
+          if (data.isDone && !prevDoneStatus.current[id]) playNotification();
         }
         prevDoneStatus.current[id] = data.isDone;
       });
-
-      snapshot.forEach((doc) => {
-        taskList.push({ id: doc.id, ...doc.data() });
-      });
-      // Fallback sort if order field is missing
-      taskList.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.title || "").localeCompare(b.title || ""));
+      snapshot.forEach((doc) => taskList.push({ id: doc.id, ...doc.data() }));
       setTasks(taskList);
       setLoading(false);
-
       if (isInitialLoad.current) isInitialLoad.current = false;
     });
     
-    // Listener for workers
     const workersUnsubscribe = onSnapshot(collection(db, "workers"), (snapshot) => {
       const workersList = [];
       snapshot.forEach((doc) => workersList.push({ id: doc.id, ...doc.data() }));
       setRegisteredWorkers(workersList);
     });
 
-    return () => {
-      unsubscribe();
-      workersUnsubscribe();
-    };
+    return () => { unsubscribe(); workersUnsubscribe(); };
   }, [isAdmin, isMuted]);
 
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.title) return;
     try {
-      if (editingTaskId) {
-        const taskRef = doc(db, "tasks", editingTaskId);
-        await updateDoc(taskRef, {
-          title: newTask.title,
-          description: newTask.description,
-          assignee: newTask.assignee || 'ללא שיוך'
-        });
-        setEditingTaskId(null);
-      } else {
-        await addDoc(collection(db, "tasks"), {
-          title: newTask.title,
-          description: newTask.description,
-          assignees: [], // New structure: array of names
-          isDone: false,
-          isVerified: false,
-          color: '',
-          order: tasks.length,
-          createdAt: new Date()
-        });
-
-      }
+      await addDoc(collection(db, "tasks"), {
+        title: newTask.title, description: newTask.description, assignees: [],
+        timeOfDay: viewTime, isDone: false, isVerified: false, color: '',
+        order: tasks.length, createdAt: new Date()
+      });
       setNewTask({ title: '', description: '', assignee: '' });
       setIsFormOpen(false);
-    } catch (e) {
-      console.error("Error saving document: ", e);
-    }
+    } catch (e) { console.error("Error saving: ", e); }
   };
 
-  const startEditing = (task) => {
-    setEditingTaskId(task.id);
-    setNewTask({
-      title: task.title,
-      description: task.description || '',
-      assignee: task.assignee === 'ללא שיוך' ? '' : (task.assignee || '')
-    });
-    setIsFormOpen(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const cancelEditing = () => {
-    setEditingTaskId(null);
-    setNewTask({ title: '', description: '', assignee: '' });
-    setIsFormOpen(false);
-  };
-
-  const resetAllTasks = async () => {
-    if (!window.confirm('האם לאפס את כל המשימות ליום חדש? (זה ימחק גם את כל השמות)')) return;
-    try {
-      const promises = tasks.map(task => {
-        const taskRef = doc(db, "tasks", task.id);
-        return updateDoc(taskRef, { 
-          isDone: false, 
-          isVerified: false, 
-          assignees: [] 
-        });
+  const handleDragEnd = async (event) => {
+    const {active, over} = event;
+    if (active && over && active.id !== over.id) {
+      setTasks((items) => {
+        const oldIndex = items.findIndex((t) => t.id === active.id);
+        const newIndex = items.findIndex((t) => t.id === over.id);
+        const newTasks = arrayMove(items, oldIndex, newIndex);
+        const batch = writeBatch(db);
+        newTasks.forEach((task, index) => { batch.update(doc(db, "tasks", task.id), { order: index }); });
+        batch.commit();
+        return newTasks;
       });
-      await Promise.all(promises);
-
-      // Clear workers collection
-      const workersSnapshot = await getDocs(collection(db, "workers"));
-      const batch = writeBatch(db);
-      workersSnapshot.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-
-    } catch (e) {
-      console.error("Error resetting tasks: ", e);
-      alert('שגיאה באיפוס המשימות');
-    }
-  };
-
-  const registerWorker = async (e) => {
-    e.preventDefault();
-    if (!registrationName) return;
-    try {
-      await addDoc(collection(db, "workers"), {
-        name: registrationName,
-        createdAt: new Date()
-      });
-      localStorage.setItem('workerName', registrationName);
-      setUserName(registrationName);
-    } catch (e) {
-      console.error("Error registering worker: ", e);
-    }
-  };
-
-  const toggleAssignment = async (taskId, workerName) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-    
-    const currentAssignees = task.assignees || [];
-    const isAssigned = currentAssignees.includes(workerName);
-    
-    const newAssignees = isAssigned 
-      ? currentAssignees.filter(name => name !== workerName)
-      : [...currentAssignees, workerName];
-
-    try {
-      await updateDoc(doc(db, "tasks", taskId), { assignees: newAssignees });
-    } catch (e) {
-      console.error("Error toggling assignment: ", e);
-    }
-  };
-
-  const updateAssignee = async (id, newName) => {
-    try {
-      const taskRef = doc(db, "tasks", id);
-      await updateDoc(taskRef, { assignee: newName });
-    } catch (e) {
-      console.error("Error updating assignee: ", e);
-    }
-  };
-
-  const updateTaskColor = async (id, color) => {
-    try {
-      const taskRef = doc(db, "tasks", id);
-      await updateDoc(taskRef, { color: color });
-    } catch (e) {
-      console.error("Error updating color: ", e);
     }
   };
 
   const toggleDone = async (task) => {
     if (task.isVerified) return;
-    try {
-      const taskRef = doc(db, "tasks", task.id);
-      await updateDoc(taskRef, {
-        isDone: !task.isDone
-      });
-    } catch (e) {
-      console.error("Error updating document: ", e);
-    }
+    try { await updateDoc(doc(db, "tasks", task.id), { isDone: !task.isDone }); } 
+    catch (e) { console.error("Error updating: ", e); }
   };
 
   const verifyTask = async (id) => {
-    try {
-      const taskRef = doc(db, "tasks", id);
-      await updateDoc(taskRef, {
-        isVerified: true,
-        isDone: true
-      });
-    } catch (e) {
-      console.error("Error verifying document: ", e);
-    }
+    try { await updateDoc(doc(db, "tasks", id), { isVerified: true, isDone: true }); } 
+    catch (e) { console.error("Error verifying: ", e); }
   };
 
   const deleteTask = async (id) => {
     if (!window.confirm('למחוק את המשימה?')) return;
-    try {
-      await deleteDoc(doc(db, "tasks", id));
-    } catch (e) {
-      console.error("Error deleting document: ", e);
+    try { await deleteDoc(doc(db, "tasks", id)); } 
+    catch (e) { console.error("Error deleting: ", e); }
+  };
+
+  const updateTaskColor = async (id, color) => {
+    try { await updateDoc(doc(db, "tasks", id), { color: color }); } 
+    catch (e) { console.error("Error color: ", e); }
+  };
+
+  const toggleAssignment = async (taskId, workerName) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const current = task.assignees || [];
+    const isAssigned = current.includes(workerName);
+    const next = isAssigned ? current.filter(n => n !== workerName) : [...current, workerName];
+    try { await updateDoc(doc(db, "tasks", taskId), { assignees: next }); } 
+    catch (e) { console.error("Error toggle: ", e); }
+  };
+
+  const handleSwipeStart = (e) => { swipeStartX.current = e.touches[0].clientX; };
+  const handleSwipeEnd = (e) => {
+    const endX = e.changedTouches[0].clientX;
+    const diff = swipeStartX.current - endX;
+    if (Math.abs(diff) > 50) {
+      const times = ['morning', 'noon', 'evening'];
+      const currentIndex = times.indexOf(viewTime);
+      if (diff > 0 && currentIndex < 2) setViewTime(times[currentIndex + 1]);
+      else if (diff < 0 && currentIndex > 0) setViewTime(times[currentIndex - 1]);
     }
   };
 
-  // Prepare data for rendering
-  const myTasks = tasks.filter(t => t.assignees?.includes(userName));
-  const otherTasks = tasks.filter(t => !t.assignees?.includes(userName));
-  
-  const allNames = Array.from(new Set(tasks.flatMap(t => t.assignees || []).filter(Boolean)));
-
-  const getTaskStyle = (color) => {
-    if (!color) return {};
-    const palette = {
-      red: 'rgba(239, 68, 68, 0.15)',
-      yellow: 'rgba(245, 158, 11, 0.15)',
-      green: 'rgba(16, 185, 129, 0.15)'
-    };
-    const borders = {
-      red: '#ef4444',
-      yellow: '#f59e0b',
-      green: '#10b981'
-    };
-    return { 
-      background: palette[color],
-      borderRight: `4px solid ${borders[color]}` // Right border for RTL
-    };
-  };
+  const getFilteredTasks = (time) => tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
 
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
   return (
-    <div>
-      <header className="header">
-        <div style={{display:'flex', alignItems:'baseline', gap:'8px'}}>
-          <span style={{fontSize:'0.85rem', color:'var(--text-muted)'}}>v{APP_VERSION}</span>
-          <h1>מנהל משימות</h1>
-        </div>
-        {isAdmin && (
-          <div style={{display:'flex', gap:'10px'}}>
-            <button onClick={resetAllTasks} className="btn-verify" style={{background:'rgba(16, 185, 129, 0.1)', borderColor:'var(--accent-success)'}}>איפוס יום</button>
-            <button onClick={testNotification} className="btn-verify" style={{borderColor:'var(--text-muted)', color:'var(--text-muted)'}}>בדיקת צליל</button>
-            <button 
-              onClick={() => setIsMuted(!isMuted)} 
-              className="mute-btn"
-              title={isMuted ? "בטל השתקה" : "השתק התראות"}
-            >
-              {isMuted ? '🔇' : '🔊'}
-            </button>
+    <div className="app-shell" onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
+      
+      {activeTab === 'tasks' && (
+        <nav className="time-nav">
+          <div className={`time-icon ${viewTime === 'morning' ? 'active' : ''}`} onClick={() => setViewTime('morning')}>
+            🌅 <span>בוקר</span>
           </div>
-        )}
-      </header>
-
-      <main className="container" style={isAdmin ? {maxWidth:'900px'} : {}}>
-        {isAdmin && (
-          <section className="admin-header-actions" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem', padding:'0 0.5rem'}}>
-            <button 
-              className="add-task-fab" 
-              onClick={() => setIsFormOpen(!isFormOpen)}
-              title="הוסף משימה"
-            >
-              {isFormOpen ? '✕' : '+'}
-            </button>
-            
-            {isFormOpen && (
-              <div className="compact-form-overlay">
-                <form onSubmit={handleAddTask} className="glass-card compact-form">
-                  <h3>{editingTaskId ? 'עריכת משימה' : 'משימה חדשה'}</h3>
-                  <input 
-                    className="input-field" 
-                    placeholder="שם המשימה" 
-                    value={newTask.title} 
-                    onChange={e => setNewTask({...newTask, title: e.target.value})}
-                    autoFocus
-                  />
-                  <textarea 
-                    className="input-field" 
-                    placeholder="תיאור" 
-                    value={newTask.description} 
-                    onChange={e => setNewTask({...newTask, description: e.target.value})}
-                    rows={2}
-                  />
-                  <div style={{display:'flex', gap:'10px'}}>
-                    <button className="btn" type="submit">שמור</button>
-                    <button className="btn secondary" type="button" onClick={cancelEditing}>ביטול</button>
-                  </div>
-                </form>
-              </div>
-            )}
-          </section>
-        )}
-
-        {!isAdmin && !userName && (
-          <div className="registration-overlay">
-            <div className="glass-card" style={{padding:'2rem', maxWidth:'400px', margin:'2rem auto'}}>
-              <h2>ברוך הבא!</h2>
-              <form onSubmit={registerWorker} style={{marginTop:'1.5rem'}}>
-                <p style={{fontSize:'1rem', marginBottom:'1rem'}}>אנא הכנס את שמך כדי להתחיל:</p>
-                <input 
-                  className="input-field" 
-                  placeholder="השם שלך" 
-                  value={registrationName}
-                  onChange={(e) => setRegistrationName(e.target.value)}
-                  required
-                />
-                <button className="btn" type="submit">הירשם למשמרת</button>
-              </form>
-            </div>
+          <div className={`time-icon ${viewTime === 'noon' ? 'active' : ''}`} onClick={() => setViewTime('noon')}>
+            ☀️ <span>צהריים</span>
           </div>
-        )}
+          <div className={`time-icon ${viewTime === 'evening' ? 'active' : ''}`} onClick={() => setViewTime('evening')}>
+            🌙 <span>ערב</span>
+          </div>
+        </nav>
+      )}
 
-        {isAdmin ? (
-          <div className="admin-split-view">
-            <div className="tasks-column">
-              <h3 className="column-title">משימות ({tasks.length})</h3>
-              <DndContext 
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext 
-                  items={tasks.map(t => t.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {tasks.map((task) => (
-                    <SortableTask
-                      key={task.id}
-                      task={task}
-                      isAdmin={isAdmin}
-                      isSelected={selectedTaskId === task.id}
-                      onToggleSelect={() => handleTaskTap(task)}
-                      onVerify={verifyTask}
-                      onDelete={deleteTask}
-                      onUpdateColor={updateTaskColor}
-                      getTaskStyle={getTaskStyle}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </div>
-
-
-            <div className="workers-column">
-              <h3 className="column-title">עובדים ({registeredWorkers.length})</h3>
-              <div className="worker-list">
-                {registeredWorkers.map(worker => (
-                  <div 
-                    key={worker.id} 
-                    className={`worker-chip ${selectedTaskId && tasks.find(t => t.id === selectedTaskId)?.assignees?.includes(worker.name) ? 'assigned' : ''}`}
-                    onClick={() => selectedTaskId && toggleAssignment(selectedTaskId, worker.name)}
-                    style={{
-                      cursor: selectedTaskId ? 'pointer' : 'default',
-                      opacity: selectedTaskId ? 1 : 0.7
-                    }}
-                  >
-                    {worker.name}
-                    {selectedTaskId && tasks.find(t => t.id === selectedTaskId)?.assignees?.includes(worker.name) && <span style={{marginRight:'8px'}}>✓</span>}
+      <main className="container">
+        {activeTab === 'tasks' ? (
+          <div className="swipe-viewport" style={{overflow:'hidden'}}>
+            <div className="swipe-container" style={{transform: `translateX(${viewTime === 'morning' ? '0' : viewTime === 'noon' ? '-33.333%' : '-66.666%'})`}}>
+              {['morning', 'noon', 'evening'].map(time => (
+                <section key={time} className="swipe-screen">
+                  <div className="glass-card">
+                    <h2 style={{marginBottom:'1rem', fontSize:'1.4rem'}}>{time === 'morning' ? 'משימות בוקר' : time === 'noon' ? 'משימות צהריים' : 'משימות ערב'}</h2>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <SortableContext items={getFilteredTasks(time).map(t => t.id)} strategy={verticalListSortingStrategy}>
+                        {getFilteredTasks(time).map(task => (
+                          <SortableTask key={task.id} task={task} isAdmin={isAdmin}
+                            isSelected={selectedTaskId === task.id}
+                            onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : toggleDone(task)}
+                            onVerify={verifyTask} onDelete={deleteTask} onUpdateColor={updateTaskColor} getTaskStyle={() => ({})} />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                    {getFilteredTasks(time).length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין משימות לזמן זה</p>}
                   </div>
-                ))}
-                {registeredWorkers.length === 0 && <div style={{color:'var(--text-muted)', fontSize:'0.9rem'}}>אין עובדים רשומים</div>}
-              </div>
+                </section>
+              ))}
             </div>
           </div>
         ) : (
-          userName && (
-            <div className="worker-view">
-              <div className="worker-header">
-                <h2>שלום, {userName}</h2>
-                <div style={{fontSize:'0.9rem', color:'var(--text-muted)'}}>המשימות שלך להיום:</div>
-              </div>
-              
-              {myTasks.length > 0 ? (
-                <div className="group-section">
-                  {myTasks.map(task => (
-                    <div key={task.id} className="task-item" style={getTaskStyle(task.color)}>
-                      <div className="check-wrapper">
-                        {task.isVerified ? (
-                          <span className="v-mark">V</span>
-                        ) : (
-                          <div 
-                            className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} 
-                            onClick={() => toggleDone(task)}
-                          >
-                            {task.isDone && <span style={{color:'white', fontSize:'14px'}}>✓</span>}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="task-content">
-                        <div className="task-title">{task.title}</div>
-                        {task.description && <div className="task-desc">{task.description}</div>}
+          <div className="people-view glass-card">
+            <h2 style={{marginBottom:'1.5rem'}}>צוות ומשימות</h2>
+            <div className="people-list">
+              {registeredWorkers.map(worker => {
+                const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name));
+                const doneCount = workerTasks.filter(t => t.isDone).length;
+                return (
+                  <div key={worker.id} className="person-card">
+                    <div className="person-avatar">{worker.name.charAt(0)}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700}}>{worker.name}</div>
+                      <div className="status-badges">
+                        <span className="status-badge pending">{workerTasks.length - doneCount} בביצוע</span>
+                        <span className="status-badge done">{doneCount} הושלמו</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="glass-card" style={{padding:'2rem', marginTop:'2rem'}}>
-                  <p>אין לך משימות משויכות כרגע.</p>
-                  <p style={{fontSize:'0.9rem'}}>חכה שהמנהל ישבץ אותך.</p>
-                </div>
-              )}
+                  </div>
+                );
+              })}
+              {registeredWorkers.length === 0 && <p>אין עובדים רשומים כרגע</p>}
             </div>
-          )
+          </div>
         )}
       </main>
+
+      {isAdmin && activeTab === 'tasks' && selectedTaskId && (
+        <div className="admin-assignment-overlay" style={{position:'fixed', bottom:'80px', left:0, right:0, padding:'1rem', zIndex:500}}>
+          <div className="glass-card" style={{padding:'1rem'}}>
+            <p style={{fontSize:'0.8rem', marginBottom:'0.5rem'}}>שייך ל:</p>
+            <div style={{display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'4px'}}>
+              {registeredWorkers.map(w => (
+                <div key={w.id} className={`worker-chip ${tasks.find(t=>t.id===selectedTaskId)?.assignees?.includes(w.name) ? 'assigned' : ''}`}
+                  onClick={() => toggleAssignment(selectedTaskId, w.name)} style={{whiteSpace:'nowrap'}}>
+                  {w.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && <button className="add-task-fab" onClick={() => setIsFormOpen(true)}>+</button>}
+
+      {isFormOpen && (
+        <div className="compact-form-overlay" onClick={() => setIsFormOpen(false)}>
+          <form className="glass-card compact-form" onClick={e => e.stopPropagation()} onSubmit={handleAddTask}>
+            <h3>משימה חדשה ({viewTime === 'morning' ? 'בוקר' : viewTime === 'noon' ? 'צהריים' : 'ערב'})</h3>
+            <input className="input-field" placeholder="שם המשימה" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} autoFocus />
+            <textarea className="input-field" placeholder="תיאור" value={newTask.description} onChange={e => setNewTask({...newTask, description: e.target.value})} rows={2} />
+            <div style={{display:'flex', gap:'10px'}}>
+              <button className="btn" type="submit">שמור</button>
+              <button className="btn secondary" type="button" onClick={() => setIsFormOpen(false)}>ביטול</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <nav className="bottom-nav">
+        <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
+          <i style={{fontSize:'1.5rem'}}>👤</i> <span>אנשים</span>
+        </div>
+        <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
+          <i style={{fontSize:'1.5rem'}}>📋</i> <span>משימות</span>
+        </div>
+      </nav>
+
+      {!isAdmin && !userName && (
+        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
+           <div className="glass-card" style={{width:'90%', maxWidth:'400px'}}>
+              <h2>ברוך הבא</h2>
+              <p>הכנס את שמך כדי להתחיל</p>
+              <input className="input-field" placeholder="השם שלך" value={registrationName} onChange={e => setRegistrationName(e.target.value)} />
+              <button className="btn" onClick={async () => {
+                if(registrationName) {
+                  await addDoc(collection(db, "workers"), { name: registrationName, createdAt: new Date() });
+                  localStorage.setItem('workerName', registrationName);
+                  setUserName(registrationName);
+                }
+              }}>התחל</button>
+           </div>
+        </div>
+      )}
     </div>
   );
 };
