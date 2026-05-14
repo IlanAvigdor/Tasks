@@ -57,6 +57,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   }, [task.title, task.description, isEditing]);
 
   const getStatusClass = () => {
+    if (task.isVerified) return 'status-verified';
     if (task.isDone) return 'status-done';
     if (task.isInProgress) return 'status-in-progress';
     if (!task.assignees || task.assignees.length === 0) return 'status-unassigned';
@@ -64,13 +65,23 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   };
 
   const getStatusButton = () => {
-    if (task.isVerified) return null;
-    if (!task.isInProgress && !task.isDone) {
-      return <button className="status-btn btn-pending" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>על זה</button>;
-    } else if (task.isInProgress) {
-      return <button className="status-btn btn-in-progress" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>סיימתי</button>;
-    } else if (task.isDone) {
-      return <button className="status-btn btn-done" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>איפוס</button>;
+    if (isAdmin) {
+      if (task.isVerified) {
+        return <button className="status-btn btn-reset" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>איפוס</button>;
+      }
+      if (task.isDone) {
+        return <button className="status-btn btn-verify" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>בוצע</button>;
+      }
+      return null;
+    } else {
+      if (task.isVerified) return null;
+      if (!task.isInProgress && !task.isDone) {
+        return <button className="status-btn btn-pending" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>על זה</button>;
+      } else if (task.isInProgress) {
+        return <button className="status-btn btn-in-progress" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>סיימתי</button>;
+      } else if (task.isDone) {
+        return <button className="status-btn btn-done" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>איפוס</button>;
+      }
     }
     return null;
   };
@@ -286,10 +297,16 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           </div>
         </div>
         <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
-          {task.isVerified && (
-            <span className="v-mark" style={{fontSize:'1.2rem'}}>V</span>
+          {getStatusButton()}
+          {isAdmin && (
+            <button 
+              className="delete-task-btn" 
+              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+              style={{background:'none', border:'none', fontSize:'1.2rem', cursor:'pointer', padding:'0.5rem', marginRight:'auto'}}
+            >
+              🗑️
+            </button>
           )}
-          {!isAdmin && !task.isVerified && getStatusButton()}
         </div>
       </div>
     </div>
@@ -463,18 +480,30 @@ const App = () => {
   };
 
   const toggleStatus = async (task) => {
-    if (task.isVerified) return;
+    if (task.isVerified && !isAdmin) return;
     playNotification();
     let updates = {};
-    if (!task.isInProgress && !task.isDone) {
-      updates = { isInProgress: true, isDone: false };
-    } else if (task.isInProgress) {
-      updates = { isInProgress: false, isDone: true };
+    
+    if (isAdmin) {
+      if (task.isVerified) {
+        updates = { isVerified: false, isDone: false, isInProgress: false };
+      } else if (task.isDone) {
+        updates = { isVerified: true, isDone: true, isInProgress: false };
+      }
     } else {
-      updates = { isInProgress: false, isDone: false };
+      if (!task.isInProgress && !task.isDone) {
+        updates = { isInProgress: true, isDone: false };
+      } else if (task.isInProgress) {
+        updates = { isInProgress: false, isDone: true };
+      } else {
+        updates = { isInProgress: false, isDone: false };
+      }
     }
-    try { await updateDoc(doc(db, "tasks", task.id), updates); } 
-    catch (e) { console.error("Error updating status: ", e); }
+    
+    if (Object.keys(updates).length > 0) {
+      try { await updateDoc(doc(db, "tasks", task.id), updates); } 
+      catch (e) { console.error("Error updating status: ", e); }
+    }
   };
 
   const verifyTask = async (id) => {
@@ -483,7 +512,6 @@ const App = () => {
   };
 
   const deleteTask = async (id) => {
-    if (!window.confirm('למחוק את המשימה?')) return;
     try { await deleteDoc(doc(db, "tasks", id)); } 
     catch (e) { console.error("Error deleting: ", e); }
   };

@@ -146,6 +146,10 @@ body {
     background: rgba(59, 130, 246, 0.5); /* Blue glass */
 }
 
+.task-item.status-verified {
+    background: rgba(34, 197, 94, 0.5); /* Green glass */
+}
+
 .task-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
@@ -648,4 +652,18 @@ select.input-field option {
 
 .status-btn:active {
     transform: scale(0.95);
+}
+.btn-verify {
+    background: #22c55e !important;
+    color: white !important;
+}
+
+.btn-reset {
+    background: #6b7280 !important;
+    color: white !important;
+}
+
+.delete-task-btn:hover {
+    transform: scale(1.2);
+    transition: transform 0.2s;
 }
