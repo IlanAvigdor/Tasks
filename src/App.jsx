@@ -34,7 +34,7 @@ const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.05';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
-const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, registeredWorkers, onToggleAssignment }) => {
+const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, registeredWorkers, onToggleAssignment, onToggleStatus }) => {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -46,6 +46,25 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   const descRef = useRef(null);
   const dropdownRef = useRef(null);
   const pointerStartX = useRef(0);
+
+  const getStatusClass = () => {
+    if (task.isDone) return 'status-done';
+    if (task.isInProgress) return 'status-in-progress';
+    if (!task.assignees || task.assignees.length === 0) return 'status-unassigned';
+    return 'status-pending';
+  };
+
+  const getStatusButton = () => {
+    if (task.isVerified) return null;
+    if (!task.isInProgress && !task.isDone) {
+      return <button className="status-btn btn-pending" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>על זה</button>;
+    } else if (task.isInProgress) {
+      return <button className="status-btn btn-in-progress" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>סיימתי</button>;
+    } else if (task.isDone) {
+      return <button className="status-btn btn-done" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>איפוס</button>;
+    }
+    return null;
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -139,12 +158,12 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={`task-item admin-task ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
+      className={`task-item ${getStatusClass()} ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onClick={() => !isEditing && onToggleSelect()}
+      onClick={() => isAdmin && !isEditing && onToggleSelect()}
       {...attributes}
       {...listeners}
     >
@@ -241,11 +260,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           {task.isVerified && (
             <span className="v-mark" style={{fontSize:'1.2rem'}}>V</span>
           )}
-          {!isAdmin && !task.isVerified && (
-             <div className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
-               {task.isDone && <span style={{color:'white', fontSize:'14px'}}>✓</span>}
-             </div>
-          )}
+          {!isAdmin && !task.isVerified && getStatusButton()}
         </div>
       </div>
     </div>
@@ -395,7 +410,7 @@ const App = () => {
     try {
       await addDoc(collection(db, "tasks"), {
         title: newTask.title, description: newTask.description, assignees: [],
-        timeOfDay: viewTime, isDone: false, isVerified: false,
+        timeOfDay: viewTime, isDone: false, isInProgress: false, isVerified: false,
         order: tasks.length, createdAt: new Date()
       });
       setNewTask({ title: '', description: '', assignee: '' });
@@ -418,14 +433,23 @@ const App = () => {
     }
   };
 
-  const toggleDone = async (task) => {
+  const toggleStatus = async (task) => {
     if (task.isVerified) return;
-    try { await updateDoc(doc(db, "tasks", task.id), { isDone: !task.isDone }); } 
-    catch (e) { console.error("Error updating: ", e); }
+    playNotification();
+    let updates = {};
+    if (!task.isInProgress && !task.isDone) {
+      updates = { isInProgress: true, isDone: false };
+    } else if (task.isInProgress) {
+      updates = { isInProgress: false, isDone: true };
+    } else {
+      updates = { isInProgress: false, isDone: false };
+    }
+    try { await updateDoc(doc(db, "tasks", task.id), updates); } 
+    catch (e) { console.error("Error updating status: ", e); }
   };
 
   const verifyTask = async (id) => {
-    try { await updateDoc(doc(db, "tasks", id), { isVerified: true, isDone: true }); } 
+    try { await updateDoc(doc(db, "tasks", id), { isVerified: true, isDone: true, isInProgress: false }); } 
     catch (e) { console.error("Error verifying: ", e); }
   };
 
@@ -499,9 +523,10 @@ const App = () => {
                           {filteredTasks.map(task => (
                             <SortableTask key={task.id} task={task} isAdmin={isAdmin}
                               isSelected={selectedTaskId === task.id}
-                              onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : toggleDone(task)}
-                              onVerify={verifyTask} onDelete={deleteTask}
-                              registeredWorkers={registeredWorkers} onToggleAssignment={toggleAssignment} />
+                              onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : null}
+                            onVerify={verifyTask} onDelete={deleteTask}
+                            registeredWorkers={registeredWorkers} onToggleAssignment={toggleAssignment}
+                            onToggleStatus={toggleStatus} />
                           ))}
                         </SortableContext>
                         {filteredTasks.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין משימות לזמן זה</p>}
