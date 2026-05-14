@@ -45,7 +45,16 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   const titleRef = useRef(null);
   const descRef = useRef(null);
   const dropdownRef = useRef(null);
+  const containerRef = useRef(null);
   const pointerStartX = useRef(0);
+
+  // Sync local state when DB updates (only when not actively editing)
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalTitle(task.title);
+      setLocalDesc(task.description || '');
+    }
+  }, [task.title, task.description, isEditing]);
 
   const getStatusClass = () => {
     if (task.isDone) return 'status-done';
@@ -105,14 +114,14 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   };
 
   const handlePointerDown = (e) => {
-    if (isEditing) return;
+    if (!isAdmin || isEditing) return;
     if (e.target.closest('.btn-verify')) return;
     pointerStartX.current = e.clientX;
     setIsSwiping(true);
   };
 
   const handlePointerMove = (e) => {
-    if (!isSwiping || isEditing || isDragging) return;
+    if (!isSwiping || isEditing || isDragging || !isAdmin) return;
     const currentX = e.clientX;
     const diff = currentX - pointerStartX.current;
     if (Math.abs(diff) > 10) {
@@ -128,21 +137,34 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   };
 
   const handleBlur = (e) => {
-    // If focus is moving to another element within the same task item, don't save/close yet
-    if (e.relatedTarget && e.currentTarget.closest('.task-item')?.contains(e.relatedTarget)) {
+    // Check if the new focus target is still inside this task card
+    if (e.relatedTarget && containerRef.current?.contains(e.relatedTarget)) {
       return;
     }
     handleSave();
   };
 
   const handleSave = async () => {
-    if (localTitle !== task.title || localDesc !== (task.description || '')) {
-      try {
-        await updateDoc(doc(db, "tasks", task.id), { title: localTitle, description: localDesc });
-      } catch (err) { console.error("Error updating task:", err); }
-    }
+    const titleToSave = localTitle.trim();
+    const descToSave = localDesc.trim();
+    
     setIsEditing(false);
     setEditingField(null);
+
+    if (titleToSave !== task.title || descToSave !== (task.description || '')) {
+      try {
+        await updateDoc(doc(db, "tasks", task.id), { 
+          title: titleToSave, 
+          description: descToSave 
+        });
+        console.log("Task updated successfully:", task.id);
+      } catch (err) { 
+        console.error("Error updating task in Firestore:", err); 
+        // Revert on error
+        setLocalTitle(task.title);
+        setLocalDesc(task.description || '');
+      }
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -156,7 +178,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
 
   return (
     <div 
-      ref={setNodeRef} 
+      ref={(node) => { setNodeRef(node); containerRef.current = node; }} 
       style={style} 
       className={`task-item ${getStatusClass()} ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
       onPointerDown={handlePointerDown}
@@ -167,21 +189,23 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       {...attributes}
       {...listeners}
     >
-      <div 
-        className="delete-swipe-bg" 
-        style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0, width: '80px',
-          background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontSize: '1.2rem', zIndex: 0,
-          transform: `translateX(${80 + swipeOffset}px)`,
-          transition: isSwiping ? 'none' : 'transform 0.2s',
-          cursor: 'pointer',
-          visibility: swipeOffset < -5 ? 'visible' : 'hidden'
-        }}
-        onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-      >
-        🗑️
-      </div>
+      {isAdmin && (
+        <div 
+          className="delete-swipe-bg" 
+          style={{
+            position: 'absolute', right: 0, top: 0, bottom: 0, width: '80px',
+            background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontSize: '1.2rem', zIndex: 0,
+            transform: `translateX(${80 + swipeOffset}px)`,
+            transition: isSwiping ? 'none' : 'transform 0.2s',
+            cursor: 'pointer',
+            visibility: swipeOffset < -5 ? 'visible' : 'hidden'
+          }}
+          onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+        >
+          🗑️
+        </div>
+      )}
 
       <div 
         className="task-inner-content"
@@ -201,7 +225,12 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <div className="task-title" onClick={(e) => { e.stopPropagation(); setEditingField('title'); setIsEditing(true); }}>{task.title}</div>
+              <div className="task-title" onClick={(e) => { 
+                if (!isAdmin) return;
+                e.stopPropagation(); 
+                setEditingField('title'); 
+                setIsEditing(true); 
+              }}>{task.title}</div>
             )}
           </div>
           
@@ -482,7 +511,11 @@ const App = () => {
     }
   };
 
-  const getFilteredTasks = (time) => tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
+  const getFilteredTasks = (time) => {
+    const timeFiltered = tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
+    if (isAdmin) return timeFiltered;
+    return timeFiltered.filter(t => t.assignees?.includes(userName));
+  };
 
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
@@ -512,7 +545,7 @@ const App = () => {
                 direction: 'rtl'
               }}>
                 {['morning', 'noon', 'evening'].map(time => {
-                  const filteredTasks = tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
+                  const filteredTasks = getFilteredTasks(time);
                   return (
                     <section key={time} className="swipe-screen" style={{width: '33.333%', flexShrink: 0}}>
                       <div className="glass-card">
@@ -581,14 +614,16 @@ const App = () => {
         </div>
       )}
 
-      <nav className="bottom-nav">
-        <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
-          <i style={{fontSize:'1.5rem'}}>👤</i> <span>אנשים</span>
-        </div>
-        <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
-          <i style={{fontSize:'1.5rem'}}>📋</i> <span>משימות</span>
-        </div>
-      </nav>
+      {isAdmin && (
+        <nav className="bottom-nav">
+          <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
+            <i style={{fontSize:'1.5rem'}}>👤</i> <span>אנשים</span>
+          </div>
+          <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
+            <i style={{fontSize:'1.5rem'}}>📋</i> <span>משימות</span>
+          </div>
+        </nav>
+      )}
 
       {!isAdmin && (!userName || !workerTeam) && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
