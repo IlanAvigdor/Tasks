@@ -54,11 +54,8 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    ...getTaskStyle(task.color),
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1000 : 1,
-    position: 'relative',
-    overflow: 'hidden',
     touchAction: isEditing ? 'auto' : 'pan-y'
   };
 
@@ -131,13 +128,11 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       <div 
         className="task-inner-content"
         style={{
-          display: 'flex', alignItems: 'center', gap: '1rem', width: '100%',
           transform: `translateX(${swipeOffset}px)`,
           transition: isSwiping ? 'none' : 'transform 0.2s',
-          background: 'inherit', zIndex: 1, position: 'relative', padding: '1rem'
         }}
       >
-        <div className="task-content" style={{flex:1, minWidth:0}}>
+        <div className="task-content">
           <div className="task-header-row">
             {isEditing ? (
               <input
@@ -145,13 +140,12 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
                 value={localTitle} onChange={(e) => setLocalTitle(e.target.value)}
                 onBlur={handleSave} onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
-                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary)', borderRadius: '4px', color: 'white', padding: '2px 4px', fontSize: '0.95rem', width: '100%' }}
               />
             ) : (
-              <div className="task-title" style={{fontSize:'0.95rem', fontWeight:'600'}}>{task.title}</div>
+              <div className="task-title">{task.title}</div>
             )}
             {isAdmin && (
-              <div className="color-dots" style={{display:'flex', gap:'6px'}}>
+              <div className="color-dots">
                 {['red', 'yellow', 'green'].map(c => (
                   <div key={c} onClick={(e) => { e.stopPropagation(); onUpdateColor(task.id, task.color === c ? '' : c); }}
                     className={`color-dot ${c} ${task.color === c ? 'selected' : ''}`} />
@@ -166,17 +160,16 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
               onChange={(e) => setLocalDesc(e.target.value)}
               onBlur={handleSave} onKeyDown={handleKeyDown}
               onClick={(e) => e.stopPropagation()} placeholder="תיאור..."
-              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary)', borderRadius: '4px', color: 'var(--text-muted)', padding: '2px 4px', fontSize: '0.85rem', width: '100%', marginTop: '4px', resize: 'none' }}
             />
           ) : (
             task.description && (
-              <div className="task-desc" style={{fontSize:'0.85rem', color:'var(--text-muted)', marginTop:'4px'}}>{task.description}</div>
+              <div className="task-desc">{task.description}</div>
             )
           )}
 
-          <div className="task-assignees-row" style={{marginTop:'8px', display:'flex', flexWrap:'wrap', gap:'4px'}}>
+          <div className="task-assignees-row">
             {task.assignees?.length > 0 ? (
-              task.assignees.map(name => ( <span key={name} className="assignee-tag" style={{fontSize:'0.7rem'}}>{name}</span> ))
+              task.assignees.map(name => ( <span key={name} className="assignee-tag">{name}</span> ))
             ) : (
               <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>ללא שיוך</span>
             )}
@@ -433,13 +426,19 @@ const App = () => {
 
       {isFormOpen && (
         <div className="compact-form-overlay" onClick={() => setIsFormOpen(false)}>
-          <form className="glass-card compact-form" onClick={e => e.stopPropagation()} onSubmit={handleAddTask}>
-            <h3>משימה חדשה ({viewTime === 'morning' ? 'בוקר' : viewTime === 'noon' ? 'צהריים' : 'ערב'})</h3>
-            <input className="input-field" placeholder="שם המשימה" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} autoFocus />
-            <textarea className="input-field" placeholder="תיאור" value={newTask.description} onChange={e => setNewTask({...newTask, description: e.target.value})} rows={2} />
-            <div style={{display:'flex', gap:'10px'}}>
-              <button className="btn" type="submit">שמור</button>
-              <button className="btn secondary" type="button" onClick={() => setIsFormOpen(false)}>ביטול</button>
+          <form className="task-item compact-form" onClick={e => e.stopPropagation()} onSubmit={handleAddTask}>
+            <div className="task-inner-content" style={{flexDirection: 'column', alignItems: 'stretch'}}>
+              <h3 style={{marginBottom: '0.5rem', fontSize: '1.1rem'}}>משימה חדשה ({viewTime === 'morning' ? 'בוקר' : viewTime === 'noon' ? 'צהריים' : 'ערב'})</h3>
+              <div className="task-content">
+                <div className="task-header-row">
+                  <input className="inline-edit-input" placeholder="שם המשימה" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} autoFocus />
+                </div>
+                <textarea className="inline-edit-textarea" placeholder="תיאור המשימה" value={newTask.description} onChange={e => setNewTask({...newTask, description: e.target.value})} />
+              </div>
+              <div className="task-actions" style={{justifyContent: 'flex-end', marginTop: '1rem'}}>
+                <button className="btn btn-save" type="submit">שמור</button>
+                <button className="btn btn-cancel" type="button" onClick={() => setIsFormOpen(false)}>ביטול</button>
+              </div>
             </div>
           </form>
         </div>
