@@ -419,7 +419,7 @@ const App = () => {
                     <div className="person-header">
                       <div className="person-avatar">{worker.name.charAt(0)}</div>
                       <div style={{flex:1}}>
-                        <div style={{fontWeight:700}}>{worker.name}</div>
+                        <div style={{fontWeight:700}}>{worker.name} <span style={{fontSize:'0.8rem', fontWeight:400, opacity:0.6}}>- {worker.team}</span></div>
                         <div className="status-badges">
                           <span className="status-badge pending">{workerTasks.length - doneCount} בביצוע</span>
                           <span className="status-badge done">{doneCount} הושלמו</span>
