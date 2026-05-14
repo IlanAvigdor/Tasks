@@ -34,13 +34,27 @@ const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.05';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
-const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, onUpdateColor, getTaskStyle }) => {
+const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete }) => {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [localTitle, setLocalTitle] = useState(task.title);
   const [localDesc, setLocalDesc] = useState(task.description || '');
+  const [editingField, setEditingField] = useState(null);
+  const titleRef = useRef(null);
+  const descRef = useRef(null);
   const pointerStartX = useRef(0);
+
+  useEffect(() => {
+    if (isEditing && editingField) {
+      const el = editingField === 'title' ? titleRef.current : descRef.current;
+      if (el) {
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
+    }
+  }, [isEditing, editingField]);
 
   const {
     attributes,
@@ -49,7 +63,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     transform,
     transition,
     isDragging
-  } = useSortable({id: task.id});
+  } = useSortable({id: task.id, disabled: isEditing});
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -61,7 +75,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
 
   const handlePointerDown = (e) => {
     if (isEditing) return;
-    if (e.target.closest('.color-dot') || e.target.closest('.btn-verify')) return;
+    if (e.target.closest('.btn-verify')) return;
     pointerStartX.current = e.clientX;
     setIsSwiping(true);
   };
@@ -82,6 +96,14 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     else setSwipeOffset(0);
   };
 
+  const handleBlur = (e) => {
+    // If focus is moving to another element within the same task item, don't save/close yet
+    if (e.relatedTarget && e.currentTarget.closest('.task-item')?.contains(e.relatedTarget)) {
+      return;
+    }
+    handleSave();
+  };
+
   const handleSave = async () => {
     if (localTitle !== task.title || localDesc !== (task.description || '')) {
       try {
@@ -89,11 +111,16 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       } catch (err) { console.error("Error updating task:", err); }
     }
     setIsEditing(false);
+    setEditingField(null);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSave(); }
-    if (e.key === 'Escape') { setLocalTitle(task.title); setLocalDesc(task.description || ''); setIsEditing(false); }
+    if (e.key === 'Escape') { 
+      setLocalTitle(task.title); 
+      setLocalDesc(task.description || ''); 
+      setIsEditing(false); 
+      setEditingField(null);
+    }
   };
 
   return (
@@ -105,7 +132,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
       onClick={() => !isEditing && onToggleSelect()}
       {...attributes}
       {...listeners}
@@ -136,34 +162,39 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           <div className="task-header-row">
             {isEditing ? (
               <input
-                className="inline-edit-input" autoFocus
+                ref={titleRef}
+                className="inline-edit-input"
                 value={localTitle} onChange={(e) => setLocalTitle(e.target.value)}
-                onBlur={handleSave} onKeyDown={handleKeyDown}
+                onBlur={handleBlur} onKeyDown={handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <div className="task-title">{task.title}</div>
+              <div className="task-title" onClick={(e) => { e.stopPropagation(); setEditingField('title'); setIsEditing(true); }}>{task.title}</div>
             )}
             {isAdmin && (
-              <div className="color-dots">
-                {['red', 'yellow', 'green'].map(c => (
-                  <div key={c} onClick={(e) => { e.stopPropagation(); onUpdateColor(task.id, task.color === c ? '' : c); }}
-                    className={`color-dot ${c} ${task.color === c ? 'selected' : ''}`} />
-                ))}
-              </div>
+              <div className="drag-handle" style={{opacity:0.4, fontSize:'0.8rem'}}>☰</div>
             )}
           </div>
           
           {isEditing ? (
             <textarea
+              ref={descRef}
               className="inline-edit-textarea" value={localDesc}
               onChange={(e) => setLocalDesc(e.target.value)}
-              onBlur={handleSave} onKeyDown={handleKeyDown}
+              onBlur={handleBlur} onKeyDown={handleKeyDown}
               onClick={(e) => e.stopPropagation()} placeholder="תיאור..."
             />
           ) : (
-            task.description && (
-              <div className="task-desc">{task.description}</div>
+            isAdmin ? (
+              <div 
+                className="task-desc" 
+                style={{ minHeight: !task.description ? '1.2rem' : 'auto', cursor: 'text' }}
+                onClick={(e) => { e.stopPropagation(); setEditingField('description'); setIsEditing(true); }}
+              >
+                {task.description || <span style={{opacity: 0.3, fontSize: '0.8rem'}}>לחץ להוספת תיאור...</span>}
+              </div>
+            ) : (
+              task.description && <div className="task-desc">{task.description}</div>
             )
           )}
 
@@ -205,8 +236,10 @@ const App = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [registeredWorkers, setRegisteredWorkers] = useState([]);
   const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
+  const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
   const [selectedTaskId, setSelectedTaskId] = useState(null);
-  const [registrationName, setRegistrationName] = useState('');
+  const [registrationName, setRegistrationName] = useState(localStorage.getItem('workerName') || '');
+  const [registrationTeam, setRegistrationTeam] = useState('');
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
@@ -268,7 +301,7 @@ const App = () => {
     try {
       await addDoc(collection(db, "tasks"), {
         title: newTask.title, description: newTask.description, assignees: [],
-        timeOfDay: viewTime, isDone: false, isVerified: false, color: '',
+        timeOfDay: viewTime, isDone: false, isVerified: false,
         order: tasks.length, createdAt: new Date()
       });
       setNewTask({ title: '', description: '', assignee: '' });
@@ -308,10 +341,6 @@ const App = () => {
     catch (e) { console.error("Error deleting: ", e); }
   };
 
-  const updateTaskColor = async (id, color) => {
-    try { await updateDoc(doc(db, "tasks", id), { color: color }); } 
-    catch (e) { console.error("Error color: ", e); }
-  };
 
   const toggleAssignment = async (taskId, workerName) => {
     const task = tasks.find(t => t.id === taskId);
@@ -342,19 +371,17 @@ const App = () => {
   return (
     <div className="app-shell" onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
       
-      {activeTab === 'tasks' && (
-        <nav className="time-nav">
-          <div className={`time-icon ${viewTime === 'morning' ? 'active' : ''}`} onClick={() => setViewTime('morning')}>
-            🌅 <span>בוקר</span>
-          </div>
-          <div className={`time-icon ${viewTime === 'noon' ? 'active' : ''}`} onClick={() => setViewTime('noon')}>
-            ☀️ <span>צהריים</span>
-          </div>
-          <div className={`time-icon ${viewTime === 'evening' ? 'active' : ''}`} onClick={() => setViewTime('evening')}>
-            🌙 <span>ערב</span>
-          </div>
-        </nav>
-      )}
+      <nav className="time-nav">
+        <div className={`time-icon ${viewTime === 'morning' ? 'active' : ''}`} onClick={() => setViewTime('morning')}>
+          🌅 <span>בוקר</span>
+        </div>
+        <div className={`time-icon ${viewTime === 'noon' ? 'active' : ''}`} onClick={() => setViewTime('noon')}>
+          ☀️ <span>צהריים</span>
+        </div>
+        <div className={`time-icon ${viewTime === 'evening' ? 'active' : ''}`} onClick={() => setViewTime('evening')}>
+          🌙 <span>ערב</span>
+        </div>
+      </nav>
 
       <main className="container">
         {activeTab === 'tasks' ? (
@@ -370,7 +397,7 @@ const App = () => {
                           <SortableTask key={task.id} task={task} isAdmin={isAdmin}
                             isSelected={selectedTaskId === task.id}
                             onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : toggleDone(task)}
-                            onVerify={verifyTask} onDelete={deleteTask} onUpdateColor={updateTaskColor} getTaskStyle={() => ({})} />
+                            onVerify={verifyTask} onDelete={deleteTask} />
                         ))}
                       </SortableContext>
                     </DndContext>
@@ -382,21 +409,34 @@ const App = () => {
           </div>
         ) : (
           <div className="people-view glass-card">
-            <h2 style={{marginBottom:'1.5rem'}}>צוות ומשימות</h2>
+            <h2 style={{marginBottom:'1.5rem'}}>צוות ומשימות - {viewTime === 'morning' ? 'בוקר' : viewTime === 'noon' ? 'צהריים' : 'ערב'}</h2>
             <div className="people-list">
               {registeredWorkers.map(worker => {
-                const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name));
+                const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
                 const doneCount = workerTasks.filter(t => t.isDone).length;
                 return (
                   <div key={worker.id} className="person-card">
-                    <div className="person-avatar">{worker.name.charAt(0)}</div>
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:700}}>{worker.name}</div>
-                      <div className="status-badges">
-                        <span className="status-badge pending">{workerTasks.length - doneCount} בביצוע</span>
-                        <span className="status-badge done">{doneCount} הושלמו</span>
+                    <div className="person-header">
+                      <div className="person-avatar">{worker.name.charAt(0)}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:700}}>{worker.name}</div>
+                        <div className="status-badges">
+                          <span className="status-badge pending">{workerTasks.length - doneCount} בביצוע</span>
+                          <span className="status-badge done">{doneCount} הושלמו</span>
+                        </div>
                       </div>
                     </div>
+                    
+                    {workerTasks.length > 0 && (
+                      <div className="person-tasks">
+                        {workerTasks.map(task => (
+                          <div key={task.id} className={`worker-task-item ${task.isDone ? 'done' : ''}`}>
+                            <div className={`status-dot ${task.isVerified ? 'verified' : task.isDone ? 'done' : 'pending'}`} />
+                            <span className="task-mini-title">{task.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -453,17 +493,49 @@ const App = () => {
         </div>
       </nav>
 
-      {!isAdmin && !userName && (
+      {!isAdmin && (!userName || !workerTeam) && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
-           <div className="glass-card" style={{width:'90%', maxWidth:'400px'}}>
-              <h2>ברוך הבא</h2>
-              <p>הכנס את שמך כדי להתחיל</p>
-              <input className="input-field" placeholder="השם שלך" value={registrationName} onChange={e => setRegistrationName(e.target.value)} />
-              <button className="btn" onClick={async () => {
-                if(registrationName) {
-                  await addDoc(collection(db, "workers"), { name: registrationName, createdAt: new Date() });
-                  localStorage.setItem('workerName', registrationName);
-                  setUserName(registrationName);
+           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center'}}>
+              <h2>{userName ? 'השלמת פרטים' : 'ברוך הבא'}</h2>
+              <p>{userName ? 'אנא בחר את הצוות שלך' : 'הכנס את שמך ובחר צוות כדי להתחיל'}</p>
+              
+              {!userName && (
+                <input 
+                  className="input-field" 
+                  placeholder="השם שלך" 
+                  value={registrationName} 
+                  onChange={e => setRegistrationName(e.target.value)} 
+                />
+              )}
+
+              <select 
+                className="input-field" 
+                value={registrationTeam} 
+                onChange={e => setRegistrationTeam(e.target.value)}
+              >
+                <option value="" disabled>בחר צוות...</option>
+                <option value="סוללה">סוללה</option>
+                <option value="אגם">אגם</option>
+                <option value="פלסם">פלסם</option>
+              </select>
+
+              <button className="btn btn-save" style={{width:'100%', marginTop:'1rem'}} onClick={async () => {
+                if(registrationName && registrationTeam) {
+                  try {
+                    await addDoc(collection(db, "workers"), { 
+                      name: registrationName, 
+                      team: registrationTeam,
+                      createdAt: new Date() 
+                    });
+                    localStorage.setItem('workerName', registrationName);
+                    localStorage.setItem('workerTeam', registrationTeam);
+                    setUserName(registrationName);
+                    setWorkerTeam(registrationTeam);
+                  } catch (e) {
+                    console.error("Error registering worker:", e);
+                  }
+                } else {
+                  alert('נא למלא את כל הפרטים');
                 }
               }}>התחל</button>
            </div>
