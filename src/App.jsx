@@ -34,16 +34,28 @@ const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.05';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
-const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete }) => {
+const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, registeredWorkers, onToggleAssignment }) => {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [localTitle, setLocalTitle] = useState(task.title);
   const [localDesc, setLocalDesc] = useState(task.description || '');
+  const [isAssigning, setIsAssigning] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const titleRef = useRef(null);
   const descRef = useRef(null);
+  const dropdownRef = useRef(null);
   const pointerStartX = useRef(0);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !event.target.closest('.add-assignee-btn')) {
+        setIsAssigning(false);
+      }
+    };
+    if (isAssigning) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isAssigning]);
 
   useEffect(() => {
     if (isEditing && editingField) {
@@ -69,7 +81,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1000 : 1,
+    zIndex: (isDragging || isAssigning) ? 1000 : 1,
     touchAction: isEditing ? 'auto' : 'pan-y'
   };
 
@@ -144,7 +156,8 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           color: 'white', fontSize: '1.2rem', zIndex: 0,
           transform: `translateX(${80 + swipeOffset}px)`,
           transition: isSwiping ? 'none' : 'transform 0.2s',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          visibility: swipeOffset < -5 ? 'visible' : 'hidden'
         }}
         onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
       >
@@ -171,9 +184,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
             ) : (
               <div className="task-title" onClick={(e) => { e.stopPropagation(); setEditingField('title'); setIsEditing(true); }}>{task.title}</div>
             )}
-            {isAdmin && (
-              <div className="drag-handle" style={{opacity:0.4, fontSize:'0.8rem'}}>☰</div>
-            )}
           </div>
           
           {isEditing ? (
@@ -198,21 +208,38 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
             )
           )}
 
-          <div className="task-assignees-row">
-            {task.assignees?.length > 0 ? (
-              task.assignees.map(name => ( <span key={name} className="assignee-tag">{name}</span> ))
-            ) : (
+          <div className="task-assignees-row" style={{position:'relative'}}>
+            {task.assignees?.length > 0 && task.assignees.map(name => ( <span key={name} className="assignee-tag">{name}</span> ))}
+            {isAdmin && (
+              <button className="add-assignee-btn" onClick={(e) => { 
+                e.stopPropagation(); 
+                setIsAssigning(!isAssigning); 
+              }}>👤</button>
+            )}
+            {!task.assignees?.length && !isAdmin && (
               <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>ללא שיוך</span>
+            )}
+
+            {isAssigning && (
+              <div className="assignment-dropdown" ref={dropdownRef} onClick={(e) => e.stopPropagation()}>
+                <div style={{maxHeight:'200px', overflowY:'auto'}}>
+                  {registeredWorkers.map(worker => (
+                    <div key={worker.id} className="worker-option" onClick={() => onToggleAssignment(task.id, worker.name)}>
+                      <div className={`custom-checkbox ${task.assignees?.includes(worker.name) ? 'checked' : ''}`} style={{width:'18px', height:'18px'}}>
+                        {task.assignees?.includes(worker.name) && <span style={{fontSize:'10px'}}>✓</span>}
+                      </div>
+                      <span>{worker.name} <span className="team-tag">({worker.team})</span></span>
+                    </div>
+                  ))}
+                </div>
+                <button className="dropdown-finish-btn" onClick={() => setIsAssigning(false)}>סיום</button>
+              </div>
             )}
           </div>
         </div>
         <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
-          {task.isVerified ? (
+          {task.isVerified && (
             <span className="v-mark" style={{fontSize:'1.2rem'}}>V</span>
-          ) : (
-            task.isDone && isAdmin && (
-              <button className="btn-verify" onClick={(e) => { e.stopPropagation(); onVerify(task.id); }}>אשר</button>
-            )
           )}
           {!isAdmin && !task.isVerified && (
              <div className={`custom-checkbox ${task.isDone ? 'checked' : ''}`} onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
@@ -221,6 +248,73 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) => {
+  const [isAssigning, setIsAssigning] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !event.target.closest('.add-task-btn')) {
+        setIsAssigning(false);
+      }
+    };
+    if (isAssigning) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isAssigning]);
+
+  const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
+  const doneCount = workerTasks.filter(t => t.isDone).length;
+  const availableTasks = tasks.filter(t => t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning'));
+
+  return (
+    <div className="person-card" style={{ position: 'relative', zIndex: isAssigning ? 1000 : 1 }}>
+      <div className="person-header">
+        <div className="person-avatar">{worker.name.charAt(0)}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700 }}>
+            {worker.name} <span style={{ fontSize: '0.8rem', fontWeight: 400, opacity: 0.6 }}>- {worker.team}</span>
+          </div>
+          <div className="status-badges">
+            <span className="status-badge pending">{workerTasks.length - doneCount} בביצוע</span>
+            <span className="status-badge done">{doneCount} הושלמו</span>
+          </div>
+        </div>
+        {isAdmin && (
+          <button className="add-task-btn" onClick={() => setIsAssigning(!isAssigning)}>📋</button>
+        )}
+      </div>
+
+      {isAssigning && (
+        <div className="assignment-dropdown" ref={dropdownRef} style={{ top: '50px', right: '10px' }}>
+          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            {availableTasks.map(task => (
+              <div key={task.id} className="worker-option" onClick={() => onToggleAssignment(task.id, worker.name)}>
+                <div className={`custom-checkbox ${task.assignees?.includes(worker.name) ? 'checked' : ''}`} style={{ width: '18px', height: '18px' }}>
+                  {task.assignees?.includes(worker.name) && <span style={{ fontSize: '10px' }}>✓</span>}
+                </div>
+                <span>{task.title}</span>
+              </div>
+            ))}
+            {availableTasks.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.5, padding: '8px' }}>אין משימות לזמן זה</p>}
+          </div>
+          <button className="dropdown-finish-btn" onClick={() => setIsAssigning(false)}>סיום</button>
+        </div>
+      )}
+
+      {workerTasks.length > 0 && (
+        <div className="person-tasks">
+          {workerTasks.map(task => (
+            <div key={task.id} className={`worker-task-item ${task.isDone ? 'done' : ''}`}>
+              <div className={`status-dot ${task.isVerified ? 'verified' : task.isDone ? 'done' : 'pending'}`} />
+              <span className="task-mini-title">{task.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -385,82 +479,60 @@ const App = () => {
 
       <main className="container">
         {activeTab === 'tasks' ? (
-          <div className="swipe-viewport" style={{overflow:'hidden'}}>
-            <div className="swipe-container" style={{transform: `translateX(${viewTime === 'morning' ? '0' : viewTime === 'noon' ? '-33.333%' : '-66.666%'})`}}>
-              {['morning', 'noon', 'evening'].map(time => (
-                <section key={time} className="swipe-screen">
-                  <div className="glass-card">
-                    <h2 style={{marginBottom:'1rem', fontSize:'1.4rem'}}>{time === 'morning' ? 'משימות בוקר' : time === 'noon' ? 'משימות צהריים' : 'משימות ערב'}</h2>
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                      <SortableContext items={getFilteredTasks(time).map(t => t.id)} strategy={verticalListSortingStrategy}>
-                        {getFilteredTasks(time).map(task => (
-                          <SortableTask key={task.id} task={task} isAdmin={isAdmin}
-                            isSelected={selectedTaskId === task.id}
-                            onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : toggleDone(task)}
-                            onVerify={verifyTask} onDelete={deleteTask} />
-                        ))}
-                      </SortableContext>
-                    </DndContext>
-                    {getFilteredTasks(time).length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין משימות לזמן זה</p>}
-                  </div>
-                </section>
-              ))}
-            </div>
+          <div className="swipe-viewport" style={{overflow:'hidden', width: '100%'}}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <div className="swipe-container" style={{
+                transform: `translateX(${viewTime === 'morning' ? '0' : viewTime === 'noon' ? '33.333%' : '66.666%'})`,
+                display: 'flex', 
+                width: '300%',
+                direction: 'rtl'
+              }}>
+                {['morning', 'noon', 'evening'].map(time => {
+                  const filteredTasks = tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
+                  return (
+                    <section key={time} className="swipe-screen" style={{width: '33.333%', flexShrink: 0}}>
+                      <div className="glass-card">
+                        <h2 style={{marginBottom:'1rem', fontSize:'1.4rem'}}>
+                          {time === 'morning' ? 'משימות בוקר' : time === 'noon' ? 'משימות צהריים' : 'משימות ערב'}
+                        </h2>
+                        <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                          {filteredTasks.map(task => (
+                            <SortableTask key={task.id} task={task} isAdmin={isAdmin}
+                              isSelected={selectedTaskId === task.id}
+                              onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : toggleDone(task)}
+                              onVerify={verifyTask} onDelete={deleteTask}
+                              registeredWorkers={registeredWorkers} onToggleAssignment={toggleAssignment} />
+                          ))}
+                        </SortableContext>
+                        {filteredTasks.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין משימות לזמן זה</p>}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            </DndContext>
           </div>
         ) : (
           <div className="people-view glass-card">
             <h2 style={{marginBottom:'1.5rem'}}>צוות ומשימות - {viewTime === 'morning' ? 'בוקר' : viewTime === 'noon' ? 'צהריים' : 'ערב'}</h2>
             <div className="people-list">
-              {registeredWorkers.map(worker => {
-                const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
-                const doneCount = workerTasks.filter(t => t.isDone).length;
-                return (
-                  <div key={worker.id} className="person-card">
-                    <div className="person-header">
-                      <div className="person-avatar">{worker.name.charAt(0)}</div>
-                      <div style={{flex:1}}>
-                        <div style={{fontWeight:700}}>{worker.name} <span style={{fontSize:'0.8rem', fontWeight:400, opacity:0.6}}>- {worker.team}</span></div>
-                        <div className="status-badges">
-                          <span className="status-badge pending">{workerTasks.length - doneCount} בביצוע</span>
-                          <span className="status-badge done">{doneCount} הושלמו</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {workerTasks.length > 0 && (
-                      <div className="person-tasks">
-                        {workerTasks.map(task => (
-                          <div key={task.id} className={`worker-task-item ${task.isDone ? 'done' : ''}`}>
-                            <div className={`status-dot ${task.isVerified ? 'verified' : task.isDone ? 'done' : 'pending'}`} />
-                            <span className="task-mini-title">{task.title}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {registeredWorkers.map(worker => (
+                <WorkerCard 
+                  key={worker.id} 
+                  worker={worker} 
+                  tasks={tasks} 
+                  isAdmin={isAdmin} 
+                  viewTime={viewTime} 
+                  onToggleAssignment={toggleAssignment} 
+                />
+              ))}
               {registeredWorkers.length === 0 && <p>אין עובדים רשומים כרגע</p>}
             </div>
           </div>
         )}
       </main>
 
-      {isAdmin && activeTab === 'tasks' && selectedTaskId && (
-        <div className="admin-assignment-overlay" style={{position:'fixed', bottom:'80px', left:0, right:0, padding:'1rem', zIndex:500}}>
-          <div className="glass-card" style={{padding:'1rem'}}>
-            <p style={{fontSize:'0.8rem', marginBottom:'0.5rem'}}>שייך ל:</p>
-            <div style={{display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'4px'}}>
-              {registeredWorkers.map(w => (
-                <div key={w.id} className={`worker-chip ${tasks.find(t=>t.id===selectedTaskId)?.assignees?.includes(w.name) ? 'assigned' : ''}`}
-                  onClick={() => toggleAssignment(selectedTaskId, w.name)} style={{whiteSpace:'nowrap'}}>
-                  {w.name}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {isAdmin && <button className="add-task-fab" onClick={() => setIsFormOpen(true)}>+</button>}
 
