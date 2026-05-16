@@ -318,7 +318,7 @@ body {
 
 .swipe-screen {
     width: 33.333%;
-    padding: 0 1rem;
+    padding: 0 1rem 250px 1rem;
 }
 
 /* People View Styles */
@@ -326,6 +326,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    padding-bottom: 250px;
 }
 
 .person-card {
