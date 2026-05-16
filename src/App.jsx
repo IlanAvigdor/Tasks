@@ -53,8 +53,6 @@ const TrashBin = ({ isAdmin }) => {
 };
 
 const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, registeredWorkers, onToggleAssignment, onToggleStatus }) => {
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [isSwiping, setIsSwiping] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [localTitle, setLocalTitle] = useState(task.title);
   const [localDesc, setLocalDesc] = useState(task.description || '');
@@ -142,28 +140,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     touchAction: isEditing ? 'auto' : 'pan-y'
   };
 
-  const handlePointerDown = (e) => {
-    if (!isAdmin || isEditing) return;
-    if (e.target.closest('.btn-verify')) return;
-    pointerStartX.current = e.clientX;
-    setIsSwiping(true);
-  };
-
-  const handlePointerMove = (e) => {
-    if (!isSwiping || isEditing || isDragging || !isAdmin) return;
-    const currentX = e.clientX;
-    const diff = currentX - pointerStartX.current;
-    if (Math.abs(diff) > 10) {
-       if (diff < 0) setSwipeOffset(Math.max(diff, -80));
-       else setSwipeOffset(0);
-    }
-  };
-
-  const handlePointerUp = () => {
-    setIsSwiping(false);
-    if (swipeOffset < -40) setSwipeOffset(-80);
-    else setSwipeOffset(0);
-  };
 
   const handleBlur = (e) => {
     // Check if the new focus target is still inside this task card
@@ -210,20 +186,10 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       ref={(node) => { setNodeRef(node); containerRef.current = node; }} 
       style={style} 
       className={`task-item ${getStatusClass()} ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
       onClick={() => isAdmin && !isEditing && onToggleSelect()}
     >
 
-      <div 
-        className="task-inner-content"
-        style={{
-          transform: `translateX(${swipeOffset}px)`,
-          transition: isSwiping ? 'none' : 'transform 0.2s',
-        }}
-      >
+      <div className="task-inner-content">
         {isAdmin && (
           <div className="drag-handle" {...attributes} {...listeners}>
             ⠿
@@ -528,17 +494,6 @@ const App = () => {
     catch (e) { console.error("Error toggle: ", e); }
   };
 
-  const handleSwipeStart = (e) => { swipeStartX.current = e.touches[0].clientX; };
-  const handleSwipeEnd = (e) => {
-    const endX = e.changedTouches[0].clientX;
-    const diff = swipeStartX.current - endX;
-    if (Math.abs(diff) > 50) {
-      const times = ['morning', 'noon', 'evening'];
-      const currentIndex = times.indexOf(viewTime);
-      if (diff > 0 && currentIndex < 2) setViewTime(times[currentIndex + 1]);
-      else if (diff < 0 && currentIndex > 0) setViewTime(times[currentIndex - 1]);
-    }
-  };
 
   const getFilteredTasks = (time) => {
     const timeFiltered = tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
@@ -549,7 +504,7 @@ const App = () => {
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
   return (
-    <div className="app-shell" onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
+    <div className="app-shell">
       
       <nav className="time-nav">
         <div className={`time-icon ${viewTime === 'morning' ? 'active' : ''}`} onClick={() => setViewTime('morning')}>
