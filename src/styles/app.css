@@ -29,7 +29,7 @@ body.theme-morning {
     --bg-image: url('/backgrounds/morning.png');
     --text-main: #2d3436;
     --text-muted: #636e72;
-    --card-bg: rgba(255, 255, 255, 0.45);
+    --card-bg: rgba(255, 255, 255, 0.75);
 }
 
 body.theme-noon {
@@ -37,7 +37,7 @@ body.theme-noon {
     --bg-image: url('/backgrounds/noon.png');
     --text-main: #2c3e50;
     --text-muted: #7f8c8d;
-    --card-bg: rgba(255, 255, 255, 0.35);
+    --card-bg: rgba(255, 255, 255, 0.65);
 }
 
 body.theme-evening {
@@ -45,7 +45,7 @@ body.theme-evening {
     --bg-image: url('/backgrounds/evening.png');
     --text-main: #ffffff;
     --text-muted: #dfe6e9;
-    --card-bg: rgba(0, 0, 0, 0.45);
+    --card-bg: rgba(0, 0, 0, 0.7);
 }
 
 * {
@@ -370,10 +370,13 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1rem;
+    padding: 1.5rem;
     background: var(--card-bg);
-    border-radius: 16px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 24px;
     border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .person-avatar {
@@ -422,6 +425,34 @@ body {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     z-index: 900;
     cursor: pointer;
+}
+
+.trash-bin-fab {
+    position: fixed;
+    left: 1.5rem;
+    bottom: 5.5rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    z-index: 900;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.trash-bin-fab.active {
+    background: #ef4444;
+    color: white;
+    transform: scale(1.4);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
 }
 
 /* RTL Support for Hebrew names */

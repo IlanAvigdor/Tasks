@@ -20,6 +20,7 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -33,6 +34,23 @@ import {CSS} from '@dnd-kit/utilities';
 const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.05';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
+
+const TrashBin = ({ isAdmin }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'trash-bin',
+  });
+
+  if (!isAdmin) return null;
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      className={`trash-bin-fab ${isOver ? 'active' : ''}`}
+    >
+      🗑️
+    </div>
+  );
+};
 
 const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, registeredWorkers, onToggleAssignment, onToggleStatus }) => {
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -198,23 +216,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       onPointerCancel={handlePointerUp}
       onClick={() => isAdmin && !isEditing && onToggleSelect()}
     >
-      {isAdmin && (
-        <div 
-          className="delete-swipe-bg" 
-          style={{
-            position: 'absolute', right: 0, top: 0, bottom: 0, width: '80px',
-            background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontSize: '1.2rem', zIndex: 0,
-            transform: `translateX(${80 + swipeOffset}px)`,
-            transition: isSwiping ? 'none' : 'transform 0.2s',
-            cursor: 'pointer',
-            visibility: swipeOffset < -5 ? 'visible' : 'hidden'
-          }}
-          onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-        >
-          🗑️
-        </div>
-      )}
 
       <div 
         className="task-inner-content"
@@ -301,15 +302,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
         </div>
         <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
           {getStatusButton()}
-          {isAdmin && (
-            <button 
-              className="delete-task-btn" 
-              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-              style={{background:'none', border:'none', fontSize:'1.2rem', cursor:'pointer', padding:'0.5rem', marginRight:'auto'}}
-            >
-              🗑️
-            </button>
-          )}
         </div>
       </div>
     </div>
@@ -469,6 +461,12 @@ const App = () => {
 
   const handleDragEnd = async (event) => {
     const {active, over} = event;
+    
+    if (over && over.id === 'trash-bin') {
+      await deleteTask(active.id);
+      return;
+    }
+
     if (active && over && active.id !== over.id) {
       setTasks((items) => {
         const oldIndex = items.findIndex((t) => t.id === active.id);
@@ -579,31 +577,26 @@ const App = () => {
                   const filteredTasks = getFilteredTasks(time);
                   return (
                     <section key={time} className="swipe-screen" style={{width: '33.333%', flexShrink: 0}}>
-                      <div className="glass-card">
-                        <h2 style={{marginBottom:'1rem', fontSize:'1.4rem'}}>
-                          {time === 'morning' ? 'משימות בוקר' : time === 'noon' ? 'משימות צהריים' : 'משימות ערב'}
-                        </h2>
-                        <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                          {filteredTasks.map(task => (
-                            <SortableTask key={task.id} task={task} isAdmin={isAdmin}
-                              isSelected={selectedTaskId === task.id}
-                              onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : null}
-                            onVerify={verifyTask} onDelete={deleteTask}
-                            registeredWorkers={registeredWorkers} onToggleAssignment={toggleAssignment}
-                            onToggleStatus={toggleStatus} />
-                          ))}
-                        </SortableContext>
-                        {filteredTasks.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין משימות לזמן זה</p>}
-                      </div>
+                      <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                        {filteredTasks.map(task => (
+                          <SortableTask key={task.id} task={task} isAdmin={isAdmin}
+                            isSelected={selectedTaskId === task.id}
+                            onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : null}
+                          onVerify={verifyTask} onDelete={deleteTask}
+                          registeredWorkers={registeredWorkers} onToggleAssignment={toggleAssignment}
+                          onToggleStatus={toggleStatus} />
+                        ))}
+                      </SortableContext>
+                      {filteredTasks.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין משימות לזמן זה</p>}
                     </section>
                   );
                 })}
               </div>
+              <TrashBin isAdmin={isAdmin} />
             </DndContext>
           </div>
         ) : (
-          <div className="people-view glass-card">
-            <h2 style={{marginBottom:'1.5rem'}}>צוות ומשימות - {viewTime === 'morning' ? 'בוקר' : viewTime === 'noon' ? 'צהריים' : 'ערב'}</h2>
+          <div className="people-view">
             <div className="people-list">
               {registeredWorkers.map(worker => (
                 <WorkerCard 
