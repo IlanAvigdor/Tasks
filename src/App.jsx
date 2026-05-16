@@ -137,6 +137,10 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     opacity: isDragging ? 0.8 : 1,
     scale: isDragging ? 0.96 : 1,
     zIndex: (isDragging || isAssigning) ? 1000 : 1,
+    touchAction: isDragging ? 'none' : 'auto',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none'
   };
 
 
@@ -362,8 +366,7 @@ const App = () => {
   }, [viewTime]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 300, tolerance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 15 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
