@@ -166,6 +166,29 @@ body {
     position: relative;
 }
 
+.drag-handle {
+    cursor: grab;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    padding: 0.25rem 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: color 0.2s, transform 0.2s;
+    opacity: 0.6;
+}
+
+.drag-handle:hover {
+    color: var(--primary);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
 .task-content {
     flex: 1;
     min-width: 0;

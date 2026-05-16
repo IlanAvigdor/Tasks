@@ -197,8 +197,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onClick={() => isAdmin && !isEditing && onToggleSelect()}
-      {...attributes}
-      {...listeners}
     >
       {isAdmin && (
         <div 
@@ -225,6 +223,11 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           transition: isSwiping ? 'none' : 'transform 0.2s',
         }}
       >
+        {isAdmin && (
+          <div className="drag-handle" {...attributes} {...listeners}>
+            ⠿
+          </div>
+        )}
         <div className="task-content">
           <div className="task-header-row">
             {isEditing ? (
