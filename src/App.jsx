@@ -32,7 +32,7 @@ import {
 import {CSS} from '@dnd-kit/utilities';
 
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.01';
+const APP_VERSION = '1.02';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
 const TrashBin = ({ isAdmin }) => {
@@ -190,6 +190,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       style={style} 
       className={`task-item ${getStatusClass()} ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
       onClick={() => isAdmin && !isEditing && onToggleSelect()}
+      onContextMenu={(e) => isAdmin && e.preventDefault()}
       {...attributes}
       {...listeners}
     >
@@ -366,8 +367,7 @@ const App = () => {
   }, [viewTime]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 300, tolerance: 15 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
