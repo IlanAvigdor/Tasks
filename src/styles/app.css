@@ -135,6 +135,11 @@ body {
     touch-action: pan-y;
 }
 
+.task-item.dragging {
+    touch-action: none !important;
+    cursor: grabbing;
+}
+
 .task-item.status-unassigned {
     background: rgba(156, 163, 175, 0.2); /* Grayish */
 }
@@ -411,6 +416,18 @@ body {
     transform: scale(1.4);
     box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
     border-color: #ef4444;
+}
+
+.app-version {
+    position: fixed;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+    z-index: 2000;
+    font-weight: 600;
+    pointer-events: none;
 }
 
 /* RTL Support for Hebrew names */

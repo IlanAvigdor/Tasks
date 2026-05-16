@@ -32,7 +32,7 @@ import {
 import {CSS} from '@dnd-kit/utilities';
 
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.05';
+const APP_VERSION = '1.01';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 
 const TrashBin = ({ isAdmin }) => {
@@ -137,7 +137,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     opacity: isDragging ? 0.8 : 1,
     scale: isDragging ? 0.96 : 1,
     zIndex: (isDragging || isAssigning) ? 1000 : 1,
-    touchAction: isDragging ? 'none' : 'auto',
+    touchAction: isDragging ? 'none' : 'pan-y',
     userSelect: 'none',
     WebkitUserSelect: 'none',
     WebkitTouchCallout: 'none'
@@ -366,7 +366,8 @@ const App = () => {
   }, [viewTime]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 15 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -567,7 +568,7 @@ const App = () => {
         )}
       </main>
 
-
+      <div className="app-version">v{APP_VERSION}</div>
 
       {isAdmin && <button className="add-task-fab" onClick={() => setIsFormOpen(true)}>+</button>}
 
