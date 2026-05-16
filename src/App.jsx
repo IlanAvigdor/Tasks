@@ -53,6 +53,7 @@ const TrashBin = ({ isAdmin }) => {
 };
 
 const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, registeredWorkers, onToggleAssignment, onToggleStatus }) => {
+  const [isPressing, setIsPressing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [localTitle, setLocalTitle] = useState(task.title);
   const [localDesc, setLocalDesc] = useState(task.description || '');
@@ -122,6 +123,57 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     }
   }, [isEditing, editingField]);
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !isAdmin || isEditing) return;
+
+    let longPressTimer = null;
+    let isLongPressActive = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const handleTouchStart = (e) => {
+      isLongPressActive = false;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      longPressTimer = setTimeout(() => {
+        isLongPressActive = true;
+        setIsPressing(true);
+        if (navigator.vibrate) navigator.vibrate(40);
+      }, 250);
+    };
+
+    const handleTouchMove = (e) => {
+      const deltaX = Math.abs(e.touches[0].clientX - touchStartX);
+      const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+
+      if (isLongPressActive) {
+        if (e.cancelable) e.preventDefault();
+      } else if (deltaX > 8 || deltaY > 8) {
+        clearTimeout(longPressTimer);
+        setIsPressing(false);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      clearTimeout(longPressTimer);
+      isLongPressActive = false;
+      setIsPressing(false);
+    };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd);
+    el.addEventListener('touchcancel', handleTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+      el.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [isAdmin, isEditing]);
+
   const {
     attributes,
     listeners,
@@ -134,10 +186,10 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.8 : 1,
-    scale: isDragging ? 0.96 : 1,
-    zIndex: (isDragging || isAssigning) ? 1000 : 1,
-    touchAction: isDragging ? 'none' : 'pan-y',
+    opacity: (isDragging || isPressing) ? 0.8 : 1,
+    scale: (isDragging || isPressing) ? 0.94 : 1,
+    zIndex: (isDragging || isAssigning || isPressing) ? 1000 : 1,
+    touchAction: (isDragging || isPressing) ? 'none' : 'pan-y',
     userSelect: 'none',
     WebkitUserSelect: 'none',
     WebkitTouchCallout: 'none'
@@ -356,18 +408,37 @@ const App = () => {
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [registrationName, setRegistrationName] = useState(localStorage.getItem('workerName') || '');
   const [registrationTeam, setRegistrationTeam] = useState('');
+  const [showNav, setShowNav] = useState(true);
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
   const audioRef = useRef(null);
   const swipeStartX = useRef(0);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollY.current;
+      
+      if (delta > 5 && currentScrollY > 80) {
+        setShowNav(false);
+      } else if (delta < -15 || currentScrollY < 50) {
+        setShowNav(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     document.body.className = `theme-${viewTime}`;
   }, [viewTime]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 300, tolerance: 15 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 15 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -424,7 +495,24 @@ const App = () => {
     } catch (e) { console.error("Error saving: ", e); }
   };
 
+  useEffect(() => {
+    if (showNav) {
+      document.body.style.overflow = '';
+    } else {
+      // Don't lock scroll just because nav is hidden, 
+      // but we might want to lock it during an active drag.
+    }
+  }, [showNav]);
+
+  const handleDragStart = () => {
+    if (navigator.vibrate) navigator.vibrate(50);
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+  };
+
   const handleDragEnd = async (event) => {
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
     const {active, over} = event;
     
     if (over && over.id === 'trash-bin') {
@@ -520,7 +608,7 @@ const App = () => {
       <main className="container">
         {activeTab === 'tasks' ? (
           <div className="swipe-viewport" style={{overflow:'hidden', width: '100%'}}>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
               <div className="swipe-container" style={{
                 transform: `translateX(${viewTime === 'morning' ? '0' : viewTime === 'noon' ? '33.333%' : '66.666%'})`,
                 display: 'flex', 
