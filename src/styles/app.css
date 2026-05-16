@@ -163,54 +163,6 @@ body {
     padding: 1rem 1.25rem;
     background: inherit;
     z-index: 1;
-    position: relative;
-}
-
-.drag-handle {
-    cursor: grab;
-    color: var(--text-muted);
-    font-size: 1.2rem;
-    padding: 0.25rem 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    user-select: none;
-    transition: color 0.2s, transform 0.2s;
-    opacity: 0.6;
-}
-
-.drag-handle:hover {
-    color: var(--primary);
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-.drag-handle:active {
-    cursor: grabbing;
-}
-
-.task-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.task-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.5rem;
-    margin-bottom: 4px;
-}
-
-.task-title {
-    font-weight: 700;
-    font-size: 1.05rem;
-    color: var(--text-main);
-}
-
-.task-desc {
-    font-size: 0.9rem;
-    color: var(--text-muted);
     line-height: 1.4;
 }
 
@@ -437,8 +389,8 @@ body {
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
     font-size: 1.6rem;
     display: flex;
     align-items: center;
@@ -452,7 +404,8 @@ body {
     background: #ef4444;
     color: white;
     transform: scale(1.4);
-    box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+    border-color: #ef4444;
 }
 
 /* RTL Support for Hebrew names */

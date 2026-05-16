@@ -62,7 +62,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   const descRef = useRef(null);
   const dropdownRef = useRef(null);
   const containerRef = useRef(null);
-  const pointerStartX = useRef(0);
 
   // Sync local state when DB updates (only when not actively editing)
   useEffect(() => {
@@ -135,9 +134,9 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.8 : 1,
+    scale: isDragging ? 0.96 : 1,
     zIndex: (isDragging || isAssigning) ? 1000 : 1,
-    touchAction: isEditing ? 'auto' : 'pan-y'
   };
 
 
@@ -187,14 +186,10 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       style={style} 
       className={`task-item ${getStatusClass()} ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
       onClick={() => isAdmin && !isEditing && onToggleSelect()}
+      {...attributes}
+      {...listeners}
     >
-
       <div className="task-inner-content">
-        {isAdmin && (
-          <div className="drag-handle" {...attributes} {...listeners}>
-            ⠿
-          </div>
-        )}
         <div className="task-content">
           <div className="task-header-row">
             {isEditing ? (
@@ -367,7 +362,7 @@ const App = () => {
   }, [viewTime]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 15 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 300, tolerance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
