@@ -21,6 +21,7 @@ import {
   useSensor,
   useSensors,
   useDroppable,
+  DragOverlay,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -34,6 +35,74 @@ import {CSS} from '@dnd-kit/utilities';
 const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.02';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
+
+const getTaskStatusClass = (task) => {
+  if (task.isVerified) return 'status-verified';
+  if (task.isDone) return 'status-done';
+  if (task.isInProgress) return 'status-in-progress';
+  if (!task.assignees || task.assignees.length === 0) return 'status-unassigned';
+  return 'status-pending';
+};
+
+const getTaskStatusButton = (task, isAdmin) => {
+  if (isAdmin) {
+    if (task.isVerified) {
+      return <button className="status-btn btn-reset">איפוס</button>;
+    }
+    if (task.isDone) {
+      return <button className="status-btn btn-verify">בוצע</button>;
+    }
+    return null;
+  } else {
+    if (task.isVerified) return null;
+    if (!task.isInProgress && !task.isDone) {
+      return <button className="status-btn btn-pending">על זה</button>;
+    } else if (task.isInProgress) {
+      return <button className="status-btn btn-in-progress">סיימתי</button>;
+    } else if (task.isDone) {
+      return <button className="status-btn btn-done">איפוס</button>;
+    }
+  }
+  return null;
+};
+
+const TaskDragPreview = ({ task, isAdmin, isOverTrash }) => {
+  if (!task) return null;
+
+  const statusClass = getTaskStatusClass(task);
+  const statusButton = getTaskStatusButton(task, isAdmin);
+
+  const style = {
+    opacity: 0.85,
+    transform: 'none',
+    transition: 'scale 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    scale: isOverTrash ? 0.6 : 0.9,
+    transformOrigin: 'center center',
+    pointerEvents: 'none',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
+  };
+
+  return (
+    <div className={`task-item ${statusClass} dragging`} style={style}>
+      <div className="task-inner-content">
+        <div className="task-content">
+          <div className="task-header-row">
+            <div className="task-title">{task.title}</div>
+          </div>
+          {task.description && <div className="task-desc">{task.description}</div>}
+          <div className="task-assignees-row">
+            {task.assignees?.length > 0 && task.assignees.map(name => (
+              <span key={name} className="assignee-tag">{name}</span>
+            ))}
+          </div>
+        </div>
+        <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
+          {statusButton}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const TrashBin = ({ isAdmin }) => {
   const { setNodeRef, isOver } = useDroppable({
@@ -72,35 +141,14 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     }
   }, [task.title, task.description, isEditing]);
 
-  const getStatusClass = () => {
-    if (task.isVerified) return 'status-verified';
-    if (task.isDone) return 'status-done';
-    if (task.isInProgress) return 'status-in-progress';
-    if (!task.assignees || task.assignees.length === 0) return 'status-unassigned';
-    return 'status-pending';
-  };
-
-  const getStatusButton = () => {
-    if (isAdmin) {
-      if (task.isVerified) {
-        return <button className="status-btn btn-reset" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>איפוס</button>;
-      }
-      if (task.isDone) {
-        return <button className="status-btn btn-verify" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>בוצע</button>;
-      }
-      return null;
-    } else {
-      if (task.isVerified) return null;
-      if (!task.isInProgress && !task.isDone) {
-        return <button className="status-btn btn-pending" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>על זה</button>;
-      } else if (task.isInProgress) {
-        return <button className="status-btn btn-in-progress" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>סיימתי</button>;
-      } else if (task.isDone) {
-        return <button className="status-btn btn-done" onClick={(e) => { e.stopPropagation(); onToggleStatus(task); }}>איפוס</button>;
-      }
+  const statusButton = getTaskStatusButton(task, isAdmin);
+  const renderedStatusButton = statusButton ? React.cloneElement(statusButton, {
+    onClick: (e) => {
+      e.stopPropagation();
+      onToggleStatus(task);
     }
-    return null;
-  };
+  }) : null;
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -184,15 +232,16 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   } = useSortable({id: task.id, disabled: isEditing});
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: isDragging ? null : CSS.Transform.toString(transform),
     transition,
-    opacity: (isDragging || isPressing) ? 0.8 : 1,
-    scale: (isDragging || isPressing) ? 0.94 : 1,
+    opacity: isDragging ? 0.35 : isPressing ? 0.8 : 1,
+    scale: isDragging ? 1 : isPressing ? 0.94 : 1,
     zIndex: (isDragging || isAssigning || isPressing) ? 1000 : 1,
     touchAction: (isDragging || isPressing) ? 'none' : 'pan-y',
     userSelect: 'none',
     WebkitUserSelect: 'none',
-    WebkitTouchCallout: 'none'
+    WebkitTouchCallout: 'none',
+    pointerEvents: isDragging ? 'none' : 'auto'
   };
 
 
@@ -240,7 +289,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     <div 
       ref={(node) => { setNodeRef(node); containerRef.current = node; }} 
       style={style} 
-      className={`task-item ${getStatusClass()} ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
+      className={`task-item ${getTaskStatusClass(task)} ${isSelected ? 'active-task' : ''} ${isDragging ? 'dragging' : ''}`}
       onClick={() => isAdmin && !isEditing && onToggleSelect()}
       onContextMenu={(e) => isAdmin && e.preventDefault()}
       {...attributes}
@@ -319,7 +368,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           </div>
         </div>
         <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
-          {getStatusButton()}
+          {renderedStatusButton}
         </div>
       </div>
     </div>
@@ -409,6 +458,8 @@ const App = () => {
   const [registrationName, setRegistrationName] = useState(localStorage.getItem('workerName') || '');
   const [registrationTeam, setRegistrationTeam] = useState('');
   const [showNav, setShowNav] = useState(true);
+  const [activeId, setActiveId] = useState(null);
+  const [isOverTrash, setIsOverTrash] = useState(false);
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
@@ -504,13 +555,21 @@ const App = () => {
     }
   }, [showNav]);
 
-  const handleDragStart = () => {
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
     if (navigator.vibrate) navigator.vibrate(50);
     document.body.style.overflow = 'hidden';
     document.body.style.touchAction = 'none';
   };
 
+  const handleDragOver = (event) => {
+    const { over } = event;
+    setIsOverTrash(over && over.id === 'trash-bin');
+  };
+
   const handleDragEnd = async (event) => {
+    setActiveId(null);
+    setIsOverTrash(false);
     document.body.style.overflow = '';
     document.body.style.touchAction = '';
     const {active, over} = event;
@@ -531,6 +590,13 @@ const App = () => {
         return newTasks;
       });
     }
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setIsOverTrash(false);
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
   };
 
   const toggleStatus = async (task) => {
@@ -608,7 +674,14 @@ const App = () => {
       <main className="container">
         {activeTab === 'tasks' ? (
           <div className="swipe-viewport" style={{overflow:'hidden', width: '100%'}}>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <DndContext 
+              sensors={sensors} 
+              collisionDetection={closestCenter} 
+              onDragStart={handleDragStart} 
+              onDragOver={handleDragOver} 
+              onDragEnd={handleDragEnd} 
+              onDragCancel={handleDragCancel}
+            >
               <div className="swipe-container" style={{
                 transform: `translateX(${viewTime === 'morning' ? '0' : viewTime === 'noon' ? '33.333%' : '66.666%'})`,
                 display: 'flex', 
@@ -635,6 +708,15 @@ const App = () => {
                 })}
               </div>
               <TrashBin isAdmin={isAdmin} />
+              <DragOverlay>
+                {activeId ? (
+                  <TaskDragPreview 
+                    task={tasks.find(t => t.id === activeId)} 
+                    isAdmin={isAdmin} 
+                    isOverTrash={isOverTrash} 
+                  />
+                ) : null}
+              </DragOverlay>
             </DndContext>
           </div>
         ) : (
