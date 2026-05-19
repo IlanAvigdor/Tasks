@@ -708,7 +708,7 @@ const App = () => {
                 })}
               </div>
               <TrashBin isAdmin={isAdmin} />
-              <DragOverlay>
+              <DragOverlay dropAnimation={null}>
                 {activeId ? (
                   <TaskDragPreview 
                     task={tasks.find(t => t.id === activeId)} 
