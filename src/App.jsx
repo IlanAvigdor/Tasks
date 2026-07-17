@@ -582,6 +582,7 @@ const App = () => {
   const [registeredWorkers, setRegisteredWorkers] = useState([]);
   const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
   const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
+  const [showWelcomeBack, setShowWelcomeBack] = useState(!!(localStorage.getItem('workerName') && localStorage.getItem('workerTeam')));
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [registrationName, setRegistrationName] = useState(localStorage.getItem('workerName') || '');
   const [registrationTeam, setRegistrationTeam] = useState('');
@@ -1016,7 +1017,24 @@ const App = () => {
         </nav>
       )}
 
-      {!isAdmin && (!userName || !workerTeam) && (
+      {!isAdmin && showWelcomeBack && (
+        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
+           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem'}}>
+              <div className="icon-wrapper" style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.2)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>👋</div>
+              <h2 style={{ margin: '0.5rem 0' }}>ברוך הבא שוב, {userName}!</h2>
+              <p style={{ opacity: 0.8, fontSize: '1rem', margin: '0' }}>שמחים לראות אותך שוב בצוות <strong>{workerTeam}</strong>.</p>
+              <button 
+                className="btn btn-save" 
+                style={{ width: '100%', marginTop: '1rem', padding: '0.8rem 1.2rem', fontSize: '1.05rem' }} 
+                onClick={() => setShowWelcomeBack(false)}
+              >
+                המשך למשימות
+              </button>
+           </div>
+        </div>
+      )}
+
+      {!isAdmin && !showWelcomeBack && (!userName || !workerTeam) && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
            <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center'}}>
               <h2>{userName ? 'השלמת פרטים' : 'ברוך הבא'}</h2>
