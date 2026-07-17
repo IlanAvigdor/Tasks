@@ -476,6 +476,19 @@ const WorkerDragPreview = ({ worker, tasks, viewTime, isOverTrash }) => {
 };
 
 const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) => {
+  const [isAssigning, setIsAssigning] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !event.target.closest('.add-task-btn')) {
+        setIsAssigning(false);
+      }
+    };
+    if (isAssigning) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isAssigning]);
+
   const {
     attributes,
     listeners,
@@ -483,13 +496,13 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
     transform,
     transition,
     isDragging
-  } = useSortable({id: worker.id, disabled: !isAdmin});
+  } = useSortable({id: worker.id, disabled: !isAdmin || isAssigning});
 
   const style = {
     transform: isDragging ? null : CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
-    zIndex: isDragging ? 1000 : 1,
+    zIndex: (isDragging || isAssigning) ? 1000 : 1,
     touchAction: (isDragging) ? 'none' : 'pan-y',
     userSelect: 'none',
     WebkitUserSelect: 'none',
@@ -500,6 +513,7 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
 
   const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
   const doneCount = workerTasks.filter(t => t.isDone).length;
+  const availableTasks = tasks.filter(t => t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning'));
 
   return (
     <div 
@@ -520,7 +534,27 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
             <span className="status-badge done">{doneCount} הושלמו</span>
           </div>
         </div>
+        {isAdmin && (
+          <button className="add-task-btn" onClick={(e) => { e.stopPropagation(); setIsAssigning(!isAssigning); }}>📋</button>
+        )}
       </div>
+
+      {isAssigning && (
+        <div className="assignment-dropdown" ref={dropdownRef} style={{ top: '50px', right: '10px' }}>
+          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            {availableTasks.map(task => (
+              <div key={task.id} className="worker-option" onClick={() => onToggleAssignment(task.id, worker.name)}>
+                <div className={`custom-checkbox ${task.assignees?.includes(worker.name) ? 'checked' : ''}`} style={{ width: '18px', height: '18px' }}>
+                  {task.assignees?.includes(worker.name) && <span style={{ fontSize: '10px' }}>✓</span>}
+                </div>
+                <span>{task.title}</span>
+              </div>
+            ))}
+            {availableTasks.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.5, padding: '8px' }}>אין משימות לזמן זה</p>}
+          </div>
+          <button className="dropdown-finish-btn" onClick={() => setIsAssigning(false)}>סיום</button>
+        </div>
+      )}
 
       {workerTasks.length > 0 && (
         <div className="person-tasks">
@@ -945,7 +979,7 @@ const App = () => {
 
       <div className="app-version">v{APP_VERSION}</div>
 
-      {isAdmin && <button className="add-task-fab" onClick={() => setIsFormOpen(true)}>+</button>}
+      {isAdmin && activeTab === 'tasks' && <button className="add-task-fab" onClick={() => setIsFormOpen(true)}>+</button>}
 
       {isFormOpen && (
         <div className="compact-form-overlay" onClick={() => setIsFormOpen(false)}>
@@ -977,11 +1011,11 @@ const App = () => {
             const diffX = e.changedTouches[0].clientX - swipeStartX.current;
             if (Math.abs(diffX) > 50) {
               if (diffX > 0) {
-                // Swipe Right -> people tab (right)
-                setActiveTab('people');
-              } else {
-                // Swipe Left -> tasks tab (left)
+                // Swipe Right -> tasks tab (left)
                 setActiveTab('tasks');
+              } else {
+                // Swipe Left -> people tab (right)
+                setActiveTab('people');
               }
             }
           }}
