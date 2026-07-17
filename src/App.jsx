@@ -619,6 +619,19 @@ const App = () => {
     document.body.className = `theme-${viewTime}`;
   }, [viewTime]);
 
+  useEffect(() => {
+    if (!loading && userName && workerTeam) {
+      const exists = registeredWorkers.some(w => w.name === userName);
+      if (!exists) {
+        addDoc(collection(db, "workers"), {
+          name: userName,
+          team: workerTeam,
+          createdAt: new Date()
+        }).catch(e => console.error("Error auto-registering worker:", e));
+      }
+    }
+  }, [loading, userName, workerTeam, registeredWorkers]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 15 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
