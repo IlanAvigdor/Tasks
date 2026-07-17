@@ -128,7 +128,7 @@ const TrashBin = ({ isAdmin, onLongPress }) => {
       setTimeout(() => {
         onLongPress();
       }, 50);
-    }, 3000);
+    }, 1500);
   };
 
   const endPress = () => {
