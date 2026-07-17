@@ -873,6 +873,13 @@ const App = () => {
 
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
+  const workersByTeam = registeredWorkers.reduce((acc, worker) => {
+    const teamName = worker.team || 'צוות כללי';
+    if (!acc[teamName]) acc[teamName] = [];
+    acc[teamName].push(worker);
+    return acc;
+  }, {});
+
   return (
     <div className="app-shell">
       
@@ -946,21 +953,38 @@ const App = () => {
               onDragEnd={handleWorkerDragEnd} 
               onDragCancel={handleWorkerDragCancel}
             >
-              <div className="people-list">
-                <SortableContext items={registeredWorkers.map(w => w.id)} strategy={verticalListSortingStrategy}>
-                  {registeredWorkers.map(worker => (
-                    <WorkerCard 
-                      key={worker.id} 
-                      worker={worker} 
-                      tasks={tasks} 
-                      isAdmin={isAdmin} 
-                      viewTime={viewTime} 
-                      onToggleAssignment={toggleAssignment} 
-                    />
-                  ))}
-                </SortableContext>
-                {registeredWorkers.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין עובדים רשומים כרגע</p>}
-              </div>
+              {Object.keys(workersByTeam).map(teamName => (
+                <div key={teamName} className="team-section">
+                  <div className="team-title">
+                    <span>
+                      {teamName === 'סוללה' ? '🔋' : teamName === 'אגם' ? '💧' : teamName === 'פלסם' ? '🛡️' : '👥'}
+                    </span>
+                    <span>{teamName}</span>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 'normal', marginRight: '6px' }}>
+                      ({workersByTeam[teamName].length} חברים)
+                    </span>
+                  </div>
+                  <div className="team-workers-grid">
+                    <SortableContext items={workersByTeam[teamName].map(w => w.id)} strategy={verticalListSortingStrategy}>
+                      {workersByTeam[teamName].map(worker => (
+                        <WorkerCard 
+                          key={worker.id} 
+                          worker={worker} 
+                          tasks={tasks} 
+                          isAdmin={isAdmin} 
+                          viewTime={viewTime} 
+                          onToggleAssignment={toggleAssignment} 
+                        />
+                      ))}
+                    </SortableContext>
+                  </div>
+                </div>
+              ))}
+              {registeredWorkers.length === 0 && (
+                <div className="team-section" style={{ textAlign: 'center', padding: '2rem 0' }}>
+                  <p style={{ opacity: 0.6 }}>אין עובדים רשומים כרגע</p>
+                </div>
+              )}
               <TrashBin isAdmin={isAdmin} onLongPress={handleClearAllWorkers} />
               <DragOverlay dropAnimation={null}>
                 {activeWorkerId ? (
