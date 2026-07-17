@@ -104,19 +104,85 @@ const TaskDragPreview = ({ task, isAdmin, isOverTrash }) => {
   );
 };
 
-const TrashBin = ({ isAdmin }) => {
+const TrashBin = ({ isAdmin, onLongPress }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'trash-bin',
   });
+  const [isPressing, setIsPressing] = useState(false);
+  const timerRef = useRef(null);
+
+  const startPress = (e) => {
+    // We only trigger long press for admins
+    if (!isAdmin) return;
+    
+    // Clear any existing timer to avoid leaks or double-activation on touch devices
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
+    setIsPressing(true);
+    timerRef.current = setTimeout(() => {
+      setIsPressing(false);
+      timerRef.current = null;
+      // Delay the blocking prompt to allow the UI to update first and prevent flicker
+      setTimeout(() => {
+        onLongPress();
+      }, 50);
+    }, 3000);
+  };
+
+  const endPress = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setIsPressing(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   if (!isAdmin) return null;
 
   return (
     <div 
       ref={setNodeRef} 
-      className={`trash-bin-fab ${isOver ? 'active' : ''}`}
+      className={`trash-bin-fab ${isOver ? 'active' : ''} ${isPressing ? 'pressing' : ''}`}
+      onMouseDown={startPress}
+      onMouseUp={endPress}
+      onMouseLeave={endPress}
+      onTouchStart={startPress}
+      onTouchEnd={endPress}
+      onTouchCancel={endPress}
+      style={{
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        touchAction: 'none'
+      }}
     >
-      🗑️
+      {isPressing ? (
+        <svg 
+          className="red-clock-svg" 
+          viewBox="0 0 24 24" 
+          width="28" 
+          height="28" 
+          fill="none" 
+          stroke="#ef4444" 
+          strokeWidth="2.5" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      ) : (
+        '🗑️'
+      )}
     </div>
   );
 };
@@ -375,6 +441,40 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   );
 };
 
+const WorkerDragPreview = ({ worker, tasks, viewTime, isOverTrash }) => {
+  if (!worker) return null;
+
+  const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
+  const doneCount = workerTasks.filter(t => t.isDone).length;
+
+  const style = {
+    opacity: 0.85,
+    transform: 'none',
+    transition: 'scale 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    scale: isOverTrash ? 0.6 : 0.9,
+    transformOrigin: 'center center',
+    pointerEvents: 'none',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
+  };
+
+  return (
+    <div className="person-card dragging" style={style}>
+      <div className="person-header">
+        <div className="person-avatar">{worker.name.charAt(0)}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700 }}>
+            {worker.name} <span style={{ fontSize: '0.8rem', fontWeight: 400, opacity: 0.6 }}>- {worker.team}</span>
+          </div>
+          <div className="status-badges">
+            <span className="status-badge pending">{workerTasks.length - doneCount} בביצוע</span>
+            <span className="status-badge done">{doneCount} הושלמו</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) => {
   const [isAssigning, setIsAssigning] = useState(false);
   const dropdownRef = useRef(null);
@@ -389,12 +489,40 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isAssigning]);
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({id: worker.id, disabled: !isAdmin || isAssigning});
+
+  const style = {
+    transform: isDragging ? null : CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.35 : 1,
+    zIndex: (isDragging || isAssigning) ? 1000 : 1,
+    touchAction: (isDragging) ? 'none' : 'pan-y',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none',
+    pointerEvents: isDragging ? 'none' : 'auto',
+    position: 'relative'
+  };
+
   const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
   const doneCount = workerTasks.filter(t => t.isDone).length;
   const availableTasks = tasks.filter(t => t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning'));
 
   return (
-    <div className="person-card" style={{ position: 'relative', zIndex: isAssigning ? 1000 : 1 }}>
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={`person-card ${isDragging ? 'dragging' : ''}`}
+      {...attributes}
+      {...listeners}
+    >
       <div className="person-header">
         <div className="person-avatar">{worker.name.charAt(0)}</div>
         <div style={{ flex: 1 }}>
@@ -407,7 +535,7 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
           </div>
         </div>
         {isAdmin && (
-          <button className="add-task-btn" onClick={() => setIsAssigning(!isAssigning)}>📋</button>
+          <button className="add-task-btn" onClick={(e) => { e.stopPropagation(); setIsAssigning(!isAssigning); }}>📋</button>
         )}
       </div>
 
@@ -459,7 +587,9 @@ const App = () => {
   const [registrationTeam, setRegistrationTeam] = useState('');
   const [showNav, setShowNav] = useState(true);
   const [activeId, setActiveId] = useState(null);
+  const [activeWorkerId, setActiveWorkerId] = useState(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', message: '', action: null });
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
@@ -599,6 +729,36 @@ const App = () => {
     document.body.style.touchAction = '';
   };
 
+  const handleWorkerDragStart = (event) => {
+    setActiveWorkerId(event.active.id);
+    if (navigator.vibrate) navigator.vibrate(50);
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+  };
+
+  const handleWorkerDragEnd = async (event) => {
+    setActiveWorkerId(null);
+    setIsOverTrash(false);
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+    const { active, over } = event;
+    
+    if (over && over.id === 'trash-bin') {
+      const workerToDelete = registeredWorkers.find(w => w.id === active.id);
+      if (workerToDelete && window.confirm(`האם אתה בטוח שברצונך למחוק את ${workerToDelete.name}?`)) {
+        await deleteWorker(active.id);
+      }
+      return;
+    }
+  };
+
+  const handleWorkerDragCancel = () => {
+    setActiveWorkerId(null);
+    setIsOverTrash(false);
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+  };
+
   const toggleStatus = async (task) => {
     if (task.isVerified && !isAdmin) return;
     playNotification();
@@ -634,6 +794,49 @@ const App = () => {
   const deleteTask = async (id) => {
     try { await deleteDoc(doc(db, "tasks", id)); } 
     catch (e) { console.error("Error deleting: ", e); }
+  };
+
+  const deleteWorker = async (id) => {
+    try { await deleteDoc(doc(db, "workers", id)); } 
+    catch (e) { console.error("Error deleting worker: ", e); }
+  };
+
+  const handleClearAllTasks = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'tasks',
+      message: 'האם אתה בטוח שברצונך למחוק את כל המשימות?',
+      action: async () => {
+        try {
+          const batch = writeBatch(db);
+          tasks.forEach(task => {
+            batch.delete(doc(db, "tasks", task.id));
+          });
+          await batch.commit();
+        } catch (e) {
+          console.error("Error clearing all tasks: ", e);
+        }
+      }
+    });
+  };
+
+  const handleClearAllWorkers = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'workers',
+      message: 'האם אתה בטוח שברצונך למחוק את כל האנשים (התורנים) הרשומים?',
+      action: async () => {
+        try {
+          const batch = writeBatch(db);
+          registeredWorkers.forEach(worker => {
+            batch.delete(doc(db, "workers", worker.id));
+          });
+          await batch.commit();
+        } catch (e) {
+          console.error("Error clearing all workers: ", e);
+        }
+      }
+    });
   };
 
 
@@ -707,7 +910,7 @@ const App = () => {
                   );
                 })}
               </div>
-              <TrashBin isAdmin={isAdmin} />
+              <TrashBin isAdmin={isAdmin} onLongPress={handleClearAllTasks} />
               <DragOverlay dropAnimation={null}>
                 {activeId ? (
                   <TaskDragPreview 
@@ -721,19 +924,41 @@ const App = () => {
           </div>
         ) : (
           <div className="people-view">
-            <div className="people-list">
-              {registeredWorkers.map(worker => (
-                <WorkerCard 
-                  key={worker.id} 
-                  worker={worker} 
-                  tasks={tasks} 
-                  isAdmin={isAdmin} 
-                  viewTime={viewTime} 
-                  onToggleAssignment={toggleAssignment} 
-                />
-              ))}
+            <DndContext 
+              sensors={sensors} 
+              collisionDetection={closestCenter} 
+              onDragStart={handleWorkerDragStart} 
+              onDragOver={handleDragOver} 
+              onDragEnd={handleWorkerDragEnd} 
+              onDragCancel={handleWorkerDragCancel}
+            >
+              <div className="people-list">
+                <SortableContext items={registeredWorkers.map(w => w.id)} strategy={verticalListSortingStrategy}>
+                  {registeredWorkers.map(worker => (
+                    <WorkerCard 
+                      key={worker.id} 
+                      worker={worker} 
+                      tasks={tasks} 
+                      isAdmin={isAdmin} 
+                      viewTime={viewTime} 
+                      onToggleAssignment={toggleAssignment} 
+                    />
+                  ))}
+                </SortableContext>
+              </div>
               {registeredWorkers.length === 0 && <p>אין עובדים רשומים כרגע</p>}
-            </div>
+              <TrashBin isAdmin={isAdmin} onLongPress={handleClearAllWorkers} />
+              <DragOverlay dropAnimation={null}>
+                {activeWorkerId ? (
+                  <WorkerDragPreview 
+                    worker={registeredWorkers.find(w => w.id === activeWorkerId)} 
+                    tasks={tasks} 
+                    viewTime={viewTime}
+                    isOverTrash={isOverTrash} 
+                  />
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           </div>
         )}
       </main>
@@ -819,6 +1044,32 @@ const App = () => {
                 }
               }}>התחל</button>
            </div>
+        </div>
+      )}
+      {confirmModal.isOpen && (
+        <div className="compact-form-overlay" onClick={() => setConfirmModal({ isOpen: false, type: '', message: '', action: null })}>
+          <div className="task-item compact-form" onClick={e => e.stopPropagation()} style={{ padding: '2rem', textAlign: 'center', borderRadius: '24px', flexDirection: 'column', alignItems: 'stretch' }}>
+            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: '700' }}>אישור מחיקה</h3>
+            <p style={{ marginBottom: '2rem', color: 'var(--text-main)', fontSize: '1rem', lineHeight: '1.5' }}>{confirmModal.message}</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                className="btn btn-save" 
+                style={{ background: '#ef4444', color: 'white' }}
+                onClick={() => {
+                  confirmModal.action();
+                  setConfirmModal({ isOpen: false, type: '', message: '', action: null });
+                }}
+              >
+                מחק הכל
+              </button>
+              <button 
+                className="btn btn-cancel" 
+                onClick={() => setConfirmModal({ isOpen: false, type: '', message: '', action: null })}
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
