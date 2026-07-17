@@ -651,7 +651,7 @@ const App = () => {
   const getFilteredTasks = (time) => {
     const timeFiltered = tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
     if (isAdmin) return timeFiltered;
-    return timeFiltered.filter(t => t.assignees?.includes(userName));
+    return timeFiltered.filter(t => t.assignees?.includes(userName) && !t.isVerified);
   };
 
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
