@@ -480,7 +480,7 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !event.target.closest('.add-task-btn')) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !event.target.closest('.person-card')) {
         setIsAssigning(false);
       }
     };
@@ -507,7 +507,8 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
     WebkitUserSelect: 'none',
     WebkitTouchCallout: 'none',
     pointerEvents: isDragging ? 'none' : 'auto',
-    position: 'relative'
+    position: 'relative',
+    cursor: isAdmin ? 'pointer' : 'default'
   };
 
   const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
@@ -521,6 +522,14 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
       className={`person-card ${isDragging ? 'dragging' : ''}`}
       {...attributes}
       {...listeners}
+      onClick={(e) => {
+        if (!isAdmin) return;
+        // Don't toggle the assignment state if we clicked inside the dropdown itself
+        if (dropdownRef.current && dropdownRef.current.contains(e.target)) {
+          return;
+        }
+        setIsAssigning(prev => !prev);
+      }}
     >
       <div className="person-header">
         <div style={{ flex: 1 }}>
@@ -532,9 +541,6 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
             <span className="status-badge done">{doneCount} הושלמו</span>
           </div>
         </div>
-        {isAdmin && (
-          <button className="add-task-btn" onClick={(e) => { e.stopPropagation(); setIsAssigning(!isAssigning); }}>📋</button>
-        )}
       </div>
 
       {isAssigning && (
