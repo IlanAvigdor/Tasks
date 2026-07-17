@@ -997,11 +997,11 @@ const App = () => {
             const diffX = e.changedTouches[0].clientX - swipeStartX.current;
             if (Math.abs(diffX) > 50) {
               if (diffX > 0) {
-                // Swipe Right -> tasks tab (left)
-                setActiveTab('tasks');
-              } else {
-                // Swipe Left -> people tab (right)
+                // Swipe Right -> people tab (right)
                 setActiveTab('people');
+              } else {
+                // Swipe Left -> tasks tab (left)
+                setActiveTab('tasks');
               }
             }
           }}
