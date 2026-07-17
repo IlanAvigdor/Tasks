@@ -945,8 +945,8 @@ const App = () => {
                     />
                   ))}
                 </SortableContext>
+                {registeredWorkers.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין עובדים רשומים כרגע</p>}
               </div>
-              {registeredWorkers.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין עובדים רשומים כרגע</p>}
               <TrashBin isAdmin={isAdmin} onLongPress={handleClearAllWorkers} />
               <DragOverlay dropAnimation={null}>
                 {activeWorkerId ? (
