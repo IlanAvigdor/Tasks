@@ -275,21 +275,25 @@ body {
     -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--glass-border);
     display: flex;
-    justify-content: space-around;
     align-items: center;
     z-index: 1000;
+    touch-action: pan-y;
 }
 
 .nav-tab {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     color: var(--text-muted);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: color 0.3s;
     font-size: 0.8rem;
     font-weight: 600;
+    z-index: 2;
+    height: 100%;
 }
 
 .nav-tab.active {
@@ -298,6 +302,31 @@ body {
 
 .nav-tab i {
     font-size: 1.4rem;
+}
+
+.nav-slider {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    width: calc(50% - 12px);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: 1;
+}
+
+body.theme-evening .nav-slider {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-slider.slide-people {
+    right: 6px;
+    transform: translateX(0);
+}
+
+.nav-slider.slide-tasks {
+    right: 6px;
+    transform: translateX(calc(-100% - 12px));
 }
 
 /* Progress indicator */

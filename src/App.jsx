@@ -946,7 +946,7 @@ const App = () => {
                   ))}
                 </SortableContext>
               </div>
-              {registeredWorkers.length === 0 && <p>אין עובדים רשומים כרגע</p>}
+              {registeredWorkers.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין עובדים רשומים כרגע</p>}
               <TrashBin isAdmin={isAdmin} onLongPress={handleClearAllWorkers} />
               <DragOverlay dropAnimation={null}>
                 {activeWorkerId ? (
@@ -988,7 +988,25 @@ const App = () => {
       )}
 
       {isAdmin && (
-        <nav className="bottom-nav">
+        <nav 
+          className="bottom-nav"
+          onTouchStart={(e) => {
+            swipeStartX.current = e.touches[0].clientX;
+          }}
+          onTouchEnd={(e) => {
+            const diffX = e.changedTouches[0].clientX - swipeStartX.current;
+            if (Math.abs(diffX) > 50) {
+              if (diffX > 0) {
+                // Swipe Right -> tasks tab (left)
+                setActiveTab('tasks');
+              } else {
+                // Swipe Left -> people tab (right)
+                setActiveTab('people');
+              }
+            }
+          }}
+        >
+          <div className={`nav-slider ${activeTab === 'people' ? 'slide-people' : 'slide-tasks'}`} />
           <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
             <i style={{fontSize:'1.5rem'}}>👤</i> <span>אנשים</span>
           </div>
