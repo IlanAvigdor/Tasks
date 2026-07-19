@@ -677,6 +677,7 @@ const App = () => {
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', message: '', action: null });
   const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
+  const [workersLoading, setWorkersLoading] = useState(true);
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
@@ -706,17 +707,17 @@ const App = () => {
   }, [viewTime]);
 
   useEffect(() => {
-    if (!loading && userName && workerTeam) {
-      const exists = registeredWorkers.some(w => w.name === userName);
+    if (!loading && !workersLoading && userName && workerTeam) {
+      const exists = registeredWorkers.some(w => w.name && w.name.trim().toLowerCase() === userName.trim().toLowerCase());
       if (!exists) {
         addDoc(collection(db, "workers"), {
-          name: userName,
+          name: userName.trim(),
           team: workerTeam,
           createdAt: new Date()
         }).catch(e => console.error("Error auto-registering worker:", e));
       }
     }
-  }, [loading, userName, workerTeam, registeredWorkers]);
+  }, [loading, workersLoading, userName, workerTeam, registeredWorkers]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 15 } }),
@@ -740,12 +741,12 @@ const App = () => {
     const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
       const taskList = [];
       snapshot.docChanges().forEach(change => {
-        const data = change.doc.data();
-        const id = change.doc.id;
-        if (change.type === 'modified' && isAdmin && !isMuted && !isInitialLoad.current) {
-          if (data.isDone && !prevDoneStatus.current[id]) playNotification();
-        }
-        prevDoneStatus.current[id] = data.isDone;
+         const data = change.doc.data();
+         const id = change.doc.id;
+         if (change.type === 'modified' && isAdmin && !isMuted && !isInitialLoad.current) {
+           if (data.isDone && !prevDoneStatus.current[id]) playNotification();
+         }
+         prevDoneStatus.current[id] = data.isDone;
       });
       snapshot.forEach((doc) => taskList.push({ id: doc.id, ...doc.data() }));
       setTasks(taskList);
@@ -757,6 +758,7 @@ const App = () => {
       const workersList = [];
       snapshot.forEach((doc) => workersList.push({ id: doc.id, ...doc.data() }));
       setRegisteredWorkers(workersList);
+      setWorkersLoading(false);
     });
 
     return () => { unsubscribe(); workersUnsubscribe(); };
@@ -959,7 +961,19 @@ const App = () => {
 
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
-  const workersByTeam = registeredWorkers.reduce((acc, worker) => {
+  const uniqueWorkers = [];
+  const seenNames = new Set();
+  registeredWorkers.forEach(w => {
+    if (w.name) {
+      const key = w.name.trim().toLowerCase();
+      if (!seenNames.has(key)) {
+        seenNames.add(key);
+        uniqueWorkers.push(w);
+      }
+    }
+  });
+
+  const workersByTeam = uniqueWorkers.reduce((acc, worker) => {
     const teamName = worker.team || 'צוות כללי';
     if (!acc[teamName]) acc[teamName] = [];
     acc[teamName].push(worker);
@@ -1066,7 +1080,7 @@ const App = () => {
                   </div>
                 </div>
               ))}
-              {registeredWorkers.length === 0 && (
+              {uniqueWorkers.length === 0 && (
                 <div className="team-section" style={{ textAlign: 'center', padding: '2rem 0' }}>
                   <p style={{ opacity: 0.6 }}>אין עובדים רשומים כרגע</p>
                 </div>
@@ -1075,7 +1089,7 @@ const App = () => {
               <DragOverlay dropAnimation={null}>
                 {activeWorkerId ? (
                   <WorkerDragPreview 
-                    worker={registeredWorkers.find(w => w.id === activeWorkerId)} 
+                    worker={uniqueWorkers.find(w => w.id === activeWorkerId)} 
                     tasks={tasks} 
                     viewTime={viewTime}
                     isOverTrash={isOverTrash} 
@@ -1238,7 +1252,7 @@ const App = () => {
           targetId={assignmentModal.targetId}
           onClose={() => setAssignmentModal({ isOpen: false, type: 'task', targetId: null })}
           tasks={tasks}
-          registeredWorkers={registeredWorkers}
+          registeredWorkers={uniqueWorkers}
           onToggleAssignment={toggleAssignment}
           viewTime={viewTime}
         />
