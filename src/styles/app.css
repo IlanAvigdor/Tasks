@@ -171,7 +171,7 @@ body.theme-evening .time-icon {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 8px;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.35rem;
     display: flex;
     align-items: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -234,7 +234,7 @@ body.theme-evening .task-item:hover {
     align-items: center;
     gap: 0.75rem;
     width: 100%;
-    padding: 0.35rem 0.75rem;
+    padding: 0.45rem 0.9rem;
     background: transparent;
     z-index: 1;
     line-height: 1.5;
@@ -249,7 +249,7 @@ body.theme-evening .task-item:hover {
 
 .task-title {
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 1.15rem;
     color: var(--text-main);
 }
 
@@ -282,7 +282,7 @@ body.theme-evening .inline-edit-textarea {
 }
 
 .inline-edit-input {
-    font-size: 1rem;
+    font-size: 1.15rem;
     font-weight: 700;
     padding: 4px 8px;
 }
@@ -684,6 +684,23 @@ body.theme-evening .assignee-tag {
     color: var(--text-muted);
 }
 
+.occupied-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 9999px;
+    color: var(--text-muted);
+    font-weight: 600;
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    display: inline-flex;
+    align-items: center;
+}
+
+body.theme-evening .occupied-badge {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.03);
+}
+
 .add-assignee-btn {
     width: 20px;
     height: 20px;
@@ -837,11 +854,11 @@ body.theme-evening .assignment-item:hover {
 
 /* Status control buttons */
 .status-btn {
-    padding: 0.25rem 0.6rem;
+    padding: 0.32rem 0.72rem;
     border-radius: 6px;
     border: none;
     font-weight: 700;
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
@@ -1051,12 +1068,12 @@ body.theme-evening .btn-accepted {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
+    width: 21px;
+    height: 21px;
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.05);
     color: var(--text-main);
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     user-select: none;

@@ -95,9 +95,9 @@ const TaskDragPreview = ({ task, isAdmin, isOverTrash, currentUserName }) => {
           </div>
           {task.description && <div className="task-desc">{task.description}</div>}
           <div className="task-assignees-row">
-            {task.assignees?.length > 0 && task.assignees.map(name => (
-              <span key={name} className="assignee-tag">{name}</span>
-            ))}
+            {task.assignees?.length > 0 && (
+              <span className="occupied-badge">משויך ({task.assignees.length})</span>
+            )}
           </div>
         </div>
         <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
@@ -395,7 +395,9 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
           )}
 
           <div className="task-assignees-row" style={{position:'relative', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
-            {task.assignees?.length > 0 && task.assignees.map(name => ( <span key={name} className="assignee-tag">{name}</span> ))}
+            {task.assignees?.length > 0 && (
+              <span className="occupied-badge">משויך ({task.assignees.length})</span>
+            )}
             {isAdmin && (
               <button className="add-assignee-btn" onClick={(e) => { 
                 e.stopPropagation(); 
