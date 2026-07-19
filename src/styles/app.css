@@ -620,58 +620,93 @@ body.theme-evening .add-assignee-btn {
     transform: scale(1.1);
 }
 
-/* Dropdown assignment menu */
-.assignment-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    width: 220px;
+/* Assignment Modal Design */
+.assignment-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.assignment-modal {
+    width: 100%;
+    max-width: 480px;
     background: var(--card-bg);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    padding: 12px;
-    margin-top: 8px;
+    border-radius: 28px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+    padding: 2rem;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 1.2rem;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 85vh;
 }
 
-body.theme-evening .assignment-dropdown {
-    background: rgba(15, 23, 42, 0.95);
+body.theme-evening .assignment-modal {
+    background: rgba(15, 23, 42, 0.85);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
 }
 
-.worker-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s;
+.assignment-modal h3 {
+    font-size: 1.3rem;
+    font-weight: 800;
     color: var(--text-main);
 }
 
-.worker-option:hover {
-    background: rgba(0, 0, 0, 0.05);
+.assignment-modal p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
 }
 
-body.theme-evening .worker-option:hover {
+.assignment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    max-height: 40vh;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.assignment-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-main);
+}
+
+body.theme-evening .assignment-item {
     background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.05);
 }
 
-.worker-option span {
-    flex: 1;
-    font-size: 0.9rem;
-    font-weight: 600;
+.assignment-item:hover {
+    background: rgba(255, 255, 255, 0.45);
+    transform: translateY(-1px);
 }
 
-.worker-option .team-tag {
-    font-size: 0.75rem;
-    opacity: 0.6;
+body.theme-evening .assignment-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.assignment-item.selected {
+    border-color: var(--primary);
+    background: rgba(37, 99, 235, 0.05);
 }
 
 .custom-checkbox {
@@ -684,6 +719,7 @@ body.theme-evening .worker-option:hover {
     transition: all 0.2s;
     width: 18px;
     height: 18px;
+    flex-shrink: 0;
 }
 
 .custom-checkbox.checked {
@@ -691,21 +727,21 @@ body.theme-evening .worker-option:hover {
     border-color: var(--primary);
 }
 
-.dropdown-finish-btn {
-    margin-top: 8px;
-    padding: 8px;
-    background: var(--primary);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-weight: 700;
-    cursor: pointer;
-    width: 100%;
-    transition: all 0.2s;
+.assignment-item-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
-.dropdown-finish-btn:hover {
-    filter: brightness(1.1);
+.assignment-item-title {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.assignment-item-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
 }
 
 /* Status control buttons */

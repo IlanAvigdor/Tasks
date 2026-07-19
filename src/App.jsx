@@ -187,16 +187,14 @@ const TrashBin = ({ isAdmin, onLongPress }) => {
   );
 };
 
-const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, registeredWorkers, onToggleAssignment, onToggleStatus }) => {
+const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, onOpenAssignment, onToggleStatus }) => {
   const [isPressing, setIsPressing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [localTitle, setLocalTitle] = useState(task.title);
   const [localDesc, setLocalDesc] = useState(task.description || '');
-  const [isAssigning, setIsAssigning] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const titleRef = useRef(null);
   const descRef = useRef(null);
-  const dropdownRef = useRef(null);
   const containerRef = useRef(null);
 
   // Sync local state when DB updates (only when not actively editing)
@@ -215,16 +213,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     }
   }) : null;
 
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !event.target.closest('.add-assignee-btn')) {
-        setIsAssigning(false);
-      }
-    };
-    if (isAssigning) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isAssigning]);
 
   useEffect(() => {
     if (isEditing && editingField) {
@@ -302,7 +290,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     transition,
     opacity: isDragging ? 0.35 : isPressing ? 0.8 : 1,
     scale: isDragging ? 1 : isPressing ? 0.94 : 1,
-    zIndex: (isDragging || isAssigning || isPressing) ? 1000 : 1,
+    zIndex: (isDragging || isPressing) ? 1000 : 1,
     touchAction: (isDragging || isPressing) ? 'none' : 'pan-y',
     userSelect: 'none',
     WebkitUserSelect: 'none',
@@ -409,27 +397,11 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
             {isAdmin && (
               <button className="add-assignee-btn" onClick={(e) => { 
                 e.stopPropagation(); 
-                setIsAssigning(!isAssigning); 
+                onOpenAssignment(task.id); 
               }}>👤</button>
             )}
             {!task.assignees?.length && !isAdmin && (
               <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>ללא שיוך</span>
-            )}
-
-            {isAssigning && (
-              <div className="assignment-dropdown" ref={dropdownRef} onClick={(e) => e.stopPropagation()}>
-                <div style={{maxHeight:'200px', overflowY:'auto'}}>
-                  {registeredWorkers.map(worker => (
-                    <div key={worker.id} className="worker-option" onClick={() => onToggleAssignment(task.id, worker.name)}>
-                      <div className={`custom-checkbox ${task.assignees?.includes(worker.name) ? 'checked' : ''}`} style={{width:'18px', height:'18px'}}>
-                        {task.assignees?.includes(worker.name) && <span style={{fontSize:'10px'}}>✓</span>}
-                      </div>
-                      <span>{worker.name} <span className="team-tag">({worker.team})</span></span>
-                    </div>
-                  ))}
-                </div>
-                <button className="dropdown-finish-btn" onClick={() => setIsAssigning(false)}>סיום</button>
-              </div>
             )}
           </div>
         </div>
@@ -474,20 +446,7 @@ const WorkerDragPreview = ({ worker, tasks, viewTime, isOverTrash }) => {
   );
 };
 
-const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) => {
-  const [isAssigning, setIsAssigning] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !event.target.closest('.person-card')) {
-        setIsAssigning(false);
-      }
-    };
-    if (isAssigning) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isAssigning]);
-
+const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onOpenAssignment }) => {
   const {
     attributes,
     listeners,
@@ -495,14 +454,14 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
     transform,
     transition,
     isDragging
-  } = useSortable({id: worker.id, disabled: !isAdmin || isAssigning});
+  } = useSortable({id: worker.id, disabled: !isAdmin});
 
   const style = {
     transform: isDragging ? null : CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
-    zIndex: (isDragging || isAssigning) ? 1000 : 1,
-    touchAction: (isDragging) ? 'none' : 'pan-y',
+    zIndex: isDragging ? 1000 : 1,
+    touchAction: isDragging ? 'none' : 'pan-y',
     userSelect: 'none',
     WebkitUserSelect: 'none',
     WebkitTouchCallout: 'none',
@@ -513,7 +472,6 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
 
   const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
   const doneCount = workerTasks.filter(t => t.isDone).length;
-  const availableTasks = tasks.filter(t => t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning'));
 
   return (
     <div 
@@ -524,11 +482,7 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
       {...listeners}
       onClick={(e) => {
         if (!isAdmin) return;
-        // Don't toggle the assignment state if we clicked inside the dropdown itself
-        if (dropdownRef.current && dropdownRef.current.contains(e.target)) {
-          return;
-        }
-        setIsAssigning(prev => !prev);
+        onOpenAssignment(worker.id);
       }}
     >
       <div className="person-header">
@@ -543,23 +497,6 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
         </div>
       </div>
 
-      {isAssigning && (
-        <div className="assignment-dropdown" ref={dropdownRef} style={{ top: '50px', right: '10px' }}>
-          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-            {availableTasks.map(task => (
-              <div key={task.id} className="worker-option" onClick={() => onToggleAssignment(task.id, worker.name)}>
-                <div className={`custom-checkbox ${task.assignees?.includes(worker.name) ? 'checked' : ''}`} style={{ width: '18px', height: '18px' }}>
-                  {task.assignees?.includes(worker.name) && <span style={{ fontSize: '10px' }}>✓</span>}
-                </div>
-                <span>{task.title}</span>
-              </div>
-            ))}
-            {availableTasks.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.5, padding: '8px' }}>אין משימות לזמן זה</p>}
-          </div>
-          <button className="dropdown-finish-btn" onClick={() => setIsAssigning(false)}>סיום</button>
-        </div>
-      )}
-
       {workerTasks.length > 0 && (
         <div className="person-tasks">
           {workerTasks.map(task => (
@@ -572,6 +509,93 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onToggleAssignment }) =>
       )}
     </div>
   );
+};
+
+const AssignmentModal = ({ isOpen, type, targetId, onClose, tasks, registeredWorkers, onToggleAssignment, viewTime }) => {
+  if (!isOpen) return null;
+
+  if (type === 'task') {
+    const task = tasks.find(t => t.id === targetId);
+    if (!task) return null;
+
+    return (
+      <div className="assignment-modal-overlay" onClick={onClose}>
+        <div className="assignment-modal" onClick={e => e.stopPropagation()}>
+          <h3>שיוך עובדים למשימה</h3>
+          <p style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--primary)' }}>{task.title}</p>
+          {task.description && <p style={{ fontSize: '0.85rem' }}>{task.description}</p>}
+          
+          <div className="assignment-list">
+            {registeredWorkers.map(worker => {
+              const isAssigned = task.assignees?.includes(worker.name);
+              return (
+                <div 
+                  key={worker.id} 
+                  className={`assignment-item ${isAssigned ? 'selected' : ''}`}
+                  onClick={() => onToggleAssignment(task.id, worker.name)}
+                >
+                  <div className={`custom-checkbox ${isAssigned ? 'checked' : ''}`}>
+                    {isAssigned && <span>✓</span>}
+                  </div>
+                  <div className="assignment-item-text">
+                    <span className="assignment-item-title">{worker.name}</span>
+                    <span className="assignment-item-subtitle">צוות: {worker.team}</span>
+                  </div>
+                </div>
+              );
+            })}
+            {registeredWorkers.length === 0 && (
+              <p style={{ textAlign: 'center', opacity: 0.5, padding: '1rem' }}>אין עובדים רשומים במערכת</p>
+            )}
+          </div>
+
+          <button className="btn btn-save" style={{ width: '100%', marginTop: '1rem' }} onClick={onClose}>סיום</button>
+        </div>
+      </div>
+    );
+  } else {
+    // Worker type
+    const worker = registeredWorkers.find(w => w.id === targetId);
+    if (!worker) return null;
+
+    const availableTasks = tasks.filter(t => t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning'));
+
+    return (
+      <div className="assignment-modal-overlay" onClick={onClose}>
+        <div className="assignment-modal" onClick={e => e.stopPropagation()}>
+          <h3>שיוך משימות לעובד</h3>
+          <p style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--primary)' }}>{worker.name} ({worker.team})</p>
+          <p style={{ fontSize: '0.85rem' }}>בחר את המשימות לביצוע בזמן: <strong>{viewTime === 'morning' ? 'בוקר' : viewTime === 'noon' ? 'צהריים' : 'ערב'}</strong></p>
+
+          <div className="assignment-list">
+            {availableTasks.map(task => {
+              const isAssigned = task.assignees?.includes(worker.name);
+              return (
+                <div 
+                  key={task.id} 
+                  className={`assignment-item ${isAssigned ? 'selected' : ''}`}
+                  onClick={() => onToggleAssignment(task.id, worker.name)}
+                >
+                  <div className={`custom-checkbox ${isAssigned ? 'checked' : ''}`}>
+                    {isAssigned && <span>✓</span>}
+                  </div>
+                  <div className="assignment-item-text">
+                    <span className="assignment-item-title">{task.title}</span>
+                    {task.description && <span className="assignment-item-subtitle">{task.description}</span>}
+                  </div>
+                </div>
+              );
+            })}
+            {availableTasks.length === 0 && (
+              <p style={{ textAlign: 'center', opacity: 0.5, padding: '1rem' }}>אין משימות להצגה בזמן זה</p>
+            )}
+          </div>
+
+          <button className="btn btn-save" style={{ width: '100%', marginTop: '1rem' }} onClick={onClose}>סיום</button>
+        </div>
+      </div>
+    );
+  }
 };
 
 const App = () => {
@@ -595,6 +619,7 @@ const App = () => {
   const [activeWorkerId, setActiveWorkerId] = useState(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', message: '', action: null });
+  const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
@@ -926,7 +951,7 @@ const App = () => {
                             isSelected={selectedTaskId === task.id}
                             onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : null}
                           onVerify={verifyTask} onDelete={deleteTask}
-                          registeredWorkers={registeredWorkers} onToggleAssignment={toggleAssignment}
+                          onOpenAssignment={(taskId) => setAssignmentModal({ isOpen: true, type: 'task', targetId: taskId })}
                           onToggleStatus={toggleStatus} />
                         ))}
                       </SortableContext>
@@ -977,7 +1002,7 @@ const App = () => {
                           tasks={tasks} 
                           isAdmin={isAdmin} 
                           viewTime={viewTime} 
-                          onToggleAssignment={toggleAssignment} 
+                          onOpenAssignment={(workerId) => setAssignmentModal({ isOpen: true, type: 'worker', targetId: workerId })} 
                         />
                       ))}
                     </SortableContext>
@@ -1148,6 +1173,18 @@ const App = () => {
             </div>
           </div>
         </div>
+      )}
+      {assignmentModal.isOpen && (
+        <AssignmentModal 
+          isOpen={assignmentModal.isOpen}
+          type={assignmentModal.type}
+          targetId={assignmentModal.targetId}
+          onClose={() => setAssignmentModal({ isOpen: false, type: 'task', targetId: null })}
+          tasks={tasks}
+          registeredWorkers={registeredWorkers}
+          onToggleAssignment={toggleAssignment}
+          viewTime={viewTime}
+        />
       )}
     </div>
   );
