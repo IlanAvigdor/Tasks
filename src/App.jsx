@@ -678,6 +678,7 @@ const App = () => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', message: '', action: null });
   const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
   const [workersLoading, setWorkersLoading] = useState(true);
+  const [hideAssigned, setHideAssigned] = useState(false);
   
   const isInitialLoad = useRef(true);
   const prevDoneStatus = useRef({});
@@ -954,8 +955,13 @@ const App = () => {
 
 
   const getFilteredTasks = (time) => {
-    const timeFiltered = tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
-    if (isAdmin) return timeFiltered;
+    let timeFiltered = tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
+    if (isAdmin) {
+      if (hideAssigned) {
+        return timeFiltered.filter(t => !t.assignees || t.assignees.length === 0);
+      }
+      return timeFiltered;
+    }
     return timeFiltered.filter(t => t.assignees?.includes(userName) && !t.isVerified);
   };
 
@@ -994,6 +1000,17 @@ const App = () => {
           🌙 <span>ערב</span>
         </div>
       </nav>
+
+      {isAdmin && activeTab === 'tasks' && (
+        <div className="filter-bar">
+          <button 
+            className={`btn-filter ${hideAssigned ? 'active' : ''}`}
+            onClick={() => setHideAssigned(!hideAssigned)}
+          >
+            {hideAssigned ? '👁️ הצג משימות משויכות' : '👁️‍🗨️ הסתר משימות משויכות'}
+          </button>
+        </div>
+      )}
 
       <main className="container">
         {activeTab === 'tasks' ? (
