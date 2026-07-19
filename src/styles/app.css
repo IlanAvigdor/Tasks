@@ -16,11 +16,18 @@
     --primary: var(--morning-accent);
     --bg-1: var(--morning-bg-1);
     --bg-2: var(--morning-bg-2);
-    --card-bg: rgba(255, 255, 255, 0.45);
+    --card-bg: #ffffff;
     --text-main: #1e293b;
     --text-muted: #64748b;
     --glass-border: rgba(255, 255, 255, 0.5);
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+
+    /* Solid Opaque Status Colors */
+    --unassigned-bg: #f8fafc;
+    --pending-bg: #ffffff;
+    --inprogress-bg: #fffbeb;
+    --done-bg: #f0fdf4;
+    --verified-bg: #ecfeff;
 }
 
 body.theme-morning {
@@ -28,9 +35,16 @@ body.theme-morning {
     --bg-image: url('/backgrounds/morning.png');
     --text-main: #0f172a;
     --text-muted: #475569;
-    --card-bg: rgba(255, 255, 255, 0.7);
+    --card-bg: #ffffff;
     --glass-border: rgba(255, 255, 255, 0.6);
     --glass-shadow: 0 10px 30px rgba(37, 99, 235, 0.06);
+
+    /* Opaque Status Colors */
+    --unassigned-bg: #f1f5f9;
+    --pending-bg: #ffffff;
+    --inprogress-bg: #fef3c7;
+    --done-bg: #dcfce7;
+    --verified-bg: #ecfeff;
 }
 
 body.theme-noon {
@@ -38,9 +52,16 @@ body.theme-noon {
     --bg-image: url('/backgrounds/noon.png');
     --text-main: #1e293b;
     --text-muted: #475569;
-    --card-bg: rgba(255, 255, 255, 0.75);
+    --card-bg: #ffffff;
     --glass-border: rgba(255, 255, 255, 0.6);
     --glass-shadow: 0 10px 30px rgba(217, 119, 6, 0.06);
+
+    /* Opaque Status Colors */
+    --unassigned-bg: #f8fafc;
+    --pending-bg: #ffffff;
+    --inprogress-bg: #fffbeb;
+    --done-bg: #f0fdf4;
+    --verified-bg: #e0f7fa;
 }
 
 body.theme-evening {
@@ -48,9 +69,16 @@ body.theme-evening {
     --bg-image: url('/backgrounds/evening.png');
     --text-main: #f8fafc;
     --text-muted: #cbd5e1;
-    --card-bg: rgba(15, 23, 42, 0.6);
+    --card-bg: #1e293b;
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+
+    /* Opaque Status Colors */
+    --unassigned-bg: #334155;
+    --pending-bg: #1e293b;
+    --inprogress-bg: #451a03;
+    --done-bg: #064e3b;
+    --verified-bg: #083344;
 }
 
 * {
@@ -167,27 +195,27 @@ body.theme-evening .time-icon {
 }
 
 .task-item.status-unassigned {
-    background: rgba(148, 163, 184, 0.08);
+    background: var(--unassigned-bg);
 }
 .task-item.status-unassigned::before { background-color: #94a3b8; }
 
 .task-item.status-pending {
-    background: var(--card-bg);
+    background: var(--pending-bg);
 }
 .task-item.status-pending::before { background-color: #3b82f6; }
 
 .task-item.status-in-progress {
-    background: rgba(245, 158, 11, 0.05);
+    background: var(--inprogress-bg);
 }
 .task-item.status-in-progress::before { background-color: #f59e0b; }
 
 .task-item.status-done {
-    background: rgba(16, 185, 129, 0.05);
+    background: var(--done-bg);
 }
 .task-item.status-done::before { background-color: #10b981; }
 
 .task-item.status-verified {
-    background: rgba(6, 182, 212, 0.05);
+    background: var(--verified-bg);
     opacity: 0.85;
 }
 .task-item.status-verified::before { background-color: #06b6d4; }
@@ -453,18 +481,13 @@ body.theme-evening .nav-slider {
     flex-direction: column;
     align-items: stretch;
     padding: 1rem 1.2rem;
-    background: rgba(255, 255, 255, 0.35);
+    background: var(--card-bg);
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid var(--glass-border);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
-}
-
-body.theme-evening .person-card {
-    background: rgba(0, 0, 0, 0.15);
-    border-color: rgba(255, 255, 255, 0.05);
 }
 
 .person-card:hover {
