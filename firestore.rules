@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Check if user is logged in anonymously
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Check if user's UID exists in the whitelist_uids index
+    function isWhitelisted() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/whitelist_uids/$(request.auth.uid));
+    }
+
+    // Helper: Retrieve the user's name from their whitelist_uids document
+    function getUserName() {
+      return get(/databases/$(database)/documents/whitelist_uids/$(request.auth.uid)).data.name;
+    }
+
+    // Helper: Check if the user is designated as the administrator
+    function isAdmin() {
+      return isWhitelisted() && getUserName() == 'אילן אביגדור';
+    }
+
+    // 1. Whitelist rules
+    match /whitelist/{name} {
+      // Anyone can look up a name to see if it is in the whitelist (for registration check)
+      allow read: if true;
+      
+      // A user can activate their whitelist document if it hasn't been bound yet
+      allow update: if isAuthenticated() && (resource.data.isActivated == false || resource.data.uid == request.auth.uid);
+      
+      // Only the admin can create or delete whitelist records
+      allow create, delete: if isAdmin();
+    }
+
+    match /whitelist_uids/{uid} {
+      // Users can read/write their own UID mapping doc during registration
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // 2. Tasks rules
+    match /tasks/{taskId} {
+      // Whitelisted members of the battalion can read tasks
+      allow read: if isWhitelisted();
+      
+      // Only the admin can create or delete tasks
+      allow create, delete: if isAdmin();
+      
+      // Whitelisted members can update task status and assignees
+      allow update: if isWhitelisted();
+    }
+
+    // 3. Workers rules (registered list for dropdowns/views)
+    match /workers/{workerId} {
+      allow read: if isWhitelisted();
+      
+      // Users can write/create their own worker profile
+      allow create: if isWhitelisted();
+      
+      // Only the admin can delete worker profiles
+      allow update, delete: if isAdmin();
+    }
+  }
+}

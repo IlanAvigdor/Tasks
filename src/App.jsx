@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { 
   collection, 
   onSnapshot, 
@@ -10,8 +10,11 @@ import {
   query, 
   orderBy,
   getDocs,
-  writeBatch
+  writeBatch,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
+import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   DndContext, 
   closestCenter,
@@ -691,7 +694,10 @@ const AssignmentModal = ({ isOpen, type, targetId, onClose, tasks, registeredWor
 
 const App = () => {
   const [tasks, setTasks] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654';
+  });
   const [viewTime, setViewTime] = useState('morning');
   const [activeTab, setActiveTab] = useState('tasks');
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
@@ -713,12 +719,60 @@ const App = () => {
   const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
   const [workersLoading, setWorkersLoading] = useState(true);
   const [hideAssigned, setHideAssigned] = useState(false);
+
+  // Security Whitelist States
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
   
   const isInitialLoad = useRef(true);
   const prevStates = useRef({});
   const audioRef = useRef(null);
   const swipeStartX = useRef(0);
   const lastScrollY = useRef(0);
+
+  // Helper: Verify name on whitelist and bind/check UID
+  const verifyUserWhitelist = async (name, uid) => {
+    try {
+      const nameClean = name.trim();
+      const userDocRef = doc(db, "whitelist", nameClean);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (!userDocSnap.exists()) {
+        setAuthError('השם אינו קיים ברשימת המורשים של הגדוד.');
+        return false;
+      }
+      
+      const userData = userDocSnap.data();
+      if (!userData.isActivated || !userData.uid) {
+        // Activate/bind to this device
+        await updateDoc(userDocRef, {
+          isActivated: true,
+          uid: uid,
+          activatedAt: new Date()
+        });
+        await setDoc(doc(db, "whitelist_uids", uid), {
+          name: nameClean,
+          activatedAt: new Date()
+        });
+        setAuthError('');
+        return true;
+      } else {
+        // Already activated, verify UID matches
+        if (userData.uid === uid) {
+          setAuthError('');
+          return true;
+        } else {
+          setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס.');
+          return false;
+        }
+      }
+    } catch (e) {
+      console.error("Error verifying whitelist:", e);
+      setAuthError('שגיאת אבטחה בבדיקת הרשאות.');
+      return false;
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -742,7 +796,7 @@ const App = () => {
   }, [viewTime]);
 
   useEffect(() => {
-    if (!loading && !workersLoading && userName && workerTeam) {
+    if (!loading && !workersLoading && userName && workerTeam && isAuthorized) {
       const exists = registeredWorkers.some(w => w.name && w.name.trim().toLowerCase() === userName.trim().toLowerCase());
       if (!exists) {
         addDoc(collection(db, "workers"), {
@@ -752,7 +806,7 @@ const App = () => {
         }).catch(e => console.error("Error auto-registering worker:", e));
       }
     }
-  }, [loading, workersLoading, userName, workerTeam, registeredWorkers]);
+  }, [loading, workersLoading, userName, workerTeam, registeredWorkers, isAuthorized]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 15 } }),
@@ -765,12 +819,79 @@ const App = () => {
     audioRef.current.play().catch(e => console.error('Audio play failed:', e));
   };
 
+  // Auth, Whitelist Seeding, and Database Listeners
   useEffect(() => {
     audioRef.current = new Audio(NOTIFICATION_SOUND);
-    const params = new URLSearchParams(window.location.search);
-    if (window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654') {
-      setIsAdmin(true);
+
+    // Initial whitelist seeding
+    const seedWhitelist = async () => {
+      try {
+        const liriRef = doc(db, "whitelist", "לירי אביגדור");
+        const ilanRef = doc(db, "whitelist", "אילן אביגדור");
+        
+        const liriSnap = await getDoc(liriRef);
+        if (!liriSnap.exists()) {
+          await setDoc(liriRef, { name: "לירי אביגדור", isActivated: false, uid: null });
+        }
+        
+        const ilanSnap = await getDoc(ilanRef);
+        if (!ilanSnap.exists()) {
+          await setDoc(ilanRef, { name: "אילן אביגדור", isActivated: false, uid: null });
+        }
+      } catch (e) {
+        // Seeding will fail silently if rules are already deployed, which is correct
+        console.log("Seeding skipped/blocked by rules.");
+      }
+    };
+    seedWhitelist();
+
+    // Listen for Auth changes
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        if (isAdmin) {
+          setIsAuthorized(true);
+          setAuthLoading(false);
+        } else {
+          const storedName = localStorage.getItem('workerName');
+          if (storedName) {
+            const success = await verifyUserWhitelist(storedName, firebaseUser.uid);
+            setIsAuthorized(success);
+            setAuthLoading(false);
+          } else {
+            setIsAuthorized(false);
+            setAuthLoading(false);
+          }
+        }
+      } else {
+        // Try silent anonymous authentication
+        const storedName = localStorage.getItem('workerName');
+        if (storedName || isAdmin) {
+          try {
+            await signInAnonymously(auth);
+          } catch (e) {
+            console.error("Anonymous authentication failed:", e);
+            setAuthLoading(false);
+          }
+        } else {
+          setIsAuthorized(false);
+          setAuthLoading(false);
+        }
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, [isAdmin]);
+
+  // Firestore listeners (only subscribe if authorized or admin)
+  useEffect(() => {
+    if (!isAuthorized && !isAdmin) {
+      setLoading(false);
+      setWorkersLoading(false);
+      return;
     }
+
+    setLoading(true);
+    setWorkersLoading(true);
 
     const tasksQuery = query(collection(db, "tasks"), orderBy("order", "asc"));
     const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
@@ -783,7 +904,6 @@ const App = () => {
           const prevState = prevStates.current[id] || {};
           
           if (isAdmin) {
-            // Check 1: All assignees clicked "on it"
             const prevAcceptedCount = prevState.acceptedByCount || 0;
             const currentAcceptedCount = data.acceptedBy?.length || 0;
             const totalAssigneesCount = data.assignees?.length || 0;
@@ -794,12 +914,10 @@ const App = () => {
               playNotification();
             }
             
-            // Check 2: Any assignee clicked finished
             if (data.isDone && !prevState.isDone) {
               playNotification();
             }
           } else {
-            // Worker triggers: Play notification when task gets verified by admin
             const isMyTask = data.assignees?.includes(userName);
             if (isMyTask && data.isVerified && !prevState.isVerified) {
               playNotification();
@@ -807,6 +925,7 @@ const App = () => {
           }
         }
       });
+
       snapshot.forEach((doc) => {
         const d = doc.data();
         taskList.push({ id: doc.id, ...d });
@@ -821,6 +940,8 @@ const App = () => {
       setTasks(taskList);
       setLoading(false);
       if (isInitialLoad.current) isInitialLoad.current = false;
+    }, (error) => {
+      console.error("Firestore tasks query error:", error);
     });
     
     const workersUnsubscribe = onSnapshot(collection(db, "workers"), (snapshot) => {
@@ -828,10 +949,12 @@ const App = () => {
       snapshot.forEach((doc) => workersList.push({ id: doc.id, ...doc.data() }));
       setRegisteredWorkers(workersList);
       setWorkersLoading(false);
+    }, (error) => {
+      console.error("Firestore workers query error:", error);
     });
 
     return () => { unsubscribe(); workersUnsubscribe(); };
-  }, [isAdmin, isMuted]);
+  }, [isAdmin, isMuted, isAuthorized, userName]);
 
   const handleAddTask = async (e) => {
     e.preventDefault();
@@ -1248,7 +1371,7 @@ const App = () => {
         </nav>
       )}
 
-      {!isAdmin && showWelcomeBack && (
+      {!isAdmin && showWelcomeBack && isAuthorized && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
            <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem'}}>
               <div className="icon-wrapper" style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.2)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>👋</div>
@@ -1260,6 +1383,30 @@ const App = () => {
                 onClick={() => setShowWelcomeBack(false)}
               >
                 המשך למשימות
+              </button>
+           </div>
+        </div>
+      )}
+
+      {!isAdmin && !isAuthorized && !authLoading && userName && (
+        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
+           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem'}}>
+              <div className="icon-wrapper" style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.2)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>🔒</div>
+              <h2 style={{ margin: '0.5rem 0' }}>גישה נדחתה</h2>
+              <p style={{ opacity: 0.8, fontSize: '1rem', margin: '0', color: '#ef4444' }}>{authError || 'אינך מורשה לגשת למערכת.'}</p>
+              <button 
+                className="btn btn-cancel" 
+                style={{ width: '100%', marginTop: '1rem', padding: '0.8rem 1.2rem', fontSize: '1.05rem' }} 
+                onClick={() => {
+                  localStorage.removeItem('workerName');
+                  localStorage.removeItem('workerTeam');
+                  setUserName('');
+                  setWorkerTeam('');
+                  setIsAuthorized(false);
+                  setAuthError('');
+                }}
+              >
+                התחבר עם שם אחר
               </button>
            </div>
         </div>
@@ -1293,18 +1440,28 @@ const App = () => {
 
               <button className="btn btn-save" style={{width:'100%', marginTop:'1rem'}} onClick={async () => {
                 if(registrationName && registrationTeam) {
+                  const nameClean = registrationName.trim();
                   try {
-                    await addDoc(collection(db, "workers"), { 
-                      name: registrationName, 
-                      team: registrationTeam,
-                      createdAt: new Date() 
-                    });
-                    localStorage.setItem('workerName', registrationName);
-                    localStorage.setItem('workerTeam', registrationTeam);
-                    setUserName(registrationName);
-                    setWorkerTeam(registrationTeam);
+                    // Sign in anonymously first to get a UID
+                    let currentFirebaseUser = auth.currentUser;
+                    if (!currentFirebaseUser) {
+                      const cred = await signInAnonymously(auth);
+                      currentFirebaseUser = cred.user;
+                    }
+                    
+                    const success = await verifyUserWhitelist(nameClean, currentFirebaseUser.uid);
+                    if (success) {
+                      localStorage.setItem('workerName', nameClean);
+                      localStorage.setItem('workerTeam', registrationTeam);
+                      setUserName(nameClean);
+                      setWorkerTeam(registrationTeam);
+                      setIsAuthorized(true);
+                    } else {
+                      alert(authError || 'שם זה אינו מורשה או שכבר הופעל במכשיר אחר.');
+                    }
                   } catch (e) {
                     console.error("Error registering worker:", e);
+                    alert('שגיאה בתקשורת עם השרת.');
                   }
                 } else {
                   alert('נא למלא את כל הפרטים');
