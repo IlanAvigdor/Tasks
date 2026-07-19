@@ -197,6 +197,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
   const [localTitle, setLocalTitle] = useState(task.title);
   const [localDesc, setLocalDesc] = useState(task.description || '');
   const [editingField, setEditingField] = useState(null);
+  const [showDesc, setShowDesc] = useState(false);
   const titleRef = useRef(null);
   const descRef = useRef(null);
   const containerRef = useRef(null);
@@ -317,6 +318,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     
     setIsEditing(false);
     setEditingField(null);
+    setShowDesc(false);
 
     if (titleToSave !== task.title || descToSave !== (task.description || '')) {
       try {
@@ -340,6 +342,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       setLocalDesc(task.description || ''); 
       setIsEditing(false); 
       setEditingField(null);
+      setShowDesc(false);
     }
   };
 
@@ -373,45 +376,22 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
             }}>{task.title}</div>
           )}
           
-          {isAdmin && !task.description && !isEditing && (
+          {(task.description || isAdmin) && !isEditing && (
             <span 
-              style={{ cursor: 'pointer', opacity: 0.5, fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', padding: '2px' }} 
+              className="info-badge"
               onClick={(e) => { 
                 e.stopPropagation(); 
-                setEditingField('description'); 
-                setIsEditing(true); 
-              }}
-              title="הוסף תיאור"
-            >
-              ✏️
-            </span>
-          )}
-          
-          {isEditing && editingField === 'description' ? (
-            <textarea
-              ref={descRef}
-              className="inline-edit-textarea"
-              style={{ flex: '1 1 150px', minHeight: '30px', margin: 0, padding: '2px 6px' }}
-              value={localDesc}
-              onChange={(e) => setLocalDesc(e.target.value)}
-              onBlur={handleBlur} onKeyDown={handleKeyDown}
-              onClick={(e) => e.stopPropagation()} placeholder="תיאור..."
-            />
-          ) : (
-            task.description && (
-              <span 
-                className="task-desc" 
-                style={{ cursor: isAdmin ? 'text' : 'default', fontSize: '0.78rem', opacity: 0.8, background: 'rgba(0,0,0,0.04)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}
-                onClick={(e) => { 
-                  if (!isAdmin) return;
-                  e.stopPropagation(); 
+                if (!task.description && isAdmin) {
                   setEditingField('description'); 
                   setIsEditing(true); 
-                }}
-              >
-                {task.description}
-              </span>
-            )
+                } else {
+                  setShowDesc(!showDesc); 
+                }
+              }}
+              title={task.description ? "תיאור משימה" : "הוסף תיאור"}
+            >
+              ?
+            </span>
           )}
 
           <div className="task-assignees-row" style={{position:'relative', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
@@ -426,6 +406,37 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
               <span style={{fontSize:'0.65rem', color:'var(--text-muted)'}}>ללא שיוך</span>
             )}
           </div>
+
+          {(showDesc || (isEditing && editingField === 'description')) && (
+            <div style={{ width: '100%', flexBasis: '100%', marginTop: '4px' }}>
+              {isEditing && editingField === 'description' ? (
+                <textarea
+                  ref={descRef}
+                  className="inline-edit-textarea"
+                  style={{ width: '100%', minHeight: '30px', margin: 0, padding: '2px 6px' }}
+                  value={localDesc}
+                  onChange={(e) => setLocalDesc(e.target.value)}
+                  onBlur={handleBlur} onKeyDown={handleKeyDown}
+                  onClick={(e) => e.stopPropagation()} placeholder="תיאור..."
+                />
+              ) : (
+                task.description && (
+                  <div 
+                    className="task-desc" 
+                    style={{ cursor: isAdmin ? 'text' : 'default', fontSize: '0.78rem', opacity: 0.85, background: 'rgba(0,0,0,0.04)', padding: '4px 8px', borderRadius: '4px', width: '100%' }}
+                    onClick={(e) => { 
+                      if (!isAdmin) return;
+                      e.stopPropagation(); 
+                      setEditingField('description'); 
+                      setIsEditing(true); 
+                    }}
+                  >
+                    {task.description}
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </div>
         <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
           {renderedStatusButton}

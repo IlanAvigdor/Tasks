@@ -1045,3 +1045,31 @@ body.theme-evening .btn-accepted {
     color: #34d399 !important;
     border-color: rgba(52, 211, 153, 0.4) !important;
 }
+
+/* Info badge (?) for toggleable descriptions */
+.info-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-main);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+body.theme-evening .info-badge {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.info-badge:hover {
+    background: var(--primary);
+    color: #ffffff;
+    transform: scale(1.08);
+}
