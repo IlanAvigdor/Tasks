@@ -44,7 +44,7 @@ const getTaskStatusClass = (task) => {
   return 'status-pending';
 };
 
-const getTaskStatusButton = (task, isAdmin) => {
+const getTaskStatusButton = (task, isAdmin, currentUserName) => {
   if (isAdmin) {
     if (task.isVerified) {
       return <button className="status-btn btn-reset">איפוס</button>;
@@ -56,6 +56,10 @@ const getTaskStatusButton = (task, isAdmin) => {
   } else {
     if (task.isVerified) return null;
     if (!task.isInProgress && !task.isDone) {
+      const hasAccepted = task.acceptedBy?.includes(currentUserName);
+      if (hasAccepted) {
+        return <button className="status-btn btn-accepted" disabled>✓ נרשם (ממתין...)</button>;
+      }
       return <button className="status-btn btn-pending">על זה</button>;
     } else if (task.isInProgress) {
       return <button className="status-btn btn-in-progress">סיימתי</button>;
@@ -66,11 +70,11 @@ const getTaskStatusButton = (task, isAdmin) => {
   return null;
 };
 
-const TaskDragPreview = ({ task, isAdmin, isOverTrash }) => {
+const TaskDragPreview = ({ task, isAdmin, isOverTrash, currentUserName }) => {
   if (!task) return null;
 
   const statusClass = getTaskStatusClass(task);
-  const statusButton = getTaskStatusButton(task, isAdmin);
+  const statusButton = getTaskStatusButton(task, isAdmin, currentUserName);
 
   const style = {
     opacity: 0.85,
@@ -187,7 +191,7 @@ const TrashBin = ({ isAdmin, onLongPress }) => {
   );
 };
 
-const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, onOpenAssignment, onToggleStatus }) => {
+const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onDelete, onOpenAssignment, onToggleStatus, currentUserName }) => {
   const [isPressing, setIsPressing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [localTitle, setLocalTitle] = useState(task.title);
@@ -205,7 +209,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     }
   }, [task.title, task.description, isEditing]);
 
-  const statusButton = getTaskStatusButton(task, isAdmin);
+  const statusButton = getTaskStatusButton(task, isAdmin, currentUserName);
   const renderedStatusButton = statusButton ? React.cloneElement(statusButton, {
     onClick: (e) => {
       e.stopPropagation();
@@ -1081,7 +1085,8 @@ const App = () => {
                             onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : null}
                           onVerify={verifyTask} onDelete={deleteTask}
                           onOpenAssignment={(taskId) => setAssignmentModal({ isOpen: true, type: 'task', targetId: taskId })}
-                          onToggleStatus={toggleStatus} />
+                          onToggleStatus={toggleStatus}
+                          currentUserName={userName} />
                         ))}
                       </SortableContext>
                       {filteredTasks.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין משימות לזמן זה</p>}
@@ -1095,7 +1100,8 @@ const App = () => {
                   <TaskDragPreview 
                     task={tasks.find(t => t.id === activeId)} 
                     isAdmin={isAdmin} 
-                    isOverTrash={isOverTrash} 
+                    isOverTrash={isOverTrash}
+                    currentUserName={userName} 
                   />
                 ) : null}
               </DragOverlay>
