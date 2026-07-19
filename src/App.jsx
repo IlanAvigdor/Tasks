@@ -447,6 +447,8 @@ const WorkerDragPreview = ({ worker, tasks, viewTime, isOverTrash }) => {
 };
 
 const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onOpenAssignment }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   const {
     attributes,
     listeners,
@@ -467,44 +469,99 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onOpenAssignment }) => {
     WebkitTouchCallout: 'none',
     pointerEvents: isDragging ? 'none' : 'auto',
     position: 'relative',
-    cursor: isAdmin ? 'pointer' : 'default'
+    cursor: 'pointer'
   };
 
-  const workerTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
-  const doneCount = workerTasks.filter(t => t.isDone).length;
+  const activeTasks = tasks.filter(t => t.assignees?.includes(worker.name) && (t.timeOfDay === viewTime || (!t.timeOfDay && viewTime === 'morning')));
+  
+  const inProgressTasks = activeTasks.filter(t => t.isInProgress && !t.isDone && !t.isVerified);
+  const pendingTasks = activeTasks.filter(t => !t.isInProgress && !t.isDone && !t.isVerified);
+  const completedTasks = activeTasks.filter(t => t.isDone || t.isVerified);
+  
+  const isBusy = activeTasks.some(t => !t.isDone && !t.isVerified);
 
   return (
     <div 
       ref={setNodeRef}
       style={style}
-      className={`person-card ${isDragging ? 'dragging' : ''}`}
+      className={`person-card ${isDragging ? 'dragging' : ''} ${isExpanded ? 'expanded' : ''}`}
       {...attributes}
       {...listeners}
-      onClick={(e) => {
-        if (!isAdmin) return;
-        onOpenAssignment(worker.id);
-      }}
+      onClick={() => setIsExpanded(!isExpanded)}
     >
       <div className="person-header">
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700 }}>
-            {worker.name} <span style={{ fontSize: '0.8rem', fontWeight: 400, opacity: 0.6 }}>- {worker.team}</span>
-          </div>
-          <div className="status-badges">
-            <span className="status-badge pending">{workerTasks.length - doneCount} בביצוע</span>
-            <span className="status-badge done">{doneCount} הושלמו</span>
-          </div>
+        <div className="person-header-info">
+          <span className="person-header-title">{worker.name}</span>
+          <span className="person-header-subtitle">{worker.team}</span>
+        </div>
+        <div className="person-header-meta">
+          <span className={`availability-badge ${isBusy ? 'busy' : 'available'}`}>
+            {isBusy ? 'בביצוע' : 'פנוי'}
+          </span>
+          <span className="caret-icon">▼</span>
         </div>
       </div>
 
-      {workerTasks.length > 0 && (
-        <div className="person-tasks">
-          {workerTasks.map(task => (
-            <div key={task.id} className={`worker-task-item ${task.isDone ? 'done' : ''}`}>
-              <div className={`status-dot ${task.isVerified ? 'verified' : task.isDone ? 'done' : 'pending'}`} />
-              <span className="task-mini-title">{task.title}</span>
+      {isExpanded && (
+        <div className="person-details" onClick={(e) => e.stopPropagation()}>
+          {inProgressTasks.length > 0 && (
+            <div className="task-group">
+              <span className="task-group-title">🔥 בביצוע:</span>
+              <div className="task-group-list">
+                {inProgressTasks.map(task => (
+                  <div key={task.id} className="worker-task-item">
+                    <div className="status-dot pending" />
+                    <span className="task-mini-title">{task.title}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+
+          {pendingTasks.length > 0 && (
+            <div className="task-group">
+              <span className="task-group-title">⏳ טרם בוצע:</span>
+              <div className="task-group-list">
+                {pendingTasks.map(task => (
+                  <div key={task.id} className="worker-task-item">
+                    <div className="status-dot pending" style={{ background: '#94a3b8', boxShadow: 'none' }} />
+                    <span className="task-mini-title">{task.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {completedTasks.length > 0 && (
+            <div className="task-group">
+              <span className="task-group-title">✅ הושלמו:</span>
+              <div className="task-group-list">
+                {completedTasks.map(task => (
+                  <div key={task.id} className="worker-task-item done">
+                    <div className={`status-dot ${task.isVerified ? 'verified' : 'done'}`} />
+                    <span className="task-mini-title">{task.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTasks.length === 0 && (
+            <p style={{ fontSize: '0.85rem', opacity: 0.6, textAlign: 'center', margin: '4px 0' }}>אין משימות משויכות לזמן זה</p>
+          )}
+
+          {isAdmin && (
+            <button 
+              className="btn btn-save" 
+              style={{ width: '100%', padding: '0.5rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenAssignment(worker.id);
+              }}
+            >
+              👤 שיוך משימות לעובד
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -480,11 +480,11 @@ body.theme-evening .nav-slider {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    padding: 1rem 1.2rem;
+    padding: 1.2rem 1.4rem;
     background: var(--card-bg);
-    border-radius: 16px;
+    border-radius: 18px;
     border: 1px solid var(--glass-border);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
@@ -492,74 +492,142 @@ body.theme-evening .nav-slider {
 
 .person-card:hover {
     transform: translateY(-2px);
-    background: var(--card-bg);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
     border-color: var(--glass-border);
 }
 
 .person-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.8rem;
+    width: 100%;
 }
 
-.person-header div {
-    font-weight: 700;
-    font-size: 1.05rem;
-}
-
-.status-badges {
-    display: flex;
-    gap: 6px;
-    margin-top: 4px;
-}
-
-.status-badge {
-    font-size: 0.7rem;
-    padding: 3px 8px;
-    border-radius: 9999px;
-    font-weight: 700;
-}
-
-.status-badge.pending {
-    background: rgba(245, 158, 11, 0.15);
-    color: #d97706;
-}
-
-body.theme-evening .status-badge.pending {
-    background: rgba(245, 158, 11, 0.25);
-    color: #fbbf24;
-}
-
-.status-badge.done {
-    background: rgba(16, 185, 129, 0.15);
-    color: #059669;
-}
-
-body.theme-evening .status-badge.done {
-    background: rgba(16, 185, 129, 0.25);
-    color: #34d399;
-}
-
-.person-tasks {
-    margin-top: 0.8rem;
-    padding-top: 0.8rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
+.person-header-info {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 4px;
+    flex: 1;
+}
+
+.person-header-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-main);
+}
+
+.person-header-subtitle {
+    font-size: 0.8rem;
+    font-weight: 400;
+    opacity: 0.6;
+    color: var(--text-muted);
+}
+
+.person-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Caret Icon indicating expansion */
+.caret-icon {
+    font-size: 0.9rem;
+    transition: transform 0.3s ease;
+    opacity: 0.5;
+}
+
+.person-card.expanded .caret-icon {
+    transform: rotate(180deg);
+}
+
+/* Colored Busy/Available Badge */
+.availability-badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-weight: 700;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.availability-badge.available {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+body.theme-evening .availability-badge.available {
+    background-color: rgba(22, 101, 52, 0.3);
+    color: #4ade80;
+}
+
+.availability-badge.busy {
+    background-color: #ffedd5;
+    color: #9a3412;
+}
+
+body.theme-evening .availability-badge.busy {
+    background-color: rgba(154, 52, 18, 0.3);
+    color: #fb923c;
+}
+
+/* Expanded Card Details */
+.person-details {
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    animation: fadeIn 0.25s ease-out;
+}
+
+body.theme-evening .person-details {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.task-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.task-group-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.task-group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .worker-task-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.85rem;
-    padding: 2px 0;
+    font-size: 0.88rem;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 8px;
+}
+
+body.theme-evening .worker-task-item {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .worker-task-item.done {
-    opacity: 0.55;
+    opacity: 0.5;
     text-decoration: line-through;
 }
 
