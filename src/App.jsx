@@ -681,7 +681,7 @@ const App = () => {
   const [hideAssigned, setHideAssigned] = useState(false);
   
   const isInitialLoad = useRef(true);
-  const prevDoneStatus = useRef({});
+  const prevStates = useRef({});
   const audioRef = useRef(null);
   const swipeStartX = useRef(0);
   const lastScrollY = useRef(0);
@@ -742,14 +742,48 @@ const App = () => {
     const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
       const taskList = [];
       snapshot.docChanges().forEach(change => {
-         const data = change.doc.data();
-         const id = change.doc.id;
-         if (change.type === 'modified' && isAdmin && !isMuted && !isInitialLoad.current) {
-           if (data.isDone && !prevDoneStatus.current[id]) playNotification();
-         }
-         prevDoneStatus.current[id] = data.isDone;
+        const data = change.doc.data();
+        const id = change.doc.id;
+        
+        if (change.type === 'modified' && !isMuted && !isInitialLoad.current) {
+          const prevState = prevStates.current[id] || {};
+          
+          if (isAdmin) {
+            // Check 1: All assignees clicked "on it"
+            const prevAcceptedCount = prevState.acceptedByCount || 0;
+            const currentAcceptedCount = data.acceptedBy?.length || 0;
+            const totalAssigneesCount = data.assignees?.length || 0;
+            const allAcceptedNow = totalAssigneesCount > 0 && currentAcceptedCount === totalAssigneesCount;
+            const wasNotAllAccepted = prevAcceptedCount < totalAssigneesCount;
+            
+            if (allAcceptedNow && wasNotAllAccepted) {
+              playNotification();
+            }
+            
+            // Check 2: Any assignee clicked finished
+            if (data.isDone && !prevState.isDone) {
+              playNotification();
+            }
+          } else {
+            // Worker triggers: Play notification when task gets verified by admin
+            const isMyTask = data.assignees?.includes(userName);
+            if (isMyTask && data.isVerified && !prevState.isVerified) {
+              playNotification();
+            }
+          }
+        }
       });
-      snapshot.forEach((doc) => taskList.push({ id: doc.id, ...doc.data() }));
+      snapshot.forEach((doc) => {
+        const d = doc.data();
+        taskList.push({ id: doc.id, ...d });
+        prevStates.current[doc.id] = {
+          isInProgress: d.isInProgress || false,
+          isDone: d.isDone || false,
+          isVerified: d.isVerified || false,
+          acceptedByCount: d.acceptedBy?.length || 0,
+          assigneesCount: d.assignees?.length || 0
+        };
+      });
       setTasks(taskList);
       setLoading(false);
       if (isInitialLoad.current) isInitialLoad.current = false;
@@ -864,22 +898,29 @@ const App = () => {
 
   const toggleStatus = async (task) => {
     if (task.isVerified && !isAdmin) return;
-    playNotification();
     let updates = {};
     
     if (isAdmin) {
       if (task.isVerified) {
-        updates = { isVerified: false, isDone: false, isInProgress: false };
+        updates = { isVerified: false, isDone: false, isInProgress: false, acceptedBy: [] };
       } else if (task.isDone) {
         updates = { isVerified: true, isDone: true, isInProgress: false };
       }
     } else {
       if (!task.isInProgress && !task.isDone) {
-        updates = { isInProgress: true, isDone: false };
+        const currentAccepted = task.acceptedBy || [];
+        const nextAccepted = currentAccepted.includes(userName) ? currentAccepted : [...currentAccepted, userName];
+        const assignees = task.assignees || [];
+        const allAccepted = assignees.every(name => nextAccepted.includes(name));
+        
+        updates = {
+          acceptedBy: nextAccepted,
+          isInProgress: allAccepted
+        };
       } else if (task.isInProgress) {
-        updates = { isInProgress: false, isDone: true };
-      } else {
-        updates = { isInProgress: false, isDone: false };
+        updates = { isInProgress: false, isDone: true, acceptedBy: [] };
+      } else if (task.isDone) {
+        updates = { isInProgress: false, isDone: false, acceptedBy: [] };
       }
     }
     
