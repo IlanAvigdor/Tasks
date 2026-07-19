@@ -355,8 +355,8 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
     >
       <div className="task-inner-content">
         <div className="task-content">
-          <div className="task-header-row">
-            {isEditing ? (
+          <div className="task-header-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {isEditing && editingField === 'title' ? (
               <input
                 ref={titleRef}
                 className="inline-edit-input"
@@ -365,16 +365,31 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <div className="task-title" onClick={(e) => { 
-                if (!isAdmin) return;
-                e.stopPropagation(); 
-                setEditingField('title'); 
-                setIsEditing(true); 
-              }}>{task.title}</div>
+              <>
+                <div className="task-title" onClick={(e) => { 
+                  if (!isAdmin) return;
+                  e.stopPropagation(); 
+                  setEditingField('title'); 
+                  setIsEditing(true); 
+                }}>{task.title}</div>
+                {isAdmin && !task.description && (
+                  <span 
+                    style={{ cursor: 'pointer', opacity: 0.5, fontSize: '0.85rem', padding: '2px 4px' }} 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      setEditingField('description'); 
+                      setIsEditing(true); 
+                    }}
+                    title="הוסף תיאור"
+                  >
+                    ✏️
+                  </span>
+                )}
+              </>
             )}
           </div>
           
-          {isEditing ? (
+          {isEditing && editingField === 'description' ? (
             <textarea
               ref={descRef}
               className="inline-edit-textarea" value={localDesc}
@@ -383,16 +398,19 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
               onClick={(e) => e.stopPropagation()} placeholder="תיאור..."
             />
           ) : (
-            isAdmin ? (
+            task.description && (
               <div 
                 className="task-desc" 
-                style={{ minHeight: !task.description ? '1.2rem' : 'auto', cursor: 'text' }}
-                onClick={(e) => { e.stopPropagation(); setEditingField('description'); setIsEditing(true); }}
+                style={{ cursor: isAdmin ? 'text' : 'default', marginTop: '2px' }}
+                onClick={(e) => { 
+                  if (!isAdmin) return;
+                  e.stopPropagation(); 
+                  setEditingField('description'); 
+                  setIsEditing(true); 
+                }}
               >
-                {task.description || <span style={{opacity: 0.3, fontSize: '0.8rem'}}>לחץ להוספת תיאור...</span>}
+                {task.description}
               </div>
-            ) : (
-              task.description && <div className="task-desc">{task.description}</div>
             )
           )}
 

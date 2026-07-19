@@ -171,7 +171,7 @@ body.theme-evening .time-icon {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 20px;
-    margin-bottom: 1.2rem;
+    margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -232,9 +232,9 @@ body.theme-evening .task-item:hover {
 .task-inner-content {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     width: 100%;
-    padding: 1.2rem 1.5rem;
+    padding: 0.6rem 1rem;
     background: transparent;
     z-index: 1;
     line-height: 1.5;
@@ -244,12 +244,12 @@ body.theme-evening .task-item:hover {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.15rem;
 }
 
 .task-title {
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: var(--text-main);
 }
 
@@ -282,7 +282,7 @@ body.theme-evening .inline-edit-textarea {
 }
 
 .inline-edit-input {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     padding: 4px 8px;
 }
@@ -661,7 +661,7 @@ body.theme-evening .worker-task-item {
 
 /* Assignee Tags on Task Item */
 .task-assignees-row {
-    margin-top: 6px;
+    margin-top: 3px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -669,8 +669,8 @@ body.theme-evening .worker-task-item {
 }
 
 .assignee-tag {
-    font-size: 0.72rem;
-    padding: 3px 10px;
+    font-size: 0.7rem;
+    padding: 1px 8px;
     background: rgba(0, 0, 0, 0.05);
     border-radius: 9999px;
     color: var(--text-muted);
@@ -685,8 +685,8 @@ body.theme-evening .assignee-tag {
 }
 
 .add-assignee-btn {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.05);
     border: 1px solid rgba(0, 0, 0, 0.05);
@@ -695,7 +695,7 @@ body.theme-evening .assignee-tag {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     transition: all 0.2s;
 }
 
@@ -837,11 +837,11 @@ body.theme-evening .assignment-item:hover {
 
 /* Status control buttons */
 .status-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 0.8rem;
     border-radius: 10px;
     border: none;
     font-weight: 700;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
