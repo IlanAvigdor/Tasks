@@ -375,24 +375,6 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
               setIsEditing(true); 
             }}>{task.title}</div>
           )}
-          
-          {(task.description || isAdmin) && !isEditing && (
-            <span 
-              className="info-badge"
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                if (!task.description && isAdmin) {
-                  setEditingField('description'); 
-                  setIsEditing(true); 
-                } else {
-                  setShowDesc(!showDesc); 
-                }
-              }}
-              title={task.description ? "תיאור משימה" : "הוסף תיאור"}
-            >
-              ?
-            </span>
-          )}
 
           <div className="task-assignees-row" style={{position:'relative', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
             {task.assignees?.length > 0 && (
@@ -440,7 +422,24 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
             </div>
           )}
         </div>
-        <div className="task-actions" style={{display:'flex', alignItems:'center'}}>
+        <div className="task-actions" style={{display:'flex', alignItems:'center', gap: '8px'}}>
+          {(task.description || isAdmin) && !isEditing && (
+            <span 
+              className="info-badge"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (!task.description && isAdmin) {
+                  setEditingField('description'); 
+                  setIsEditing(true); 
+                } else {
+                  setShowDesc(!showDesc); 
+                }
+              }}
+              title={task.description ? "תיאור משימה" : "הוסף תיאור"}
+            >
+              ?
+            </span>
+          )}
           {renderedStatusButton}
         </div>
       </div>
