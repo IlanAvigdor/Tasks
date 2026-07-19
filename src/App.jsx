@@ -354,54 +354,54 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
       {...listeners}
     >
       <div className="task-inner-content">
-        <div className="task-content">
-          <div className="task-header-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {isEditing && editingField === 'title' ? (
-              <input
-                ref={titleRef}
-                className="inline-edit-input"
-                value={localTitle} onChange={(e) => setLocalTitle(e.target.value)}
-                onBlur={handleBlur} onKeyDown={handleKeyDown}
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <>
-                <div className="task-title" onClick={(e) => { 
-                  if (!isAdmin) return;
-                  e.stopPropagation(); 
-                  setEditingField('title'); 
-                  setIsEditing(true); 
-                }}>{task.title}</div>
-                {isAdmin && !task.description && (
-                  <span 
-                    style={{ cursor: 'pointer', opacity: 0.5, fontSize: '0.85rem', padding: '2px 4px' }} 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      setEditingField('description'); 
-                      setIsEditing(true); 
-                    }}
-                    title="הוסף תיאור"
-                  >
-                    ✏️
-                  </span>
-                )}
-              </>
-            )}
-          </div>
+        <div className="task-content" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flex: 1, minWidth: 0 }}>
+          {isEditing && editingField === 'title' ? (
+            <input
+              ref={titleRef}
+              className="inline-edit-input"
+              style={{ flex: '1 1 100px', margin: 0, padding: '2px 6px' }}
+              value={localTitle} onChange={(e) => setLocalTitle(e.target.value)}
+              onBlur={handleBlur} onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <div className="task-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={(e) => { 
+              if (!isAdmin) return;
+              e.stopPropagation(); 
+              setEditingField('title'); 
+              setIsEditing(true); 
+            }}>{task.title}</div>
+          )}
+          
+          {isAdmin && !task.description && !isEditing && (
+            <span 
+              style={{ cursor: 'pointer', opacity: 0.5, fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', padding: '2px' }} 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                setEditingField('description'); 
+                setIsEditing(true); 
+              }}
+              title="הוסף תיאור"
+            >
+              ✏️
+            </span>
+          )}
           
           {isEditing && editingField === 'description' ? (
             <textarea
               ref={descRef}
-              className="inline-edit-textarea" value={localDesc}
+              className="inline-edit-textarea"
+              style={{ flex: '1 1 150px', minHeight: '30px', margin: 0, padding: '2px 6px' }}
+              value={localDesc}
               onChange={(e) => setLocalDesc(e.target.value)}
               onBlur={handleBlur} onKeyDown={handleKeyDown}
               onClick={(e) => e.stopPropagation()} placeholder="תיאור..."
             />
           ) : (
             task.description && (
-              <div 
+              <span 
                 className="task-desc" 
-                style={{ cursor: isAdmin ? 'text' : 'default', marginTop: '2px' }}
+                style={{ cursor: isAdmin ? 'text' : 'default', fontSize: '0.78rem', opacity: 0.8, background: 'rgba(0,0,0,0.04)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}
                 onClick={(e) => { 
                   if (!isAdmin) return;
                   e.stopPropagation(); 
@@ -410,11 +410,11 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
                 }}
               >
                 {task.description}
-              </div>
+              </span>
             )
           )}
 
-          <div className="task-assignees-row" style={{position:'relative'}}>
+          <div className="task-assignees-row" style={{position:'relative', margin: 0, display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
             {task.assignees?.length > 0 && task.assignees.map(name => ( <span key={name} className="assignee-tag">{name}</span> ))}
             {isAdmin && (
               <button className="add-assignee-btn" onClick={(e) => { 
@@ -423,7 +423,7 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
               }}>👤</button>
             )}
             {!task.assignees?.length && !isAdmin && (
-              <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>ללא שיוך</span>
+              <span style={{fontSize:'0.65rem', color:'var(--text-muted)'}}>ללא שיוך</span>
             )}
           </div>
         </div>
