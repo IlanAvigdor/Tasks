@@ -1163,6 +1163,93 @@ const App = () => {
     return timeFiltered.filter(t => t.assignees?.includes(userName) && !t.isVerified);
   };
 
+  if (authLoading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען אבטחה...</div>;
+
+  // Fully block unauthorized users from seeing the main layout
+  if (!isAuthorized && !isAdmin) {
+    if (userName && workerTeam) {
+      return (
+        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
+           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem'}}>
+              <div className="icon-wrapper" style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.2)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>🔒</div>
+              <h2 style={{ margin: '0.5rem 0' }}>גישה נדחתה</h2>
+              <p style={{ opacity: 0.8, fontSize: '1rem', margin: '0', color: '#ef4444' }}>{authError || 'אינך מורשה לגשת למערכת.'}</p>
+              <button 
+                className="btn btn-cancel" 
+                style={{ width: '100%', marginTop: '1rem', padding: '0.8rem 1.2rem', fontSize: '1.05rem' }} 
+                onClick={() => {
+                  localStorage.removeItem('workerName');
+                  localStorage.removeItem('workerTeam');
+                  setUserName('');
+                  setWorkerTeam('');
+                  setIsAuthorized(false);
+                  setAuthError('');
+                }}
+              >
+                התחבר עם שם אחר
+              </button>
+           </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
+           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center'}}>
+              <h2>ברוך הבא</h2>
+              <p>הכנס את שמך ובחר צוות כדי להתחיל</p>
+              
+              <input 
+                className="input-field" 
+                placeholder="השם שלך" 
+                value={registrationName} 
+                onChange={e => setRegistrationName(e.target.value)} 
+              />
+
+              <select 
+                className="input-field" 
+                value={registrationTeam} 
+                onChange={e => setRegistrationTeam(e.target.value)}
+              >
+                <option value="" disabled>בחר צוות...</option>
+                <option value="סוללה">סוללה</option>
+                <option value="אגם">אגם</option>
+                <option value="פלסם">פלסם</option>
+              </select>
+
+              <button className="btn btn-save" style={{width:'100%', marginTop:'1rem'}} onClick={async () => {
+                if(registrationName && registrationTeam) {
+                  const nameClean = registrationName.trim();
+                  try {
+                    let currentFirebaseUser = auth.currentUser;
+                    if (!currentFirebaseUser) {
+                      const cred = await signInAnonymously(auth);
+                      currentFirebaseUser = cred.user;
+                    }
+                    
+                    const success = await verifyUserWhitelist(nameClean, currentFirebaseUser.uid);
+                    if (success) {
+                      localStorage.setItem('workerName', nameClean);
+                      localStorage.setItem('workerTeam', registrationTeam);
+                      setUserName(nameClean);
+                      setWorkerTeam(registrationTeam);
+                      setIsAuthorized(true);
+                    } else {
+                      alert(authError || 'שם זה אינו מורשה או שכבר הופעל במכשיר אחר.');
+                    }
+                  } catch (e) {
+                    console.error("Error registering worker:", e);
+                    alert('שגיאה בתקשורת עם השרת.');
+                  }
+                } else {
+                  alert('נא למלא את כל הפרטים');
+                }
+              }}>התחל</button>
+           </div>
+        </div>
+      );
+    }
+  }
+
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
   const uniqueWorkers = [];
@@ -1384,89 +1471,6 @@ const App = () => {
               >
                 המשך למשימות
               </button>
-           </div>
-        </div>
-      )}
-
-      {!isAdmin && !isAuthorized && !authLoading && userName && (
-        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
-           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem'}}>
-              <div className="icon-wrapper" style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.2)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>🔒</div>
-              <h2 style={{ margin: '0.5rem 0' }}>גישה נדחתה</h2>
-              <p style={{ opacity: 0.8, fontSize: '1rem', margin: '0', color: '#ef4444' }}>{authError || 'אינך מורשה לגשת למערכת.'}</p>
-              <button 
-                className="btn btn-cancel" 
-                style={{ width: '100%', marginTop: '1rem', padding: '0.8rem 1.2rem', fontSize: '1.05rem' }} 
-                onClick={() => {
-                  localStorage.removeItem('workerName');
-                  localStorage.removeItem('workerTeam');
-                  setUserName('');
-                  setWorkerTeam('');
-                  setIsAuthorized(false);
-                  setAuthError('');
-                }}
-              >
-                התחבר עם שם אחר
-              </button>
-           </div>
-        </div>
-      )}
-
-      {!isAdmin && !showWelcomeBack && (!userName || !workerTeam) && (
-        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
-           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center'}}>
-              <h2>{userName ? 'השלמת פרטים' : 'ברוך הבא'}</h2>
-              <p>{userName ? 'אנא בחר את הצוות שלך' : 'הכנס את שמך ובחר צוות כדי להתחיל'}</p>
-              
-              {!userName && (
-                <input 
-                  className="input-field" 
-                  placeholder="השם שלך" 
-                  value={registrationName} 
-                  onChange={e => setRegistrationName(e.target.value)} 
-                />
-              )}
-
-              <select 
-                className="input-field" 
-                value={registrationTeam} 
-                onChange={e => setRegistrationTeam(e.target.value)}
-              >
-                <option value="" disabled>בחר צוות...</option>
-                <option value="סוללה">סוללה</option>
-                <option value="אגם">אגם</option>
-                <option value="פלסם">פלסם</option>
-              </select>
-
-              <button className="btn btn-save" style={{width:'100%', marginTop:'1rem'}} onClick={async () => {
-                if(registrationName && registrationTeam) {
-                  const nameClean = registrationName.trim();
-                  try {
-                    // Sign in anonymously first to get a UID
-                    let currentFirebaseUser = auth.currentUser;
-                    if (!currentFirebaseUser) {
-                      const cred = await signInAnonymously(auth);
-                      currentFirebaseUser = cred.user;
-                    }
-                    
-                    const success = await verifyUserWhitelist(nameClean, currentFirebaseUser.uid);
-                    if (success) {
-                      localStorage.setItem('workerName', nameClean);
-                      localStorage.setItem('workerTeam', registrationTeam);
-                      setUserName(nameClean);
-                      setWorkerTeam(registrationTeam);
-                      setIsAuthorized(true);
-                    } else {
-                      alert(authError || 'שם זה אינו מורשה או שכבר הופעל במכשיר אחר.');
-                    }
-                  } catch (e) {
-                    console.error("Error registering worker:", e);
-                    alert('שגיאה בתקשורת עם השרת.');
-                  }
-                } else {
-                  alert('נא למלא את כל הפרטים');
-                }
-              }}>התחל</button>
            </div>
         </div>
       )}
