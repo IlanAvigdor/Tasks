@@ -865,52 +865,45 @@ const App = () => {
     try {
       const nameClean = name.trim();
       const mapped = KNOWN_TEAM_ROLES[nameClean];
-
-      if (mapped) {
-        const detectedRole = mapped.role;
-        const detectedTeam = mapped.team;
-
-        setUserRole(detectedRole);
-        setWorkerTeam(detectedTeam);
-        setSelectedTeam(detectedTeam);
-        localStorage.setItem('workerRole', detectedRole);
-        localStorage.setItem('workerTeam', detectedTeam);
-        setAuthError('');
-
-        // Update Firestore asynchronously in background without blocking UI
-        const userDocRef = doc(db, "whitelist", nameClean);
-        setDoc(userDocRef, {
-          name: nameClean,
-          isActivated: true,
-          uid: uid,
-          role: detectedRole,
-          team: detectedTeam,
-          activatedAt: new Date()
-        }, { merge: true }).catch(err => console.warn("Doc update warning:", err));
-
-        if (uid) {
-          setDoc(doc(db, "whitelist_uids", uid), {
-            name: nameClean,
-            role: detectedRole,
-            team: detectedTeam,
-            activatedAt: new Date()
-          }, { merge: true }).catch(err => console.warn("UID doc warning:", err));
-        }
-
-        return true;
-      }
-
       const userDocRef = doc(db, "whitelist", nameClean);
       const userDocSnap = await getDoc(userDocRef);
 
-      if (!userDocSnap.exists()) {
+      if (!userDocSnap.exists() && !mapped) {
         setAuthError('השם אינו קיים ברשימת המורשים של הגדוד.');
         return false;
       }
-      
-      const userData = userDocSnap.data();
-      const detectedRole = userData.role || 'soldier';
-      const detectedTeam = userData.team || localStorage.getItem('workerTeam') || 'לוגיסטיקה';
+
+      const userData = userDocSnap.exists() ? userDocSnap.data() : {};
+      const detectedRole = mapped?.role || userData.role || (
+        (nameClean === 'אילן אביגדור' || nameClean === 'לירי אביגדור') ? 'super_admin' : 'soldier'
+      );
+      const detectedTeam = mapped?.team || userData.team || 'לוגיסטיקה';
+
+      // Strict single-device lock enforcement
+      if (userData.isActivated && userData.uid && userData.uid !== uid) {
+        setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
+        return false;
+      }
+
+      // Pair and bind to this device UID
+      await setDoc(userDocRef, {
+        name: nameClean,
+        isActivated: true,
+        uid: uid,
+        role: detectedRole,
+        team: detectedTeam,
+        activatedAt: userData.activatedAt || new Date(),
+        lastActive: new Date()
+      }, { merge: true });
+
+      if (uid) {
+        await setDoc(doc(db, "whitelist_uids", uid), {
+          name: nameClean,
+          role: detectedRole,
+          team: detectedTeam,
+          activatedAt: new Date()
+        }, { merge: true });
+      }
 
       setUserRole(detectedRole);
       setWorkerTeam(detectedTeam);
@@ -921,16 +914,6 @@ const App = () => {
       return true;
     } catch (e) {
       console.error("Error verifying whitelist:", e);
-      const mapped = KNOWN_TEAM_ROLES[name.trim()];
-      if (mapped) {
-        setUserRole(mapped.role);
-        setWorkerTeam(mapped.team);
-        setSelectedTeam(mapped.team);
-        localStorage.setItem('workerRole', mapped.role);
-        localStorage.setItem('workerTeam', mapped.team);
-        setAuthError('');
-        return true;
-      }
       setAuthError('שגיאת אבטחה בבדיקת הרשאות.');
       return false;
     }
