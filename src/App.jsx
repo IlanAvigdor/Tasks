@@ -1521,7 +1521,7 @@ const App = () => {
                 className={`team-pill ${selectedTeam === team ? 'active' : ''}`}
                 onClick={() => setSelectedTeam(team)}
               >
-                {team === 'מטבח' ? '🍳' : team === 'לוגיסטיקה' ? '📦' : team === 'חימוש' ? '🔧' : team === 'קשר' ? '📻' : '🛡️'} {team}
+                {team === 'מטבח' ? '🍳' : team === 'לוגיסטיקה' ? '📦' : team === 'מפקדה' ? '🎖️' : team === 'תקשוב' ? '📡' : team === 'רכב וניוד' ? '🚚' : team === 'רפואה' ? '🩺' : team === 'טנ"א (חימוש)' ? '🛠️' : team === 'שלישות' ? '📋' : '🛡️'} {team}
               </button>
             ))}
           </div>
@@ -1548,6 +1548,15 @@ const App = () => {
           >
             {hideAssigned ? '👁️ הצג משימות משויכות' : '👁️‍🗨️ הסתר משימות משויכות'}
           </button>
+          {(selectedTeam === 'לוגיסטיקה' || selectedTeam === 'מפקדה') && (
+            <button
+              className="btn-filter"
+              style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+              onClick={() => handleSeedWorkspaceTasks(selectedTeam)}
+            >
+              ⚡ טען משימות יסוד ({selectedTeam})
+            </button>
+          )}
         </div>
       )}
 
@@ -1583,7 +1592,11 @@ const App = () => {
                           currentUserName={userName} />
                         ))}
                       </SortableContext>
-                      {filteredTasks.length === 0 && <p style={{textAlign:'center', opacity:0.6}}>אין משימות לזמן זה</p>}
+                      {filteredTasks.length === 0 && (
+                        <div style={{textAlign:'center', padding: '1.5rem 0', opacity:0.8}}>
+                          <p style={{margin: 0}}>אין משימות לזמן זה במרחב {selectedTeam}</p>
+                        </div>
+                      )}
                     </section>
                   );
                 })}
