@@ -813,6 +813,13 @@ const App = () => {
 
   const isAdmin = isSuperAdmin || isCommander;
 
+  const activeWorkspaceTeam = useMemo(() => {
+    if (isSuperAdmin) {
+      return selectedTeam || 'לוגיסטיקה';
+    }
+    return workerTeam || 'לוגיסטיקה';
+  }, [isSuperAdmin, selectedTeam, workerTeam]);
+
   const [viewTime, setViewTime] = useState('morning');
   const [activeTab, setActiveTab] = useState('tasks');
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
@@ -945,8 +952,8 @@ const App = () => {
 
   useEffect(() => {
     document.body.className = `theme-${viewTime}`;
-    document.body.setAttribute('data-team', selectedTeam || 'לוגיסטיקה');
-  }, [viewTime, selectedTeam]);
+    document.body.setAttribute('data-team', activeWorkspaceTeam || 'לוגיסטיקה');
+  }, [viewTime, activeWorkspaceTeam]);
 
   useEffect(() => {
     if (!loading && !workersLoading && userName && workerTeam && isAuthorized) {
@@ -1165,7 +1172,7 @@ const App = () => {
     e.preventDefault();
     if (!newTask.title) return;
     try {
-      const targetTeam = selectedTeam === 'הכל' ? 'לוגיסטיקה' : selectedTeam;
+      const targetTeam = activeWorkspaceTeam === 'הכל' ? (workerTeam || 'לוגיסטיקה') : activeWorkspaceTeam;
       await addDoc(collection(db, "tasks"), {
         title: newTask.title, description: newTask.description, assignees: [],
         team: targetTeam,
@@ -1402,11 +1409,11 @@ const App = () => {
   const getFilteredTasks = (time) => {
     let filtered = tasks.filter(t => {
       const taskTeam = t.team || 'מטבח';
-      const matchesTeam = (selectedTeam === 'הכל') || (taskTeam === selectedTeam);
+      const matchesTeam = (activeWorkspaceTeam === 'הכל') || (taskTeam === activeWorkspaceTeam);
       if (!matchesTeam) return false;
 
       // Only apply morning/noon/evening time filtering for Kitchen workspace
-      if (selectedTeam === 'מטבח') {
+      if (activeWorkspaceTeam === 'מטבח') {
         return (t.timeOfDay === time) || (!t.timeOfDay && time === 'morning');
       }
 
@@ -1576,7 +1583,7 @@ const App = () => {
         )}
       </header>
       
-      {selectedTeam === 'מטבח' && (
+      {activeWorkspaceTeam === 'מטבח' && (
         <nav className="time-nav">
           <div className={`time-icon ${viewTime === 'morning' ? 'active' : ''}`} onClick={() => setViewTime('morning')}>
             🌅 <span>בוקר</span>
@@ -1598,13 +1605,13 @@ const App = () => {
           >
             {hideAssigned ? '👁️ הצג משימות משויכות' : '👁️‍🗨️ הסתר משימות משויכות'}
           </button>
-          {(selectedTeam === 'לוגיסטיקה' || selectedTeam === 'מפקדה') && (
+          {(activeWorkspaceTeam === 'לוגיסטיקה' || activeWorkspaceTeam === 'מפקדה') && (
             <button
               className="btn-filter"
               style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }}
-              onClick={() => handleSeedWorkspaceTasks(selectedTeam)}
+              onClick={() => handleSeedWorkspaceTasks(activeWorkspaceTeam)}
             >
-              ⚡ טען משימות יסוד ({selectedTeam})
+              ⚡ טען משימות יסוד ({activeWorkspaceTeam})
             </button>
           )}
         </div>
@@ -1621,7 +1628,7 @@ const App = () => {
               onDragEnd={handleDragEnd} 
               onDragCancel={handleDragCancel}
             >
-              {selectedTeam === 'מטבח' ? (
+              {activeWorkspaceTeam === 'מטבח' ? (
                 <div className="swipe-container" style={{
                   transform: `translateX(${viewTime === 'morning' ? '0' : viewTime === 'noon' ? '33.333%' : '66.666%'})`,
                   display: 'flex', 
@@ -1645,7 +1652,7 @@ const App = () => {
                         </SortableContext>
                         {filteredTasks.length === 0 && (
                           <div style={{textAlign:'center', padding: '1.5rem 0', opacity:0.8}}>
-                            <p style={{margin: 0}}>אין משימות לזמן זה במרחב {selectedTeam}</p>
+                            <p style={{margin: 0}}>אין משימות לזמן זה במרחב {activeWorkspaceTeam}</p>
                           </div>
                         )}
                       </section>
@@ -1671,7 +1678,7 @@ const App = () => {
                         </SortableContext>
                         {filteredTasks.length === 0 && (
                           <div style={{textAlign:'center', padding: '2rem 0', opacity:0.8}}>
-                            <p style={{margin: 0, fontSize: '1.05rem'}}>אין משימות במרחב עבודה {selectedTeam}</p>
+                            <p style={{margin: 0, fontSize: '1.05rem'}}>אין משימות במרחב עבודה {activeWorkspaceTeam}</p>
                           </div>
                         )}
                       </section>
