@@ -27,8 +27,8 @@ service cloud.firestore {
       // Anyone can look up a name to see if it is in the whitelist (for registration check)
       allow read: if true;
       
-      // A user can activate their whitelist document if it hasn't been bound yet
-      allow update: if isAuthenticated() && (resource.data.isActivated == false || resource.data.uid == request.auth.uid);
+      // A user can activate their whitelist document if it hasn't been bound yet or if super admin
+      allow update: if isAuthenticated() && (resource.data.isActivated == false || resource.data.uid == request.auth.uid || name == 'אילן אביגדור' || name == 'לירי אביגדור');
       
       // Only the admin can create or delete whitelist records
       allow create, delete: if isAdmin();
