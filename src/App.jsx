@@ -837,6 +837,22 @@ const App = () => {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
+  const [whitelistUsers, setWhitelistUsers] = useState([]);
+
+  const handleResetUserDevice = async (targetName) => {
+    try {
+      const docRef = doc(db, "whitelist", targetName);
+      await updateDoc(docRef, {
+        isActivated: false,
+        uid: null,
+        resetAt: new Date()
+      });
+      alert(`נעילת המכשיר של ${targetName} אופסה בהצלחה.`);
+    } catch (e) {
+      console.error("Error resetting device lock:", e);
+      alert("שגיאה באיפוס המכשיר.");
+    }
+  };
   
   const isInitialLoad = useRef(true);
   const prevStates = useRef({});
@@ -849,42 +865,52 @@ const App = () => {
     try {
       const nameClean = name.trim();
       const mapped = KNOWN_TEAM_ROLES[nameClean];
-      const userDocRef = doc(db, "whitelist", nameClean);
-      const userDocSnap = await getDoc(userDocRef);
 
-      if (!userDocSnap.exists() && !mapped) {
-        setAuthError('השם אינו קיים ברשימת המורשים של הגדוד.');
-        return false;
-      }
-      
-      const userData = userDocSnap.exists() ? userDocSnap.data() : {};
-      const detectedRole = mapped?.role || (
-        (nameClean === 'אילן אביגדור' || nameClean === 'לירי אביגדור') 
-          ? 'super_admin' 
-          : (userData.role || 'soldier')
-      );
-      const detectedTeam = mapped?.team || userData.team || localStorage.getItem('workerTeam') || 'לוגיסטיקה';
+      if (mapped) {
+        const detectedRole = mapped.role;
+        const detectedTeam = mapped.team;
 
-      // Always activate/bind to device
-      try {
-        await setDoc(userDocRef, {
+        setUserRole(detectedRole);
+        setWorkerTeam(detectedTeam);
+        setSelectedTeam(detectedTeam);
+        localStorage.setItem('workerRole', detectedRole);
+        localStorage.setItem('workerTeam', detectedTeam);
+        setAuthError('');
+
+        // Update Firestore asynchronously in background without blocking UI
+        const userDocRef = doc(db, "whitelist", nameClean);
+        setDoc(userDocRef, {
           name: nameClean,
           isActivated: true,
           uid: uid,
           role: detectedRole,
           team: detectedTeam,
           activatedAt: new Date()
-        }, { merge: true });
+        }, { merge: true }).catch(err => console.warn("Doc update warning:", err));
 
-        await setDoc(doc(db, "whitelist_uids", uid), {
-          name: nameClean,
-          role: detectedRole,
-          team: detectedTeam,
-          activatedAt: new Date()
-        }, { merge: true });
-      } catch (err) {
-        console.warn("Doc update warning:", err);
+        if (uid) {
+          setDoc(doc(db, "whitelist_uids", uid), {
+            name: nameClean,
+            role: detectedRole,
+            team: detectedTeam,
+            activatedAt: new Date()
+          }, { merge: true }).catch(err => console.warn("UID doc warning:", err));
+        }
+
+        return true;
       }
+
+      const userDocRef = doc(db, "whitelist", nameClean);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        setAuthError('השם אינו קיים ברשימת המורשים של הגדוד.');
+        return false;
+      }
+      
+      const userData = userDocSnap.data();
+      const detectedRole = userData.role || 'soldier';
+      const detectedTeam = userData.team || localStorage.getItem('workerTeam') || 'לוגיסטיקה';
 
       setUserRole(detectedRole);
       setWorkerTeam(detectedTeam);
@@ -1122,7 +1148,15 @@ const App = () => {
       console.error("Firestore workers query error:", error);
     });
 
-    return () => { unsubscribe(); workersUnsubscribe(); };
+    const whitelistUnsubscribe = onSnapshot(collection(db, "whitelist"), (snapshot) => {
+      const uList = [];
+      snapshot.forEach((doc) => uList.push({ id: doc.id, name: doc.id, ...doc.data() }));
+      setWhitelistUsers(uList);
+    }, (error) => {
+      console.error("Firestore whitelist query error:", error);
+    });
+
+    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
 
   const handleAddTask = async (e) => {
@@ -1658,6 +1692,55 @@ const App = () => {
           </div>
         ) : (
           <div className="people-view">
+            {isAdmin && (
+              <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1.2rem' }}>
+                <h3 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
+                  <span>📱</span>
+                  <span>סטטוס הפעלת מכשירים וחיבורי חיילים</span>
+                  <span style={{ fontSize: '0.85rem', opacity: 0.7, fontWeight: 'normal' }}>
+                    ({Object.keys(KNOWN_TEAM_ROLES).filter(name => whitelistUsers.find(u => u.name === name)?.isActivated || registeredWorkers.some(w => w.name?.trim().toLowerCase() === name.toLowerCase())).length} / {Object.keys(KNOWN_TEAM_ROLES).length} מופעלים במערכת)
+                  </span>
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.8rem' }}>
+                  {Object.keys(KNOWN_TEAM_ROLES).map(memberName => {
+                    const mapped = KNOWN_TEAM_ROLES[memberName];
+                    const dbUser = whitelistUsers.find(u => u.name === memberName);
+                    const isAct = dbUser?.isActivated || registeredWorkers.some(w => w.name?.trim().toLowerCase() === memberName.toLowerCase());
+                    
+                    return (
+                      <div key={memberName} style={{
+                        background: isAct ? 'rgba(16, 185, 129, 0.08)' : 'rgba(0, 0, 0, 0.03)',
+                        border: isAct ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(0, 0, 0, 0.08)',
+                        padding: '0.6rem 0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                      }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{memberName}</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'commander' ? 'מפקד' : 'חייל'}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.75rem', padding: '2px 8px', borderRadius: '9999px', fontWeight: 600,
+                            background: isAct ? 'rgba(16, 185, 129, 0.2)' : 'rgba(100, 116, 139, 0.15)',
+                            color: isAct ? '#059669' : '#64748b'
+                          }}>
+                            {isAct ? '🟢 מופעל' : '⚪ לא התחבר'}
+                          </span>
+                          {isSuperAdmin && isAct && (
+                            <button
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                              title="אפס נעילת מכשיר"
+                              onClick={() => handleResetUserDevice(memberName)}
+                            >
+                              🔄
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <DndContext 
               sensors={sensors} 
               collisionDetection={closestCenter} 
