@@ -1357,9 +1357,15 @@ const App = () => {
   const getFilteredTasks = (time) => {
     let filtered = tasks.filter(t => {
       const taskTeam = t.team || 'מטבח';
-      const matchesTime = (t.timeOfDay === time) || (!t.timeOfDay && time === 'morning');
       const matchesTeam = (selectedTeam === 'הכל') || (taskTeam === selectedTeam);
-      return matchesTime && matchesTeam;
+      if (!matchesTeam) return false;
+
+      // Only apply morning/noon/evening time filtering for Kitchen workspace
+      if (selectedTeam === 'מטבח') {
+        return (t.timeOfDay === time) || (!t.timeOfDay && time === 'morning');
+      }
+
+      return true;
     });
 
     if (isAdmin) {
@@ -1525,17 +1531,19 @@ const App = () => {
         )}
       </header>
       
-      <nav className="time-nav">
-        <div className={`time-icon ${viewTime === 'morning' ? 'active' : ''}`} onClick={() => setViewTime('morning')}>
-          🌅 <span>בוקר</span>
-        </div>
-        <div className={`time-icon ${viewTime === 'noon' ? 'active' : ''}`} onClick={() => setViewTime('noon')}>
-          ☀️ <span>צהריים</span>
-        </div>
-        <div className={`time-icon ${viewTime === 'evening' ? 'active' : ''}`} onClick={() => setViewTime('evening')}>
-          🌙 <span>ערב</span>
-        </div>
-      </nav>
+      {selectedTeam === 'מטבח' && (
+        <nav className="time-nav">
+          <div className={`time-icon ${viewTime === 'morning' ? 'active' : ''}`} onClick={() => setViewTime('morning')}>
+            🌅 <span>בוקר</span>
+          </div>
+          <div className={`time-icon ${viewTime === 'noon' ? 'active' : ''}`} onClick={() => setViewTime('noon')}>
+            ☀️ <span>צהריים</span>
+          </div>
+          <div className={`time-icon ${viewTime === 'evening' ? 'active' : ''}`} onClick={() => setViewTime('evening')}>
+            🌙 <span>ערב</span>
+          </div>
+        </nav>
+      )}
 
       {isAdmin && activeTab === 'tasks' && (
         <div className="filter-bar">
@@ -1568,36 +1576,64 @@ const App = () => {
               onDragEnd={handleDragEnd} 
               onDragCancel={handleDragCancel}
             >
-              <div className="swipe-container" style={{
-                transform: `translateX(${viewTime === 'morning' ? '0' : viewTime === 'noon' ? '33.333%' : '66.666%'})`,
-                display: 'flex', 
-                width: '300%',
-                direction: 'rtl'
-              }}>
-                {['morning', 'noon', 'evening'].map(time => {
-                  const filteredTasks = getFilteredTasks(time);
-                  return (
-                    <section key={time} className="swipe-screen" style={{width: '33.333%', flexShrink: 0}}>
-                      <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                        {filteredTasks.map(task => (
-                          <SortableTask key={task.id} task={task} isAdmin={isAdmin}
-                            isSelected={selectedTaskId === task.id}
-                            onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : null}
-                          onVerify={verifyTask} onDelete={deleteTask}
-                          onOpenAssignment={(taskId) => setAssignmentModal({ isOpen: true, type: 'task', targetId: taskId })}
-                          onToggleStatus={toggleStatus}
-                          currentUserName={userName} />
-                        ))}
-                      </SortableContext>
-                      {filteredTasks.length === 0 && (
-                        <div style={{textAlign:'center', padding: '1.5rem 0', opacity:0.8}}>
-                          <p style={{margin: 0}}>אין משימות לזמן זה במרחב {selectedTeam}</p>
-                        </div>
-                      )}
-                    </section>
-                  );
-                })}
-              </div>
+              {selectedTeam === 'מטבח' ? (
+                <div className="swipe-container" style={{
+                  transform: `translateX(${viewTime === 'morning' ? '0' : viewTime === 'noon' ? '33.333%' : '66.666%'})`,
+                  display: 'flex', 
+                  width: '300%',
+                  direction: 'rtl'
+                }}>
+                  {['morning', 'noon', 'evening'].map(time => {
+                    const filteredTasks = getFilteredTasks(time);
+                    return (
+                      <section key={time} className="swipe-screen" style={{width: '33.333%', flexShrink: 0}}>
+                        <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                          {filteredTasks.map(task => (
+                            <SortableTask key={task.id} task={task} isAdmin={isAdmin}
+                              isSelected={selectedTaskId === task.id}
+                              onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : null}
+                            onVerify={verifyTask} onDelete={deleteTask}
+                            onOpenAssignment={(taskId) => setAssignmentModal({ isOpen: true, type: 'task', targetId: taskId })}
+                            onToggleStatus={toggleStatus}
+                            currentUserName={userName} />
+                          ))}
+                        </SortableContext>
+                        {filteredTasks.length === 0 && (
+                          <div style={{textAlign:'center', padding: '1.5rem 0', opacity:0.8}}>
+                            <p style={{margin: 0}}>אין משימות לזמן זה במרחב {selectedTeam}</p>
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="single-workspace-container" style={{ width: '100%', direction: 'rtl' }}>
+                  {(() => {
+                    const filteredTasks = getFilteredTasks();
+                    return (
+                      <section className="workspace-screen" style={{ width: '100%' }}>
+                        <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                          {filteredTasks.map(task => (
+                            <SortableTask key={task.id} task={task} isAdmin={isAdmin}
+                              isSelected={selectedTaskId === task.id}
+                              onToggleSelect={() => isAdmin ? setSelectedTaskId(selectedTaskId === task.id ? null : task.id) : null}
+                            onVerify={verifyTask} onDelete={deleteTask}
+                            onOpenAssignment={(taskId) => setAssignmentModal({ isOpen: true, type: 'task', targetId: taskId })}
+                            onToggleStatus={toggleStatus}
+                            currentUserName={userName} />
+                          ))}
+                        </SortableContext>
+                        {filteredTasks.length === 0 && (
+                          <div style={{textAlign:'center', padding: '2rem 0', opacity:0.8}}>
+                            <p style={{margin: 0, fontSize: '1.05rem'}}>אין משימות במרחב עבודה {selectedTeam}</p>
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })()}
+                </div>
+              )}
               <TrashBin isAdmin={isAdmin} onLongPress={handleClearAllTasks} />
               <DragOverlay dropAnimation={null}>
                 {activeId ? (
