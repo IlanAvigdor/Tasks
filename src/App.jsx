@@ -1198,14 +1198,14 @@ const App = () => {
         return false;
       }
 
-      const userData = userDocSnap.exists() ? userDocSnap.data() : {};
+      const isSuper = (nameClean === 'אילן אביגדור' || nameClean === 'לירי אביגדור');
       const detectedRole = mapped?.role || userData.role || (
-        (nameClean === 'אילן אביגדור' || nameClean === 'לירי אביגדור') ? 'super_admin' : 'soldier'
+        isSuper ? 'super_admin' : 'soldier'
       );
       const detectedTeam = mapped?.team || userData.team || 'לוגיסטיקה';
 
-      // Strict single-device lock enforcement
-      if (userData.isActivated && userData.uid && userData.uid !== uid) {
+      // Strict single-device lock enforcement (exempt super admins so they can log in from phone/any device)
+      if (!isSuper && userData.isActivated && userData.uid && userData.uid !== uid) {
         localStorage.removeItem('workerName');
         localStorage.removeItem('workerRole');
         localStorage.removeItem('workerTeam');
