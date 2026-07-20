@@ -143,6 +143,86 @@ const KNOWN_TEAM_ROLES = {
   "אורי פינטו": { team: "טנ\"א (חימוש)", role: "soldier" }
 };
 
+const TASK_BANK_TEMPLATES = {
+  'לוגיסטיקה': [
+    { title: 'בדיקת מלאי ציוד יומית', description: 'ספירת מלאי במחסני אספקה וציוד אישי' },
+    { title: 'חלוקת אספקה וציוד', description: 'ניפוק ציוד ודלק ליחידות' },
+    { title: 'סידור מחסנים ונעילה', description: 'ארגון המחסנים, סגירת רישומים ונעילה' },
+    { title: 'בדיקת תקינות מלגזה/מנגנוני שינוע', description: 'בדיקת שמן, דלק ובטיחות כלי שינוע' },
+    { title: 'קליטת משלוח ציוד חדש', description: 'רישום, בחינה ופריקת משלוחי ציוד נכנסים' },
+    { title: 'סקר בלאי וציוד תקול', description: 'איסוף דיווחים על ציוד בלאי והעברה לתיקון' }
+  ],
+  'מפקדה': [
+    { title: 'תדריך בוקר מפקדה', description: 'הערכת מצב וסנכרון משימות יומי' },
+    { title: 'מעקב סטטוס גדודי', description: 'סקירת ביצוע משימות בכלל הצוותים' },
+    { title: 'סיכום יום ופקודות למחר', description: 'סיכום הישגים יומי והפצת דגשים' },
+    { title: 'עדכון לוח זמנים גדודי', description: 'סנכרון לו"ז אימונים, סיורים ומשימות' },
+    { title: 'בדיקת כוננות חמ"ל', description: 'וידוא מוכנות אמצעי תקשורת ודיווח חמ"ל' }
+  ],
+  'תקשוב': [
+    { title: 'בדיקת קשר גדודית', description: 'בדיקת מופע תדרים ומכשירי קשר צוותיים' },
+    { title: 'סריקת מוצבי קשר ותשתיות', description: 'בדיקת אנטנות, כבלים וממירי מתח' },
+    { title: 'טעינת סוללות מכשירי קשר', description: 'איסוף, טעינה וחלוקת סוללות גיבוי' }
+  ],
+  'רכב וניוד': [
+    { title: 'מסדר טיפול שבועי/יומי (טפ"ש)', description: 'בדיקת שמן, מים, לחץ אוויר ומערכות בלמים' },
+    { title: 'ניפוק ותדלוק כלים', description: 'רישום ותדלוק רכבי סיור ומנהלה' },
+    { title: 'בדיקת רישיונות ויומני רכב', description: 'וידוא יומני נסיעה חתומים ועדכניים' }
+  ],
+  'רפואה': [
+    { title: 'בדיקת תרופות וציוד עזרה ראשונה', description: 'ספירת מלאי ותוקף ציוד רפואי' },
+    { title: 'בדיקת כוננות אמבולנס/תאג"ד', description: 'וידוא ציוד החייאה וציוד מילוט תקין' },
+    { title: 'מסדר תברואה וחיטוי', description: 'חיטוי ציוד רפואי ובדיקת ניקיון התחנה' }
+  ],
+  'טנ"א (חימוש)': [
+    { title: 'מסדר בחינת נשק וציוד טכני', description: 'בדיקת תקינות נשקייה וחלפים טכניים' },
+    { title: 'תיקון מכלולים ודיווח תקלות', description: 'מענה לתקלות נשק וכלים טכניים' },
+    { title: 'שימון ותחזוקת ציוד טכני', description: 'שימון תקופתי לכלים ומערכות ירי' }
+  ],
+  'מטבח': [
+    { title: 'הכנת ארוחת בוקר', description: 'בישול, עריכת שולחנות וחלוקת מזון' },
+    { title: 'נקיון וחיטוי מטבח', description: 'שטיפת כלים, ניקוי משטחי עבודה וריענון' },
+    { title: 'ספירת מלאי מצרכים', description: 'בדיקת ירקות, מוצרי יבוא וקירור' }
+  ],
+  'שלישות': [
+    { title: 'עדכון דוח 1 (נוכחות חיילים)', description: 'ספירת נוכחות, ימי חופשה וגימלים' },
+    { title: 'טיפול בטפסים ובקשות חיילים', description: 'אישור בקשות חופשה, היתרים ואישורים' },
+    { title: 'ראיונות קליטה ושיחות מעקב', description: 'שיחות אישיות ועדכון תיקי חיילים' }
+  ]
+};
+
+const DEFAULT_BUNDLES = {
+  'לוגיסטיקה': [
+    {
+      name: '📦 ערכת בוקר לוגיסטי',
+      description: 'בדיקת מחסנים, ספירת ציוד וניפוק ראשוני',
+      tasks: [
+        { title: 'בדיקת מלאי ציוד יומית', description: 'ספירת מלאי במחסני אספקה וציוד אישי' },
+        { title: 'חלוקת אספקה וציוד', description: 'ניפוק ציוד ודלק ליחידות' },
+        { title: 'בדיקת תקינות מלגזה/מנגנוני שינוע', description: 'בדיקת שמן, דלק ובטיחות כלי שינוע' }
+      ]
+    },
+    {
+      name: '🔒 ערכת סגירת יום לוגיסטיקה',
+      description: 'ארגון מחסנים, ספירת בלאי ונעילת ציוד',
+      tasks: [
+        { title: 'סידור מחסנים ונעילה', description: 'ארגון המחסנים, סגירת רישומים ונעילה' },
+        { title: 'סקר בלאי וציוד תקול', description: 'איסוף דיווחים על ציוד בלאי והעברה לתיקון' }
+      ]
+    }
+  ],
+  'מפקדה': [
+    {
+      name: '🎖️ ערכת פתיחת יום מפקדה',
+      description: 'תדריך בוקר, סנכרון לו"ז ובדיקת חמ"ל',
+      tasks: [
+        { title: 'תדריך בוקר מפקדה', description: 'הערכת מצב וסנכרון משימות יומי' },
+        { title: 'בדיקת כוננות חמ"ל', description: 'וידוא מוכנות אמצעי תקשורת ודיווח חמ"ל' }
+      ]
+    }
+  ]
+};
+
 const getTaskStatusClass = (task) => {
   if (task.isVerified) return 'status-verified';
   if (task.isDone) return 'status-done';
@@ -796,6 +876,242 @@ const AssignmentModal = ({ isOpen, type, targetId, onClose, tasks, registeredWor
   }
 };
 
+const TaskBankModal = ({ isOpen, onClose, activeTeam, onDeployTasks, onSaveCustomBundle, customBundles = [] }) => {
+  const [modalTab, setModalTab] = useState('bundles'); // 'bundles' | 'bank' | 'create'
+  const bankTasks = TASK_BANK_TEMPLATES[activeTeam] || TASK_BANK_TEMPLATES['לוגיסטיקה'] || [];
+  const defaultBundles = DEFAULT_BUNDLES[activeTeam] || DEFAULT_BUNDLES['לוגיסטיקה'] || [];
+  const teamCustomBundles = customBundles.filter(b => !b.team || b.team === activeTeam);
+  const allBundles = [...defaultBundles, ...teamCustomBundles];
+
+  const [selectedBankIndexes, setSelectedBankIndexes] = useState([]);
+  const [newBundleName, setNewBundleName] = useState('');
+  const [newBundleDescription, setNewBundleDescription] = useState('');
+  const [newBundleTasks, setNewBundleTasks] = useState([{ title: '', description: '' }]);
+
+  if (!isOpen) return null;
+
+  const toggleSelectBankTask = (idx) => {
+    setSelectedBankIndexes(prev => 
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    );
+  };
+
+  const handleSelectAllBank = () => {
+    if (selectedBankIndexes.length === bankTasks.length) {
+      setSelectedBankIndexes([]);
+    } else {
+      setSelectedBankIndexes(bankTasks.map((_, i) => i));
+    }
+  };
+
+  const handleDeploySelectedBank = () => {
+    const tasksToDeploy = selectedBankIndexes.map(i => bankTasks[i]);
+    if (tasksToDeploy.length > 0) {
+      onDeployTasks(tasksToDeploy);
+      setSelectedBankIndexes([]);
+      onClose();
+    }
+  };
+
+  const handleAddField = () => {
+    setNewBundleTasks(prev => [...prev, { title: '', description: '' }]);
+  };
+
+  const handleSaveBundleSubmit = (e) => {
+    e.preventDefault();
+    const validTasks = newBundleTasks.filter(t => t.title.trim().length > 0);
+    if (!newBundleName || validTasks.length === 0) return;
+    onSaveCustomBundle({
+      name: newBundleName,
+      description: newBundleDescription,
+      team: activeTeam,
+      tasks: validTasks
+    });
+    setNewBundleName('');
+    setNewBundleDescription('');
+    setNewBundleTasks([{ title: '', description: '' }]);
+    setModalTab('bundles');
+  };
+
+  return (
+    <div className="compact-form-overlay" onClick={onClose}>
+      <div 
+        className="glass-card task-bank-modal" 
+        onClick={e => e.stopPropagation()}
+        style={{ width: '92%', maxWidth: '600px', maxHeight: '85vh', overflowY: 'auto', padding: '1.5rem', borderRadius: '20px' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>📦</span>
+            <span>בנק משימות & ערכות ({activeTeam})</span>
+          </h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '1.2rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '0.6rem' }}>
+          <button 
+            className={`btn-filter ${modalTab === 'bundles' ? 'active' : ''}`}
+            onClick={() => setModalTab('bundles')}
+          >
+            📦 ערכות ({allBundles.length})
+          </button>
+          <button 
+            className={`btn-filter ${modalTab === 'bank' ? 'active' : ''}`}
+            onClick={() => setModalTab('bank')}
+          >
+            ⚡ בנק משימות ({bankTasks.length})
+          </button>
+          <button 
+            className={`btn-filter ${modalTab === 'create' ? 'active' : ''}`}
+            onClick={() => setModalTab('create')}
+            style={{ color: '#3b82f6' }}
+          >
+            ➕ יצור ערכה
+          </button>
+        </div>
+
+        {modalTab === 'bundles' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {allBundles.map((bundle, idx) => (
+              <div key={idx} style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '12px', padding: '1rem' }}>
+                <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '4px' }}>{bundle.name}</div>
+                {bundle.description && <div style={{ fontSize: '0.85rem', opacity: 0.75, marginBottom: '8px' }}>{bundle.description}</div>}
+                
+                <div style={{ fontSize: '0.8rem', opacity: 0.8, marginBottom: '10px' }}>
+                  <strong>משימות בערכה ({bundle.tasks.length}):</strong>
+                  <ul style={{ margin: '4px 0 0 0', paddingRight: '1.2rem' }}>
+                    {bundle.tasks.map((t, i) => (
+                      <li key={i}>{t.title}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <button 
+                  className="btn btn-save" 
+                  style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                  onClick={() => {
+                    onDeployTasks(bundle.tasks);
+                    onClose();
+                  }}
+                >
+                  🚀 הפעל ערכה במרחב ({bundle.tasks.length} משימות)
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {modalTab === 'bank' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+              <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>בחר משימות להוספה מהירה:</span>
+              <button onClick={handleSelectAllBank} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+                {selectedBankIndexes.length === bankTasks.length ? 'בטל הכל' : 'בחר הכל'}
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.2rem' }}>
+              {bankTasks.map((t, idx) => {
+                const isChecked = selectedBankIndexes.includes(idx);
+                return (
+                  <div 
+                    key={idx}
+                    onClick={() => toggleSelectBankTask(idx)}
+                    style={{
+                      background: isChecked ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0,0,0,0.03)',
+                      border: isChecked ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(0,0,0,0.08)',
+                      borderRadius: '10px', padding: '0.7rem 0.9rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '10px'
+                    }}
+                  >
+                    <input type="checkbox" checked={isChecked} onChange={() => {}} />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t.title}</div>
+                      <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{t.description}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button 
+              className="btn btn-save" 
+              style={{ width: '100%', padding: '0.7rem', fontSize: '1rem' }}
+              disabled={selectedBankIndexes.length === 0}
+              onClick={handleDeploySelectedBank}
+            >
+              ⚡ הוסף {selectedBankIndexes.length} משימות שנבחרו
+            </button>
+          </div>
+        )}
+
+        {modalTab === 'create' && (
+          <form onSubmit={handleSaveBundleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '4px' }}>שם הערכה:</label>
+              <input 
+                className="inline-edit-input" 
+                placeholder="לדוגמה: מסדר בוקר לוגיסטי" 
+                value={newBundleName} 
+                onChange={e => setNewBundleName(e.target.value)} 
+                required 
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '4px' }}>תיאור קצר:</label>
+              <input 
+                className="inline-edit-input" 
+                placeholder="לדוגמה: בדיקת מחסנים וציוד" 
+                value={newBundleDescription} 
+                onChange={e => setNewBundleDescription(e.target.value)} 
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '6px' }}>משימות בערכה:</label>
+              {newBundleTasks.map((t, idx) => (
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px', background: 'rgba(0,0,0,0.02)', padding: '0.6rem', borderRadius: '8px' }}>
+                  <input 
+                    className="inline-edit-input" 
+                    placeholder={`שם משימה ${idx + 1}`} 
+                    value={t.title} 
+                    onChange={e => {
+                      const updated = [...newBundleTasks];
+                      updated[idx].title = e.target.value;
+                      setNewBundleTasks(updated);
+                    }} 
+                  />
+                  <input 
+                    className="inline-edit-input" 
+                    placeholder="תיאור משימה" 
+                    value={t.description} 
+                    onChange={e => {
+                      const updated = [...newBundleTasks];
+                      updated[idx].description = e.target.value;
+                      setNewBundleTasks(updated);
+                    }} 
+                  />
+                </div>
+              ))}
+              <button 
+                type="button" 
+                onClick={handleAddField}
+                style={{ background: 'none', border: '1px dashed rgba(59,130,246,0.5)', color: '#3b82f6', width: '100%', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                ➕ הוסף משימה לערכה
+              </button>
+            </div>
+
+            <button className="btn btn-save" type="submit" style={{ marginTop: '0.5rem', padding: '0.7rem' }}>
+              💾 שמור ערכה חדשה
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const [tasks, setTasks] = useState([]);
   const [userRole, setUserRole] = useState(localStorage.getItem('workerRole') || 'soldier');
@@ -839,6 +1155,8 @@ const App = () => {
   const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
   const [workersLoading, setWorkersLoading] = useState(true);
   const [hideAssigned, setHideAssigned] = useState(false);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [customBundles, setCustomBundles] = useState([]);
 
   // Security Whitelist States
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -1165,8 +1483,54 @@ const App = () => {
       console.error("Firestore whitelist query error:", error);
     });
 
-    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); };
+    const bundlesUnsubscribe = onSnapshot(collection(db, "task_bundles"), (snapshot) => {
+      const bList = [];
+      snapshot.forEach((docSnap) => {
+        bList.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setCustomBundles(bList);
+    }, (error) => {
+      console.error("Task bundles subscription error:", error);
+    });
+
+    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
+
+  const handleDeployTasksBatch = async (taskList) => {
+    try {
+      const batch = writeBatch(db);
+      const targetTeam = activeWorkspaceTeam === 'הכל' ? (workerTeam || 'לוגיסטיקה') : activeWorkspaceTeam;
+      taskList.forEach((t, idx) => {
+        const docRef = doc(collection(db, "tasks"));
+        batch.set(docRef, {
+          title: t.title,
+          description: t.description || '',
+          assignees: [],
+          team: targetTeam,
+          timeOfDay: viewTime,
+          isDone: false,
+          isInProgress: false,
+          isVerified: false,
+          order: tasks.length + idx,
+          createdAt: new Date()
+        });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error("Error deploying task batch:", e);
+    }
+  };
+
+  const handleSaveCustomBundle = async (bundleData) => {
+    try {
+      await addDoc(collection(db, "task_bundles"), {
+        ...bundleData,
+        createdAt: new Date()
+      });
+    } catch (e) {
+      console.error("Error saving custom bundle:", e);
+    }
+  };
 
   const handleAddTask = async (e) => {
     e.preventDefault();
@@ -1641,15 +2005,13 @@ const App = () => {
           >
             {hideAssigned ? '👁️ הצג משימות משויכות' : '👁️‍🗨️ הסתר משימות משויכות'}
           </button>
-          {(activeWorkspaceTeam === 'לוגיסטיקה' || activeWorkspaceTeam === 'מפקדה') && (
-            <button
-              className="btn-filter"
-              style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }}
-              onClick={() => handleSeedWorkspaceTasks(activeWorkspaceTeam)}
-            >
-              ⚡ טען משימות יסוד ({activeWorkspaceTeam})
-            </button>
-          )}
+          <button
+            className="btn-filter"
+            style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', fontWeight: 600 }}
+            onClick={() => setIsBankModalOpen(true)}
+          >
+            📦 ערכות משימות & בנק ({activeWorkspaceTeam})
+          </button>
         </div>
       )}
 
@@ -1943,11 +2305,19 @@ const App = () => {
           targetId={assignmentModal.targetId}
           onClose={() => setAssignmentModal({ isOpen: false, type: 'task', targetId: null })}
           tasks={tasks}
-          registeredWorkers={uniqueWorkers}
+          registeredWorkers={displayWorkers}
           onToggleAssignment={toggleAssignment}
           viewTime={viewTime}
         />
       )}
+      <TaskBankModal 
+        isOpen={isBankModalOpen}
+        onClose={() => setIsBankModalOpen(false)}
+        activeTeam={activeWorkspaceTeam}
+        onDeployTasks={handleDeployTasksBatch}
+        onSaveCustomBundle={handleSaveCustomBundle}
+        customBundles={customBundles}
+      />
     </div>
   );
 };
