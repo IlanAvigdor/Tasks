@@ -1214,3 +1214,118 @@ body.theme-evening .team-pill.active {
     color: #ffffff;
 }
 
+/* -------------------------------------------------------------
+   WORKSPACE SPECIFIC MATURE THEMING & ACCENTS
+------------------------------------------------------------- */
+
+/* 📦 לוגיסטיקה (Logistics) - Tactical Bronze/Amber Accent */
+body[data-team="לוגיסטיקה"] .app-header {
+    border-top: 3px solid #d97706;
+}
+body[data-team="לוגיסטיקה"] .role-badge {
+    box-shadow: 0 0 12px rgba(217, 119, 6, 0.15);
+}
+body[data-team="לוגיסטיקה"] .task-card {
+    border-right: 3px solid rgba(217, 119, 6, 0.4);
+}
+body[data-team="לוגיסטיקה"] .team-pill.active {
+    background: #d97706 !important;
+    border-color: #d97706 !important;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;
+}
+
+/* 🎖️ מפקדה (Command / HQ) - Royal Navy Accent */
+body[data-team="מפקדה"] .app-header {
+    border-top: 3px solid #1e3a8a;
+}
+body[data-team="מפקדה"] .role-badge {
+    box-shadow: 0 0 12px rgba(30, 58, 138, 0.2);
+}
+body[data-team="מפקדה"] .task-card {
+    border-right: 3px solid rgba(30, 58, 138, 0.5);
+}
+body[data-team="מפקדה"] .team-pill.active {
+    background: #1e3a8a !important;
+    border-color: #1e3a8a !important;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.35) !important;
+}
+
+/* 📡 תקשוב (Telecommunications / C4I) - Signal Cyan Accent */
+body[data-team="תקשוב"] .app-header {
+    border-top: 3px solid #0284c7;
+}
+body[data-team="תקשוב"] .task-card {
+    border-right: 3px solid rgba(2, 132, 199, 0.4);
+}
+body[data-team="תקשוב"] .team-pill.active {
+    background: #0284c7 !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3) !important;
+}
+
+/* 🚚 רכב וניוד (Vehicles & Transport) - Industrial Slate Accent */
+body[data-team="רכב וניוד"] .app-header {
+    border-top: 3px solid #475569;
+}
+body[data-team="רכב וניוד"] .task-card {
+    border-right: 3px solid rgba(71, 85, 105, 0.4);
+}
+body[data-team="רכב וניוד"] .team-pill.active {
+    background: #475569 !important;
+    border-color: #475569 !important;
+    box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3) !important;
+}
+
+/* 🩺 רפואה (Medical) - Medical Teal Accent */
+body[data-team="רפואה"] .app-header {
+    border-top: 3px solid #0d9488;
+}
+body[data-team="רפואה"] .task-card {
+    border-right: 3px solid rgba(13, 148, 136, 0.4);
+}
+body[data-team="רפואה"] .team-pill.active {
+    background: #0d9488 !important;
+    border-color: #0d9488 !important;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3) !important;
+}
+
+/* 🛠️ טנ"א (חימוש) (Ordnance) - Armory Amber-Rust Accent */
+body[data-team="טנ\"א (חימוש)"] .app-header {
+    border-top: 3px solid #ea580c;
+}
+body[data-team="טנ\"א (חימוש)"] .task-card {
+    border-right: 3px solid rgba(234, 88, 12, 0.4);
+}
+body[data-team="טנ\"א (חימוש)"] .team-pill.active {
+    background: #ea580c !important;
+    border-color: #ea580c !important;
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3) !important;
+}
+
+/* 🍳 מטבח (Kitchen) - Crimson Culinary Accent */
+body[data-team="מטבח"] .app-header {
+    border-top: 3px solid #e11d48;
+}
+body[data-team="מטבח"] .task-card {
+    border-right: 3px solid rgba(225, 29, 72, 0.4);
+}
+body[data-team="מטבח"] .team-pill.active {
+    background: #e11d48 !important;
+    border-color: #e11d48 !important;
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.3) !important;
+}
+
+/* 📋 שלישות (Adjutant / HR) - Executive Indigo Accent */
+body[data-team="שלישות"] .app-header {
+    border-top: 3px solid #4f46e5;
+}
+body[data-team="שלישות"] .task-card {
+    border-right: 3px solid rgba(79, 70, 229, 0.4);
+}
+body[data-team="שלישות"] .team-pill.active {
+    background: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
+}
+
+

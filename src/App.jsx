@@ -921,7 +921,8 @@ const App = () => {
 
   useEffect(() => {
     document.body.className = `theme-${viewTime}`;
-  }, [viewTime]);
+    document.body.setAttribute('data-team', selectedTeam || 'לוגיסטיקה');
+  }, [viewTime, selectedTeam]);
 
   useEffect(() => {
     if (!loading && !workersLoading && userName && workerTeam && isAuthorized) {
