@@ -1120,12 +1120,12 @@ const App = () => {
   const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
 
   const isSuperAdmin = useMemo(() => {
-    return userRole === 'super_admin' || userName === 'אילן אביגדור' || userName === 'לירי אביגדור';
-  }, [userName, userRole]);
+    return isAuthorized && (userRole === 'super_admin' || userName === 'אילן אביגדור' || userName === 'לירי אביגדור');
+  }, [isAuthorized, userName, userRole]);
 
   const isCommander = useMemo(() => {
-    return userRole === 'commander';
-  }, [userRole]);
+    return isAuthorized && userRole === 'commander';
+  }, [isAuthorized, userRole]);
 
   const isAdmin = isSuperAdmin || isCommander;
 
@@ -1369,17 +1369,11 @@ const App = () => {
           setAuthLoading(false);
         }
       } else {
-        // Try silent anonymous authentication
-        const storedName = localStorage.getItem('workerName');
-        if (storedName) {
-          try {
-            await signInAnonymously(auth);
-          } catch (e) {
-            console.error("Anonymous authentication failed:", e);
-            setAuthLoading(false);
-          }
-        } else {
-          setIsAuthorized(false);
+        // Silent anonymous authentication
+        try {
+          await signInAnonymously(auth);
+        } catch (e) {
+          console.error("Anonymous authentication failed:", e);
           setAuthLoading(false);
         }
       }
