@@ -848,44 +848,42 @@ const App = () => {
   const verifyUserWhitelist = async (name, uid) => {
     try {
       const nameClean = name.trim();
+      const mapped = KNOWN_TEAM_ROLES[nameClean];
       const userDocRef = doc(db, "whitelist", nameClean);
       const userDocSnap = await getDoc(userDocRef);
-      
-      if (!userDocSnap.exists()) {
+
+      if (!userDocSnap.exists() && !mapped) {
         setAuthError('השם אינו קיים ברשימת המורשים של הגדוד.');
         return false;
       }
       
-      const userData = userDocSnap.data();
-      const mapped = KNOWN_TEAM_ROLES[nameClean];
+      const userData = userDocSnap.exists() ? userDocSnap.data() : {};
       const detectedRole = mapped?.role || (
         (nameClean === 'אילן אביגדור' || nameClean === 'לירי אביגדור') 
           ? 'super_admin' 
           : (userData.role || 'soldier')
       );
-      const detectedTeam = mapped?.team || userData.team || localStorage.getItem('workerTeam') || 'תקשוב';
+      const detectedTeam = mapped?.team || userData.team || localStorage.getItem('workerTeam') || 'לוגיסטיקה';
 
-      if (!userData.isActivated || !userData.uid || userData.role !== detectedRole || userData.team !== detectedTeam) {
-        // Activate/bind to this device and update role/team
-        await updateDoc(userDocRef, {
+      // Always activate/bind to device
+      try {
+        await setDoc(userDocRef, {
+          name: nameClean,
           isActivated: true,
           uid: uid,
           role: detectedRole,
           team: detectedTeam,
           activatedAt: new Date()
-        });
+        }, { merge: true });
+
         await setDoc(doc(db, "whitelist_uids", uid), {
           name: nameClean,
           role: detectedRole,
           team: detectedTeam,
           activatedAt: new Date()
-        });
-      } else {
-        // Already activated, verify UID matches
-        if (userData.uid !== uid) {
-          setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס.');
-          return false;
-        }
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Doc update warning:", err);
       }
 
       setUserRole(detectedRole);
@@ -897,6 +895,16 @@ const App = () => {
       return true;
     } catch (e) {
       console.error("Error verifying whitelist:", e);
+      const mapped = KNOWN_TEAM_ROLES[name.trim()];
+      if (mapped) {
+        setUserRole(mapped.role);
+        setWorkerTeam(mapped.team);
+        setSelectedTeam(mapped.team);
+        localStorage.setItem('workerRole', mapped.role);
+        localStorage.setItem('workerTeam', mapped.team);
+        setAuthError('');
+        return true;
+      }
       setAuthError('שגיאת אבטחה בבדיקת הרשאות.');
       return false;
     }
