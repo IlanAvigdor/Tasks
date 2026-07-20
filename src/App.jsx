@@ -1198,6 +1198,7 @@ const App = () => {
         return false;
       }
 
+      const userData = userDocSnap.exists() ? userDocSnap.data() : {};
       const isSuper = (nameClean === 'אילן אביגדור' || nameClean === 'לירי אביגדור');
       const detectedRole = mapped?.role || userData.role || (
         isSuper ? 'super_admin' : 'soldier'
