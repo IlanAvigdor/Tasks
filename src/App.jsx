@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db, auth } from './firebase';
 import { 
   collection, 
@@ -36,8 +36,33 @@ import {
 import {CSS} from '@dnd-kit/utilities';
 
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.02';
+const APP_VERSION = '1.04';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
+const AVAILABLE_TEAMS = ['תקשוב', 'מטבח', 'לוגיסטיקה', 'חימוש', 'קשר', 'שלישות', 'רכב וניוד', 'רפואה', 'מפקדה'];
+
+const KNOWN_TEAM_ROLES = {
+  // Super Admins
+  "אילן אביגדור": { team: "מפקדה", role: "super_admin" },
+  "לירי אביגדור": { team: "מפקדה", role: "super_admin" },
+
+  // תקשוב - סגל (Commanders)
+  "דביר הרמן": { team: "תקשוב", role: "commander" },
+  "אור חממה": { team: "תקשוב", role: "commander" },
+  "אורין": { team: "תקשוב", role: "commander" },
+  "אמיתי בהדני": { team: "תקשוב", role: "commander" },
+  "תמי מזרחי": { team: "תקשוב", role: "commander" },
+  "מישל פיוטרובסקי": { team: "תקשוב", role: "commander" },
+
+  // תקשוב - חיילים (Soldiers)
+  "אוראל חביב": { team: "תקשוב", role: "soldier" },
+  "נגה שי": { team: "תקשוב", role: "soldier" },
+  "דביר אגסי": { team: "תקשוב", role: "soldier" },
+  "עדי כרמי": { team: "תקשוב", role: "soldier" },
+  "שוהם פאר": { team: "תקשוב", role: "soldier" },
+  "קסם סוויסה": { team: "תקשוב", role: "soldier" },
+  "גרשון מירל": { team: "תקשוב", role: "soldier" },
+  "אלה לידור": { team: "תקשוב", role: "soldier" }
+};
 
 const getTaskStatusClass = (task) => {
   if (task.isVerified) return 'status-verified';
@@ -694,10 +719,24 @@ const AssignmentModal = ({ isOpen, type, targetId, onClose, tasks, registeredWor
 
 const App = () => {
   const [tasks, setTasks] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(() => {
+  const [userRole, setUserRole] = useState(localStorage.getItem('workerRole') || 'soldier');
+  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('workerTeam') || 'מטבח');
+  const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
+  const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
+
+  const isSuperAdmin = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
-    return window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654';
-  });
+    const isUrlAdmin = window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654';
+    const isSuperName = userName === 'אילן אביגדור' || userName === 'לירי אביגדור';
+    return isUrlAdmin || isSuperName || userRole === 'super_admin';
+  }, [userName, userRole]);
+
+  const isCommander = useMemo(() => {
+    return userRole === 'commander';
+  }, [userRole]);
+
+  const isAdmin = isSuperAdmin || isCommander;
+
   const [viewTime, setViewTime] = useState('morning');
   const [activeTab, setActiveTab] = useState('tasks');
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
@@ -705,8 +744,6 @@ const App = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [registeredWorkers, setRegisteredWorkers] = useState([]);
-  const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
-  const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
   const [showWelcomeBack, setShowWelcomeBack] = useState(!!(localStorage.getItem('workerName') && localStorage.getItem('workerTeam')));
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [registrationName, setRegistrationName] = useState(localStorage.getItem('workerName') || '');
@@ -731,7 +768,7 @@ const App = () => {
   const swipeStartX = useRef(0);
   const lastScrollY = useRef(0);
 
-  // Helper: Verify name on whitelist and bind/check UID
+  // Helper: Verify name on whitelist and bind/check UID & role & team
   const verifyUserWhitelist = async (name, uid) => {
     try {
       const nameClean = name.trim();
@@ -744,29 +781,46 @@ const App = () => {
       }
       
       const userData = userDocSnap.data();
-      if (!userData.isActivated || !userData.uid) {
-        // Activate/bind to this device
+      const mapped = KNOWN_TEAM_ROLES[nameClean];
+      const detectedRole = mapped?.role || (
+        (nameClean === 'אילן אביגדור' || nameClean === 'לירי אביגדור') 
+          ? 'super_admin' 
+          : (userData.role || 'soldier')
+      );
+      const detectedTeam = mapped?.team || userData.team || localStorage.getItem('workerTeam') || 'תקשוב';
+
+      if (!userData.isActivated || !userData.uid || userData.role !== detectedRole || userData.team !== detectedTeam) {
+        // Activate/bind to this device and update role/team
         await updateDoc(userDocRef, {
           isActivated: true,
           uid: uid,
+          role: detectedRole,
+          team: detectedTeam,
           activatedAt: new Date()
         });
         await setDoc(doc(db, "whitelist_uids", uid), {
           name: nameClean,
+          role: detectedRole,
+          team: detectedTeam,
           activatedAt: new Date()
         });
-        setAuthError('');
-        return true;
       } else {
         // Already activated, verify UID matches
-        if (userData.uid === uid) {
-          setAuthError('');
-          return true;
-        } else {
+        if (userData.uid !== uid) {
           setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס.');
           return false;
         }
       }
+
+      setUserRole(detectedRole);
+      setWorkerTeam(detectedTeam);
+      if (detectedRole !== 'super_admin') {
+        setSelectedTeam(detectedTeam);
+      }
+      localStorage.setItem('workerRole', detectedRole);
+      localStorage.setItem('workerTeam', detectedTeam);
+      setAuthError('');
+      return true;
     } catch (e) {
       console.error("Error verifying whitelist:", e);
       setAuthError('שגיאת אבטחה בבדיקת הרשאות.');
@@ -827,20 +881,52 @@ const App = () => {
     const seedWhitelist = async () => {
       try {
         const liriRef = doc(db, "whitelist", "לירי אביגדור");
-        const ilanRef = doc(db, "whitelist", "אילן אביגדור");
-        
         const liriSnap = await getDoc(liriRef);
-        if (!liriSnap.exists()) {
-          await setDoc(liriRef, { name: "לירי אביגדור", isActivated: false, uid: null });
-        }
         
-        const ilanSnap = await getDoc(ilanRef);
-        if (!ilanSnap.exists()) {
-          await setDoc(ilanRef, { name: "אילן אביגדור", isActivated: false, uid: null });
+        // If "לירי אביגדור" doc doesn't exist, seed the entire list
+        if (!liriSnap.exists()) {
+          const names = [
+            "לירי אביגדור", "אילן אביגדור",
+            "דביר הרמן", "אור חממה", "אורין", "אמיתי בהדני", "תמי מזרחי", "מישל פיוטרובסקי",
+            "אוראל חביב", "נגה שי", "דביר אגסי", "עדי כרמי", "שוהם פאר", "קסם סוויסה", "גרשון מירל", "אלה לידור",
+            "עמית דן", "מאור פרידר", "תמר ביליה", "נתנאל יובל ערבה", "רוניה אליהו",
+            "ליאל רוטנברג", "חסין סלותי", "מתן לוי", "פאר זנגאני", "שליו פאבון", "מעיין ישראלי",
+            "ירין תורג׳מן", "גיל זיו", "אליאב ביטון", "ארטיום", "אליה עמר", "אייל הרשקוביץ",
+            "סמי יגודייב", "ליאן קריסטופר", "אלון אופיר", "ליאב ביטון", "לירון שטרן", "ולריה סטלמק",
+            "שי וינד", "עידו כהן", "אלון מעוז", "עדן בן דוד", "מתן ביטון", "יניב חנוך", "קים פלג",
+            "רואי עמדי", "אושר חכמון", "טל זדורייב", "עידן יוסף", "דניאל אלימוב", "חיים גבריאלוב",
+            "בן פורמן", "שחף בכר", "אושר אלמקייס", "סתו גיטר", "יוסף חי סרוסי", "תכלת זליג",
+            "ירדן חכמון", "שליו סלדינגר", "רז חורי", "בני וייס",
+            "עומר גלבר", "עדי טאוב", "דודו דריי", "מרק דלוב", "אמיר לוי", "אביב אמסלם", "אור טויטו",
+            "סרגיי מטיצין", "רון אברהם", "אבישג סמואל", "אור סוקוליק", "תאיר חביב", "מאור מנחם",
+            "אליה אוחיון", "דמקה אזנאו", "עידו בן טל", "עדן לגריסי", "בן עוז", "ליהי ביטון",
+            "אורי מנטל", "אביאל יעקוב", "אורי פינטו"
+          ];
+
+          const batch = writeBatch(db);
+          names.forEach(name => {
+            const cleanName = name.trim();
+            const docRef = doc(db, "whitelist", cleanName);
+            const mappedInfo = KNOWN_TEAM_ROLES[cleanName];
+            const isSuper = (cleanName === 'אילן אביגדור' || cleanName === 'לירי אביגדור');
+            
+            const role = mappedInfo?.role || (isSuper ? 'super_admin' : 'soldier');
+            const team = mappedInfo?.team || (isSuper ? 'מפקדה' : 'תקשוב');
+
+            batch.set(docRef, { 
+              name: cleanName, 
+              role: role,
+              team: team,
+              isActivated: false, 
+              uid: null 
+            }, { merge: true });
+          });
+          await batch.commit();
+          console.log("Successfully seeded whitelist with roles for", names.length, "names.");
         }
       } catch (e) {
         // Seeding will fail silently if rules are already deployed, which is correct
-        console.log("Seeding skipped/blocked by rules.");
+        console.log("Seeding skipped/blocked by rules:", e);
       }
     };
     seedWhitelist();
@@ -960,8 +1046,10 @@ const App = () => {
     e.preventDefault();
     if (!newTask.title) return;
     try {
+      const targetTeam = selectedTeam === 'הכל' ? 'מטבח' : selectedTeam;
       await addDoc(collection(db, "tasks"), {
         title: newTask.title, description: newTask.description, assignees: [],
+        team: targetTeam,
         timeOfDay: viewTime, isDone: false, isInProgress: false, isVerified: false,
         order: tasks.length, createdAt: new Date()
       });
@@ -1031,7 +1119,7 @@ const App = () => {
   };
 
   const handleWorkerDragEnd = async (event) => {
-    setActiveWorkerId(null);
+    setActiveWorkerId(event.active.id);
     setIsOverTrash(false);
     document.body.style.overflow = '';
     document.body.style.touchAction = '';
@@ -1153,14 +1241,20 @@ const App = () => {
 
 
   const getFilteredTasks = (time) => {
-    let timeFiltered = tasks.filter(t => t.timeOfDay === time || (!t.timeOfDay && time === 'morning'));
+    let filtered = tasks.filter(t => {
+      const taskTeam = t.team || 'מטבח';
+      const matchesTime = (t.timeOfDay === time) || (!t.timeOfDay && time === 'morning');
+      const matchesTeam = (selectedTeam === 'הכל') || (taskTeam === selectedTeam);
+      return matchesTime && matchesTeam;
+    });
+
     if (isAdmin) {
       if (hideAssigned) {
-        return timeFiltered.filter(t => !t.assignees || t.assignees.length === 0);
+        return filtered.filter(t => !t.assignees || t.assignees.length === 0);
       }
-      return timeFiltered;
+      return filtered;
     }
-    return timeFiltered.filter(t => t.assignees?.includes(userName) && !t.isVerified);
+    return filtered.filter(t => t.assignees?.includes(userName) && !t.isVerified);
   };
 
   if (authLoading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען אבטחה...</div>;
@@ -1210,14 +1304,14 @@ const App = () => {
                 value={registrationTeam} 
                 onChange={e => setRegistrationTeam(e.target.value)}
               >
-                <option value="" disabled>בחר צוות...</option>
-                <option value="סוללה">סוללה</option>
-                <option value="אגם">אגם</option>
-                <option value="פלסם">פלסם</option>
+                <option value="" disabled>בחר צוות (אם לא משויך)...</option>
+                {AVAILABLE_TEAMS.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
               </select>
 
               <button className="btn btn-save" style={{width:'100%', marginTop:'1rem'}} onClick={async () => {
-                if(registrationName && registrationTeam) {
+                if(registrationName) {
                   const nameClean = registrationName.trim();
                   try {
                     let currentFirebaseUser = auth.currentUser;
@@ -1228,10 +1322,11 @@ const App = () => {
                     
                     const success = await verifyUserWhitelist(nameClean, currentFirebaseUser.uid);
                     if (success) {
+                      const teamToUse = registrationTeam || localStorage.getItem('workerTeam') || 'מטבח';
                       localStorage.setItem('workerName', nameClean);
-                      localStorage.setItem('workerTeam', registrationTeam);
+                      localStorage.setItem('workerTeam', teamToUse);
                       setUserName(nameClean);
-                      setWorkerTeam(registrationTeam);
+                      setWorkerTeam(teamToUse);
                       setIsAuthorized(true);
                     } else {
                       alert(authError || 'שם זה אינו מורשה או שכבר הופעל במכשיר אחר.');
@@ -1241,7 +1336,7 @@ const App = () => {
                     alert('שגיאה בתקשורת עם השרת.');
                   }
                 } else {
-                  alert('נא למלא את כל הפרטים');
+                  alert('נא להזין את השם');
                 }
               }}>התחל</button>
            </div>
@@ -1273,6 +1368,48 @@ const App = () => {
 
   return (
     <div className="app-shell">
+      
+      {/* Multi-Team Header & Role Bar */}
+      <header className="app-header">
+        <div className="header-top-row">
+          <div className="site-brand">
+            <span>🛡️</span>
+            <h1>ניהול משימות - גדוד 402</h1>
+          </div>
+          <div className="header-user-info">
+            {isSuperAdmin && (
+              <span className="role-badge super-admin">👑 מנהל ראשי</span>
+            )}
+            {isCommander && !isSuperAdmin && (
+              <span className="role-badge commander">🎖️ מפקד צוות ({workerTeam})</span>
+            )}
+            {!isSuperAdmin && !isCommander && (
+              <span className="role-badge soldier">🪖 חייל ({workerTeam})</span>
+            )}
+          </div>
+        </div>
+
+        {isSuperAdmin && (
+          <div className="team-switcher-bar">
+            <span className="team-switcher-label">תצוגת צוות:</span>
+            <button
+              className={`team-pill ${selectedTeam === 'הכל' ? 'active' : ''}`}
+              onClick={() => setSelectedTeam('הכל')}
+            >
+              🌐 הכל
+            </button>
+            {AVAILABLE_TEAMS.map(team => (
+              <button
+                key={team}
+                className={`team-pill ${selectedTeam === team ? 'active' : ''}`}
+                onClick={() => setSelectedTeam(team)}
+              >
+                {team === 'מטבח' ? '🍳' : team === 'לוגיסטיקה' ? '📦' : team === 'חימוש' ? '🔧' : team === 'קשר' ? '📻' : '🛡️'} {team}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
       
       <nav className="time-nav">
         <div className={`time-icon ${viewTime === 'morning' ? 'active' : ''}`} onClick={() => setViewTime('morning')}>

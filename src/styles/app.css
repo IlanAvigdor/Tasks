@@ -1090,3 +1090,127 @@ body.theme-evening .info-badge {
     color: #ffffff;
     transform: scale(1.08);
 }
+
+/* Multi-Team Header & Role Badges */
+.app-header {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 0.8rem 1.2rem;
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+}
+
+.header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.site-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.site-brand h1 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.01em;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.35rem 0.8rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: var(--glass-shadow);
+}
+
+.role-badge.super-admin {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%);
+    color: #d97706;
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.role-badge.commander {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(79, 70, 229, 0.15) 100%);
+    color: #4f46e5;
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.role-badge.soldier {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+    color: #059669;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* Team Switcher Bar */
+.team-switcher-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+}
+
+.team-switcher-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.team-pill {
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-main);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.team-pill:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.team-pill.active {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+body.theme-evening .team-pill {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.theme-evening .team-pill.active {
+    background: var(--primary);
+    color: #ffffff;
+}
+

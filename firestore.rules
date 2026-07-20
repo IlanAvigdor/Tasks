@@ -19,7 +19,7 @@ service cloud.firestore {
 
     // Helper: Check if the user is designated as the administrator
     function isAdmin() {
-      return isWhitelisted() && getUserName() == 'אילן אביגדור';
+      return isWhitelisted() && (getUserName() == 'אילן אביגדור' || getUserName() == 'לירי אביגדור');
     }
 
     // 1. Whitelist rules
