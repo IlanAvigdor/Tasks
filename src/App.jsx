@@ -1519,20 +1519,56 @@ const App = () => {
 
   if (loading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען משימות...</div>;
 
-  const uniqueWorkers = [];
-  const seenNames = new Set();
-  registeredWorkers.forEach(w => {
-    if (w.name) {
-      const key = w.name.trim().toLowerCase();
-      if (!seenNames.has(key)) {
-        seenNames.add(key);
-        uniqueWorkers.push(w);
-      }
-    }
-  });
+  const displayWorkers = useMemo(() => {
+    const list = [];
+    const seenNames = new Set();
 
-  const workersByTeam = uniqueWorkers.reduce((acc, worker) => {
-    const teamName = worker.team || 'צוות כללי';
+    registeredWorkers.forEach(w => {
+      if (w.name) {
+        const nameClean = w.name.trim();
+        const mapped = KNOWN_TEAM_ROLES[nameClean];
+        
+        // Filter for commanders: SOLDIERS ONLY
+        if (isCommander && !isSuperAdmin) {
+          if (mapped && mapped.role !== 'soldier') return;
+        }
+
+        const teamName = mapped?.team || w.team || 'לוגיסטיקה';
+        if (!isSuperAdmin || activeWorkspaceTeam !== 'הכל') {
+          if (teamName !== activeWorkspaceTeam) return;
+        }
+
+        if (!seenNames.has(nameClean.toLowerCase())) {
+          seenNames.add(nameClean.toLowerCase());
+          list.push({ ...w, team: teamName });
+        }
+      }
+    });
+
+    // Also include whitelisted soldiers for the active workspace so commanders can assign tasks even before soldiers log in
+    Object.keys(KNOWN_TEAM_ROLES).forEach(nameClean => {
+      const mapped = KNOWN_TEAM_ROLES[nameClean];
+      
+      // Filter for commanders: SOLDIERS ONLY
+      if (isCommander && !isSuperAdmin) {
+        if (mapped.role !== 'soldier') return;
+      }
+
+      if (!isSuperAdmin || activeWorkspaceTeam !== 'הכל') {
+        if (mapped.team !== activeWorkspaceTeam) return;
+      }
+
+      if (!seenNames.has(nameClean.toLowerCase())) {
+        seenNames.add(nameClean.toLowerCase());
+        list.push({ id: `roster-${nameClean}`, name: nameClean, team: mapped.team });
+      }
+    });
+
+    return list;
+  }, [registeredWorkers, isCommander, isSuperAdmin, activeWorkspaceTeam]);
+
+  const workersByTeam = displayWorkers.reduce((acc, worker) => {
+    const teamName = worker.team || activeWorkspaceTeam;
     if (!acc[teamName]) acc[teamName] = [];
     acc[teamName].push(worker);
     return acc;
@@ -1699,27 +1735,21 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (
-          <div className="people-view">
-            {isAdmin && (() => {
+        ) : (activeTab === 'devices' && isSuperAdmin) ? (
+          <div className="devices-view">
+            {isSuperAdmin && (() => {
               const visibleMembers = Object.keys(KNOWN_TEAM_ROLES).filter(memberName => {
                 const mapped = KNOWN_TEAM_ROLES[memberName];
-                if (isSuperAdmin) {
-                  return selectedTeam === 'הכל' ? true : mapped.team === selectedTeam;
-                }
-                if (isCommander) {
-                  return mapped.team === workerTeam;
-                }
-                return false;
+                return activeWorkspaceTeam === 'הכל' ? true : mapped.team === activeWorkspaceTeam;
               });
 
               const activeCount = visibleMembers.filter(name => whitelistUsers.find(u => u.name === name)?.isActivated || registeredWorkers.some(w => w.name?.trim().toLowerCase() === name.toLowerCase())).length;
 
               return (
-                <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1.2rem' }}>
+                <div className="glass-card" style={{ padding: '1.2rem' }}>
                   <h3 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
                     <span>📱</span>
-                    <span>סטטוס הפעלת מכשירים וחיבורי חיילים ({isSuperAdmin ? selectedTeam : workerTeam})</span>
+                    <span>סטטוס חיבור מכשירים ונעילות ({activeWorkspaceTeam})</span>
                     <span style={{ fontSize: '0.85rem', opacity: 0.7, fontWeight: 'normal' }}>
                       ({activeCount} / {visibleMembers.length} מופעלים)
                     </span>
@@ -1748,7 +1778,7 @@ const App = () => {
                             }}>
                               {isAct ? '🟢 מופעל' : '⚪ לא התחבר'}
                             </span>
-                            {isAdmin && isAct && (
+                            {isAct && (
                               <button
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                                 title="אפס נעילת מכשיר"
@@ -1765,6 +1795,9 @@ const App = () => {
                 </div>
               );
             })()}
+          </div>
+        ) : (
+          <div className="people-view">
             <DndContext 
               sensors={sensors} 
               collisionDetection={closestCenter} 
@@ -1777,11 +1810,11 @@ const App = () => {
                 <div key={teamName} className="team-section">
                   <div className="team-title">
                     <span>
-                      {teamName === 'סוללה' ? '🔋' : teamName === 'אגם' ? '💧' : teamName === 'פלסם' ? '🛡️' : '👥'}
+                      {teamName === 'סוללה' ? '🔋' : teamName === 'אגם' ? '💧' : teamName === 'פלסם' ? '🛡️' : '🪖'}
                     </span>
-                    <span>{teamName}</span>
+                    <span>חיילי צוות {teamName}</span>
                     <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 'normal', marginRight: '6px' }}>
-                      ({workersByTeam[teamName].length} חברים)
+                      ({workersByTeam[teamName].length} חיילים זמינים)
                     </span>
                   </div>
                   <div className="team-workers-grid">
@@ -1800,16 +1833,16 @@ const App = () => {
                   </div>
                 </div>
               ))}
-              {uniqueWorkers.length === 0 && (
+              {displayWorkers.length === 0 && (
                 <div className="team-section" style={{ textAlign: 'center', padding: '2rem 0' }}>
-                  <p style={{ opacity: 0.6 }}>אין עובדים רשומים כרגע</p>
+                  <p style={{ opacity: 0.6 }}>אין חיילים משוייכים לצוות זה כרגע</p>
                 </div>
               )}
               <TrashBin isAdmin={isAdmin} onLongPress={handleClearAllWorkers} />
               <DragOverlay dropAnimation={null}>
                 {activeWorkerId ? (
                   <WorkerDragPreview 
-                    worker={uniqueWorkers.find(w => w.id === activeWorkerId)} 
+                    worker={displayWorkers.find(w => w.id === activeWorkerId)} 
                     tasks={tasks} 
                     viewTime={viewTime}
                     isOverTrash={isOverTrash} 
@@ -1829,7 +1862,7 @@ const App = () => {
         <div className="compact-form-overlay" onClick={() => setIsFormOpen(false)}>
           <form className="task-item compact-form" onClick={e => e.stopPropagation()} onSubmit={handleAddTask}>
             <div className="task-inner-content" style={{flexDirection: 'column', alignItems: 'stretch'}}>
-              <h3 style={{marginBottom: '0.5rem', fontSize: '1.1rem'}}>משימה חדשה ({viewTime === 'morning' ? 'בוקר' : viewTime === 'noon' ? 'צהריים' : 'ערב'})</h3>
+              <h3 style={{marginBottom: '0.5rem', fontSize: '1.1rem'}}>משימה חדשה</h3>
               <div className="task-content">
                 <div className="task-header-row">
                   <input className="inline-edit-input" placeholder="שם המשימה" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} autoFocus />
@@ -1846,31 +1879,18 @@ const App = () => {
       )}
 
       {isAdmin && (
-        <nav 
-          className="bottom-nav"
-          onTouchStart={(e) => {
-            swipeStartX.current = e.touches[0].clientX;
-          }}
-          onTouchEnd={(e) => {
-            const diffX = e.changedTouches[0].clientX - swipeStartX.current;
-            if (Math.abs(diffX) > 50) {
-              if (diffX > 0) {
-                // Swipe Right -> tasks tab (left)
-                setActiveTab('tasks');
-              } else {
-                // Swipe Left -> people tab (right)
-                setActiveTab('people');
-              }
-            }
-          }}
-        >
-          <div className={`nav-slider ${activeTab === 'people' ? 'slide-people' : 'slide-tasks'}`} />
-          <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
-            <i style={{fontSize:'1.5rem'}}>👤</i> <span>אנשים</span>
-          </div>
+        <nav className="bottom-nav">
           <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
-            <i style={{fontSize:'1.5rem'}}>📋</i> <span>משימות</span>
+            <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
           </div>
+          <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
+            <i style={{fontSize:'1.3rem'}}>🪖</i> <span>חיילים ושיבוץ</span>
+          </div>
+          {isSuperAdmin && (
+            <div className={`nav-tab ${activeTab === 'devices' ? 'active' : ''}`} onClick={() => setActiveTab('devices')}>
+              <i style={{fontSize:'1.3rem'}}>📱</i> <span>חיבורי מכשירים</span>
+            </div>
+          )}
         </nav>
       )}
 
