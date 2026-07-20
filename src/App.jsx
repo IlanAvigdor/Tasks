@@ -38,12 +38,12 @@ import {CSS} from '@dnd-kit/utilities';
 const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.04';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
-const AVAILABLE_TEAMS = ['תקשוב', 'מטבח', 'לוגיסטיקה', 'חימוש', 'קשר', 'שלישות', 'רכב וניוד', 'רפואה', 'מפקדה'];
+const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'רכב וניוד', 'רפואה', 'טנ"א (חימוש)', 'מטבח', 'שלישות', 'מפקדה'];
 
 const KNOWN_TEAM_ROLES = {
   // Super Admins
   "אילן אביגדור": { team: "מפקדה", role: "super_admin" },
-  "לירי אביגדור": { team: "מפקדה", role: "super_admin" },
+  "לירי אביגדור": { team: "לוגיסטיקה", role: "super_admin" },
 
   // תקשוב - סגל (Commanders)
   "דביר הרמן": { team: "תקשוב", role: "commander" },
@@ -61,7 +61,86 @@ const KNOWN_TEAM_ROLES = {
   "שוהם פאר": { team: "תקשוב", role: "soldier" },
   "קסם סוויסה": { team: "תקשוב", role: "soldier" },
   "גרשון מירל": { team: "תקשוב", role: "soldier" },
-  "אלה לידור": { team: "תקשוב", role: "soldier" }
+  "אלה לידור": { team: "תקשוב", role: "soldier" },
+
+  // לוגיסטיקה - סגל (Commanders)
+  "ליאל רוטנברג": { team: "לוגיסטיקה", role: "commander" },
+  "חסין סלותי": { team: "לוגיסטיקה", role: "commander" },
+  "מתן לוי": { team: "לוגיסטיקה", role: "commander" },
+  "פאר זנגאני": { team: "לוגיסטיקה", role: "commander" },
+  "שליו פאבון": { team: "לוגיסטיקה", role: "commander" },
+
+  // לוגיסטיקה - חיילים (Soldiers)
+  "מעיין ישראלי": { team: "לוגיסטיקה", role: "soldier" },
+  "ירין תורג׳מן": { team: "לוגיסטיקה", role: "soldier" },
+  "גיל זיו": { team: "לוגיסטיקה", role: "soldier" },
+  "אליאב ביטון": { team: "לוגיסטיקה", role: "soldier" },
+  "ארטיום": { team: "לוגיסטיקה", role: "soldier" },
+  "אליה עמר": { team: "לוגיסטיקה", role: "soldier" },
+  "אייל הרשקוביץ": { team: "לוגיסטיקה", role: "soldier" },
+
+  // רכב וניוד - סגל (Commanders)
+  "סמי יגודייב": { team: "רכב וניוד", role: "commander" },
+  "ליאן קריסטופר": { team: "רכב וניוד", role: "commander" },
+
+  // רכב וניוד - חיילים (Soldiers)
+  "אלון אופיר": { team: "רכב וניוד", role: "soldier" },
+  "ליאב ביטון": { team: "רכב וניוד", role: "soldier" },
+  "לירון שטרן": { team: "רכב וניוד", role: "soldier" },
+  "ולריה סטלמק": { team: "רכב וניוד", role: "soldier" },
+  "שי וינד": { team: "רכב וניוד", role: "soldier" },
+  "עידו כהן": { team: "רכב וניוד", role: "soldier" },
+  "אלון מעוז": { team: "רכב וניוד", role: "soldier" },
+  "עדן בן דוד": { team: "רכב וניוד", role: "soldier" },
+  "מתן ביטון": { team: "רכב וניוד", role: "soldier" },
+  "יניב חנוך": { team: "רכב וניוד", role: "soldier" },
+  "קים פלג": { team: "רכב וניוד", role: "soldier" },
+  "רואי עמדי": { team: "רכב וניוד", role: "soldier" },
+  "אושר חכמון": { team: "רכב וניוד", role: "soldier" },
+  "טל זדורייב": { team: "רכב וניוד", role: "soldier" },
+  "עידן יוסף": { team: "רכב וניוד", role: "soldier" },
+  "דניאל אלימוב": { team: "רכב וניוד", role: "soldier" },
+  "חיים גבריאלוב": { team: "רכב וניוד", role: "soldier" },
+
+  // רפואה - סגל (Commanders)
+  "בן פורמן": { team: "רפואה", role: "commander" },
+  "שחף בכר": { team: "רפואה", role: "commander" },
+
+  // רפואה - חיילים (Soldiers)
+  "אושר אלמקייס": { team: "רפואה", role: "soldier" },
+  "סתו גיטר": { team: "רפואה", role: "soldier" },
+  "יוסף חי סרוסי": { team: "רפואה", role: "soldier" },
+  "תכלת זליג": { team: "רפואה", role: "soldier" },
+  "ירדן חכמון": { team: "רפואה", role: "soldier" },
+  "שליו סלדינגר": { team: "רפואה", role: "soldier" },
+  "רז חורי": { team: "רפואה", role: "soldier" },
+  "בני וייס": { team: "רפואה", role: "soldier" },
+
+  // טנ"א (חימוש) - סגל (Commanders)
+  "עומר גלבר": { team: "טנ\"א (חימוש)", role: "commander" },
+  "עדי טאוב": { team: "טנ\"א (חימוש)", role: "commander" },
+  "דודו דריי": { team: "טנ\"א (חימוש)", role: "commander" },
+  "מרק דלוב": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אמיר לוי": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אביב אמסלם": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אור טויטו": { team: "טנ\"א (חימוש)", role: "commander" },
+  "סרגיי מטיצין": { team: "טנ\"א (חימוש)", role: "commander" },
+  "רון אברהם": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אבישג סמואל": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אור סוקוליק": { team: "טנ\"א (חימוש)", role: "commander" },
+  "תאיר חביב": { team: "טנ\"א (חימוש)", role: "commander" },
+
+  // טנ"א (חימוש) - חיילים (Soldiers)
+  "מאור מנחם": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "אליה אוחיון": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "דמקה אזנאו": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "עידו בן טל": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "עדן לגריסי": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "בן עוז": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "ליהי ביטון": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "אורי מנטל": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "אביאל יעקוב": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "אורי פינטו": { team: "טנ\"א (חימוש)", role: "soldier" }
 };
 
 const getTaskStatusClass = (task) => {
@@ -814,9 +893,7 @@ const App = () => {
 
       setUserRole(detectedRole);
       setWorkerTeam(detectedTeam);
-      if (detectedRole !== 'super_admin') {
-        setSelectedTeam(detectedTeam);
-      }
+      setSelectedTeam(detectedTeam);
       localStorage.setItem('workerRole', detectedRole);
       localStorage.setItem('workerTeam', detectedTeam);
       setAuthError('');
@@ -1046,7 +1123,7 @@ const App = () => {
     e.preventDefault();
     if (!newTask.title) return;
     try {
-      const targetTeam = selectedTeam === 'הכל' ? 'מטבח' : selectedTeam;
+      const targetTeam = selectedTeam === 'הכל' ? 'לוגיסטיקה' : selectedTeam;
       await addDoc(collection(db, "tasks"), {
         title: newTask.title, description: newTask.description, assignees: [],
         team: targetTeam,
@@ -1056,6 +1133,46 @@ const App = () => {
       setNewTask({ title: '', description: '', assignee: '' });
       setIsFormOpen(false);
     } catch (e) { console.error("Error saving: ", e); }
+  };
+
+  const handleSeedWorkspaceTasks = async (teamName) => {
+    const templates = {
+      'לוגיסטיקה': [
+        { title: 'בדיקת מלאי ציוד יומית', description: 'ספירת מלאי במחסני אספקה וציוד אישי', timeOfDay: 'morning' },
+        { title: 'חלוקת אספקה וציוד', description: 'ניפוק ציוד ודלק ליחידות', timeOfDay: 'noon' },
+        { title: 'סידור מחסנים ונעילה', description: 'ארגון המחסנים, סגירת רישומים ונעילה', timeOfDay: 'evening' }
+      ],
+      'מפקדה': [
+        { title: 'תדריך בוקר מפקדה', description: 'הערכת מצב וסנכרון משימות יומי', timeOfDay: 'morning' },
+        { title: 'מעקב סטטוס גדודי', description: 'סקירת ביצוע משימות בכלל הצוותים', timeOfDay: 'noon' },
+        { title: 'סיכום יום ופקודות למחר', description: 'סיכום הישגים יומי והפצת דגשים', timeOfDay: 'evening' }
+      ]
+    };
+
+    const taskList = templates[teamName];
+    if (!taskList || taskList.length === 0) return;
+
+    try {
+      const batch = writeBatch(db);
+      taskList.forEach((t, idx) => {
+        const docRef = doc(collection(db, "tasks"));
+        batch.set(docRef, {
+          title: t.title,
+          description: t.description,
+          assignees: [],
+          team: teamName,
+          timeOfDay: t.timeOfDay,
+          isDone: false,
+          isInProgress: false,
+          isVerified: false,
+          order: tasks.length + idx,
+          createdAt: new Date()
+        });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error("Error seeding workspace tasks:", e);
+    }
   };
 
   useEffect(() => {
