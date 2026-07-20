@@ -804,10 +804,7 @@ const App = () => {
   const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
 
   const isSuperAdmin = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isUrlAdmin = window.location.pathname.includes(ADMIN_GUID) || params.get('admin') === '987654';
-    const isSuperName = userName === 'אילן אביגדור' || userName === 'לירי אביגדור';
-    return isUrlAdmin || isSuperName || userRole === 'super_admin';
+    return userRole === 'super_admin' || userName === 'אילן אביגדור' || userName === 'לירי אביגדור';
   }, [userName, userRole]);
 
   const isCommander = useMemo(() => {
