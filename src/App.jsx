@@ -881,6 +881,13 @@ const App = () => {
 
       // Strict single-device lock enforcement
       if (userData.isActivated && userData.uid && userData.uid !== uid) {
+        localStorage.removeItem('workerName');
+        localStorage.removeItem('workerRole');
+        localStorage.removeItem('workerTeam');
+        setUserName('');
+        setUserRole('soldier');
+        setWorkerTeam('');
+        setIsAuthorized(false);
         setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
         return false;
       }
@@ -1026,24 +1033,19 @@ const App = () => {
     // Listen for Auth changes
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        if (isAdmin) {
-          setIsAuthorized(true);
+        const storedName = localStorage.getItem('workerName');
+        if (storedName) {
+          const success = await verifyUserWhitelist(storedName, firebaseUser.uid);
+          setIsAuthorized(success);
           setAuthLoading(false);
         } else {
-          const storedName = localStorage.getItem('workerName');
-          if (storedName) {
-            const success = await verifyUserWhitelist(storedName, firebaseUser.uid);
-            setIsAuthorized(success);
-            setAuthLoading(false);
-          } else {
-            setIsAuthorized(false);
-            setAuthLoading(false);
-          }
+          setIsAuthorized(false);
+          setAuthLoading(false);
         }
       } else {
         // Try silent anonymous authentication
         const storedName = localStorage.getItem('workerName');
-        if (storedName || isAdmin) {
+        if (storedName) {
           try {
             await signInAnonymously(auth);
           } catch (e) {
@@ -1133,7 +1135,24 @@ const App = () => {
 
     const whitelistUnsubscribe = onSnapshot(collection(db, "whitelist"), (snapshot) => {
       const uList = [];
-      snapshot.forEach((doc) => uList.push({ id: doc.id, name: doc.id, ...doc.data() }));
+      const currentFirebaseUser = auth.currentUser;
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        uList.push({ id: docSnap.id, name: docSnap.id, ...d });
+
+        if (userName && docSnap.id === userName && currentFirebaseUser) {
+          if (d.isActivated && d.uid && d.uid !== currentFirebaseUser.uid) {
+            localStorage.removeItem('workerName');
+            localStorage.removeItem('workerRole');
+            localStorage.removeItem('workerTeam');
+            setUserName('');
+            setUserRole('soldier');
+            setWorkerTeam('');
+            setIsAuthorized(false);
+            setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
+          }
+        }
+      });
       setWhitelistUsers(uList);
     }, (error) => {
       console.error("Firestore whitelist query error:", error);
