@@ -1185,21 +1185,39 @@ const App = () => {
   const swipeStartX = useRef(0);
   const lastScrollY = useRef(0);
 
+  const resolveWhitelistedName = (inputName) => {
+    if (!inputName) return '';
+    const clean = inputName.trim();
+    if (KNOWN_TEAM_ROLES[clean]) return clean;
+
+    const cleanLower = clean.toLowerCase();
+    if (cleanLower === 'לירי' || cleanLower === 'liri') return 'לירי אביגדור';
+    if (cleanLower === 'אילן' || cleanLower === 'ilan') return 'אילן אביגדור';
+
+    const match = Object.keys(KNOWN_TEAM_ROLES).find(k => 
+      k.toLowerCase() === cleanLower || 
+      k.toLowerCase().startsWith(cleanLower) ||
+      cleanLower.startsWith(k.toLowerCase())
+    );
+    return match || clean;
+  };
+
   // Helper: Verify name on whitelist and bind/check UID & role & team
   const verifyUserWhitelist = async (name, uid) => {
     try {
-      const nameClean = name.trim();
-      const mapped = KNOWN_TEAM_ROLES[nameClean];
-      const userDocRef = doc(db, "whitelist", nameClean);
+      const nameResolved = resolveWhitelistedName(name);
+      const mapped = KNOWN_TEAM_ROLES[nameResolved];
+      const isSuper = (nameResolved === 'אילן אביגדור' || nameResolved === 'לירי אביגדור');
+      
+      const userDocRef = doc(db, "whitelist", nameResolved);
       const userDocSnap = await getDoc(userDocRef);
 
-      if (!userDocSnap.exists() && !mapped) {
-        setAuthError('השם אינו קיים ברשימת המורשים של הגדוד.');
+      if (!userDocSnap.exists() && !mapped && !isSuper) {
+        setAuthError(`השם "${name}" אינו מופיע ברשימת המורשים.`);
         return false;
       }
 
       const userData = userDocSnap.exists() ? userDocSnap.data() : {};
-      const isSuper = (nameClean === 'אילן אביגדור' || nameClean === 'לירי אביגדור');
       const detectedRole = mapped?.role || userData.role || (
         isSuper ? 'super_admin' : 'soldier'
       );
@@ -1220,9 +1238,9 @@ const App = () => {
 
       // Pair and bind to this device UID
       await setDoc(userDocRef, {
-        name: nameClean,
+        name: nameResolved,
         isActivated: true,
-        uid: uid,
+        uid: uid || null,
         role: detectedRole,
         team: detectedTeam,
         activatedAt: userData.activatedAt || new Date(),
@@ -1231,16 +1249,18 @@ const App = () => {
 
       if (uid) {
         await setDoc(doc(db, "whitelist_uids", uid), {
-          name: nameClean,
+          name: nameResolved,
           role: detectedRole,
           team: detectedTeam,
           activatedAt: new Date()
         }, { merge: true });
       }
 
+      setUserName(nameResolved);
       setUserRole(detectedRole);
       setWorkerTeam(detectedTeam);
       setSelectedTeam(detectedTeam);
+      localStorage.setItem('workerName', nameResolved);
       localStorage.setItem('workerRole', detectedRole);
       localStorage.setItem('workerTeam', detectedTeam);
       setAuthError('');
@@ -1358,24 +1378,27 @@ const App = () => {
 
     // Listen for Auth changes
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const storedName = localStorage.getItem('workerName');
-        if (storedName) {
-          const success = await verifyUserWhitelist(storedName, firebaseUser.uid);
-          setIsAuthorized(success);
-          setAuthLoading(false);
+      try {
+        if (firebaseUser) {
+          const storedName = localStorage.getItem('workerName');
+          if (storedName) {
+            const success = await verifyUserWhitelist(storedName, firebaseUser.uid);
+            setIsAuthorized(success);
+          } else {
+            setIsAuthorized(false);
+          }
         } else {
-          setIsAuthorized(false);
-          setAuthLoading(false);
+          try {
+            await signInAnonymously(auth);
+          } catch (e) {
+            console.error("Anonymous authentication failed:", e);
+          }
         }
-      } else {
-        // Silent anonymous authentication
-        try {
-          await signInAnonymously(auth);
-        } catch (e) {
-          console.error("Anonymous authentication failed:", e);
-          setAuthLoading(false);
-        }
+      } catch (err) {
+        console.error("Auth state error:", err);
+        setIsAuthorized(false);
+      } finally {
+        setAuthLoading(false);
       }
     });
 
@@ -1823,11 +1846,20 @@ const App = () => {
               <h2>ברוך הבא</h2>
               <p>הכנס את שמך ובחר צוות כדי להתחיל</p>
               
+              {authError && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#ef4444', padding: '0.6rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem', fontWeight: 600 }}>
+                  {authError}
+                </div>
+              )}
+
               <input 
                 className="input-field" 
-                placeholder="השם שלך" 
+                placeholder="השם שלך (לדוגמה: לירי אביגדור או לירי)" 
                 value={registrationName} 
-                onChange={e => setRegistrationName(e.target.value)} 
+                onChange={e => {
+                  setRegistrationName(e.target.value);
+                  if (authError) setAuthError('');
+                }} 
               />
 
               <select 
@@ -1843,7 +1875,7 @@ const App = () => {
 
               <button className="btn btn-save" style={{width:'100%', marginTop:'1rem'}} onClick={async () => {
                 if(registrationName) {
-                  const nameClean = registrationName.trim();
+                  const resolved = resolveWhitelistedName(registrationName);
                   try {
                     let currentFirebaseUser = auth.currentUser;
                     if (!currentFirebaseUser) {
@@ -1851,23 +1883,21 @@ const App = () => {
                       currentFirebaseUser = cred.user;
                     }
                     
-                    const success = await verifyUserWhitelist(nameClean, currentFirebaseUser.uid);
+                    const success = await verifyUserWhitelist(resolved, currentFirebaseUser.uid);
                     if (success) {
                       const teamToUse = registrationTeam || localStorage.getItem('workerTeam') || 'מטבח';
-                      localStorage.setItem('workerName', nameClean);
+                      localStorage.setItem('workerName', resolved);
                       localStorage.setItem('workerTeam', teamToUse);
-                      setUserName(nameClean);
+                      setUserName(resolved);
                       setWorkerTeam(teamToUse);
                       setIsAuthorized(true);
-                    } else {
-                      alert(authError || 'שם זה אינו מורשה או שכבר הופעל במכשיר אחר.');
                     }
                   } catch (e) {
                     console.error("Error registering worker:", e);
-                    alert('שגיאה בתקשורת עם השרת.');
+                    setAuthError('שגיאה בתקשורת עם השרת.');
                   }
                 } else {
-                  alert('נא להזין את השם');
+                  setAuthError('נא להזין את השם');
                 }
               }}>התחל</button>
            </div>
