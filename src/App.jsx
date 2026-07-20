@@ -1119,6 +1119,12 @@ const App = () => {
   const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
   const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
 
+  // Security Whitelist States (Declared before useMemo hooks)
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [whitelistUsers, setWhitelistUsers] = useState([]);
+
   const isSuperAdmin = useMemo(() => {
     return isAuthorized && (userRole === 'super_admin' || userName === 'אילן אביגדור' || userName === 'לירי אביגדור');
   }, [isAuthorized, userName, userRole]);
@@ -1135,34 +1141,6 @@ const App = () => {
     }
     return workerTeam || 'לוגיסטיקה';
   }, [isSuperAdmin, selectedTeam, workerTeam]);
-
-  const [viewTime, setViewTime] = useState('morning');
-  const [activeTab, setActiveTab] = useState('tasks');
-  const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
-  const [loading, setLoading] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [registeredWorkers, setRegisteredWorkers] = useState([]);
-  const [showWelcomeBack, setShowWelcomeBack] = useState(!!(localStorage.getItem('workerName') && localStorage.getItem('workerTeam')));
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
-  const [registrationName, setRegistrationName] = useState(localStorage.getItem('workerName') || '');
-  const [registrationTeam, setRegistrationTeam] = useState('');
-  const [showNav, setShowNav] = useState(true);
-  const [activeId, setActiveId] = useState(null);
-  const [activeWorkerId, setActiveWorkerId] = useState(null);
-  const [isOverTrash, setIsOverTrash] = useState(false);
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', message: '', action: null });
-  const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
-  const [workersLoading, setWorkersLoading] = useState(true);
-  const [hideAssigned, setHideAssigned] = useState(false);
-  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
-  const [customBundles, setCustomBundles] = useState([]);
-
-  // Security Whitelist States
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState('');
-  const [whitelistUsers, setWhitelistUsers] = useState([]);
 
   const handleResetUserDevice = async (targetName) => {
     try {
