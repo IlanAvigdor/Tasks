@@ -1132,6 +1132,8 @@ const App = () => {
   const [whitelistUsers, setWhitelistUsers] = useState([]);
 
   // UI & Workspace Modal States
+  const [registrationName, setRegistrationName] = useState('');
+  const [registrationTeam, setRegistrationTeam] = useState('');
   const [activeTab, setActiveTab] = useState('tasks');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
