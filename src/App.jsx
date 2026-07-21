@@ -1113,6 +1113,7 @@ const TaskBankModal = ({ isOpen, onClose, activeTeam, onDeployTasks, onSaveCusto
 };
 
 const App = () => {
+  const [viewTime, setViewTime] = useState('morning');
   const [tasks, setTasks] = useState([]);
   const [userRole, setUserRole] = useState(localStorage.getItem('workerRole') || 'soldier');
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('workerTeam') || 'מטבח');
