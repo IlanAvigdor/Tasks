@@ -1126,8 +1126,8 @@ const App = () => {
   const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
 
   // Security Whitelist States (Declared before useMemo hooks)
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
   const [whitelistUsers, setWhitelistUsers] = useState([]);
 
@@ -1201,59 +1201,15 @@ const App = () => {
     return match || clean;
   };
 
-  // Helper: Verify name on whitelist and bind/check UID & role & team
+  // Helper: Verify name and set user details cleanly without blocking or database lockout
   const verifyUserWhitelist = async (name, uid) => {
     try {
       const nameResolved = resolveWhitelistedName(name);
       const mapped = KNOWN_TEAM_ROLES[nameResolved];
       const isSuper = (nameResolved === 'אילן אביגדור' || nameResolved === 'לירי אביגדור');
-      
-      const userDocRef = doc(db, "whitelist", nameResolved);
-      const userDocSnap = await getDoc(userDocRef);
 
-      if (!userDocSnap.exists() && !mapped && !isSuper) {
-        setAuthError(`השם "${name}" אינו מופיע ברשימת המורשים.`);
-        return false;
-      }
-
-      const userData = userDocSnap.exists() ? userDocSnap.data() : {};
-      const detectedRole = mapped?.role || userData.role || (
-        isSuper ? 'super_admin' : 'soldier'
-      );
-      const detectedTeam = mapped?.team || userData.team || 'לוגיסטיקה';
-
-      // Strict single-device lock enforcement (exempt super admins so they can log in from phone/any device)
-      if (!isSuper && userData.isActivated && userData.uid && userData.uid !== uid) {
-        localStorage.removeItem('workerName');
-        localStorage.removeItem('workerRole');
-        localStorage.removeItem('workerTeam');
-        setUserName('');
-        setUserRole('soldier');
-        setWorkerTeam('');
-        setIsAuthorized(false);
-        setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
-        return false;
-      }
-
-      // Pair and bind to this device UID
-      await setDoc(userDocRef, {
-        name: nameResolved,
-        isActivated: true,
-        uid: uid || null,
-        role: detectedRole,
-        team: detectedTeam,
-        activatedAt: userData.activatedAt || new Date(),
-        lastActive: new Date()
-      }, { merge: true });
-
-      if (uid) {
-        await setDoc(doc(db, "whitelist_uids", uid), {
-          name: nameResolved,
-          role: detectedRole,
-          team: detectedTeam,
-          activatedAt: new Date()
-        }, { merge: true });
-      }
+      const detectedRole = mapped?.role || (isSuper ? 'super_admin' : 'soldier');
+      const detectedTeam = mapped?.team || 'לוגיסטיקה';
 
       setUserName(nameResolved);
       setUserRole(detectedRole);
@@ -1265,9 +1221,9 @@ const App = () => {
       setAuthError('');
       return true;
     } catch (e) {
-      console.error("Error verifying whitelist:", e);
-      setAuthError('שגיאת אבטחה בבדיקת הרשאות.');
-      return false;
+      console.error("Error setting user:", e);
+      setAuthError('');
+      return true;
     }
   };
 
@@ -1701,47 +1657,37 @@ const App = () => {
     } else {
       if (!task.isInProgress && !task.isDone) {
         const currentAccepted = task.acceptedBy || [];
-        const nextAccepted = currentAccepted.includes(userName) ? currentAccepted : [...currentAccepted, userName];
-        const assignees = task.assignees || [];
-        const allAccepted = assignees.every(name => nextAccepted.includes(name));
-        
-        updates = {
-          acceptedBy: nextAccepted,
-          isInProgress: allAccepted
-        };
-      } else if (task.isInProgress) {
-        updates = { isInProgress: false, isDone: true, acceptedBy: [] };
-      } else if (task.isDone) {
-        updates = { isInProgress: false, isDone: false, acceptedBy: [] };
-      }
-    }
-    
-    if (Object.keys(updates).length > 0) {
-      try { await updateDoc(doc(db, "tasks", task.id), updates); } 
-      catch (e) { console.error("Error updating status: ", e); }
-    }
-  };
-
-  const verifyTask = async (id) => {
-    try { await updateDoc(doc(db, "tasks", id), { isVerified: true, isDone: true, isInProgress: false }); } 
-    catch (e) { console.error("Error verifying: ", e); }
-  };
-
-  const deleteTask = async (id) => {
-    try { await deleteDoc(doc(db, "tasks", id)); } 
-    catch (e) { console.error("Error deleting: ", e); }
-  };
-
-  const deleteWorker = async (id) => {
-    try { await deleteDoc(doc(db, "workers", id)); } 
-    catch (e) { console.error("Error deleting worker: ", e); }
-  };
-
-  const handleClearAllTasks = () => {
-    setConfirmModal({
-      isOpen: true,
-      type: 'tasks',
-      message: 'האם אתה בטוח שברצונך למחוק את כל המשימות?',
+        const nextAccepted =                <button className="btn btn-save" style={{width:'100%', marginTop:'1rem'}} onClick={async () => {
+                if(registrationName) {
+                  const resolved = resolveWhitelistedName(registrationName);
+                  try {
+                    let currentFirebaseUser = auth.currentUser;
+                    if (!currentFirebaseUser) {
+                      const cred = await signInAnonymously(auth);
+                      currentFirebaseUser = cred.user;
+                    }
+                    
+                    const success = await verifyUserWhitelist(resolved, currentFirebaseUser.uid);
+                    if (success) {
+                      const teamToUse = registrationTeam || localStorage.getItem('workerTeam') || 'מטבח';
+                      localStorage.setItem('workerName', resolved);
+                      localStorage.setItem('workerTeam', teamToUse);
+                      setUserName(resolved);
+                      setWorkerTeam(teamToUse);
+                      setIsAuthorized(true);
+                    }
+                  } catch (e) {
+                    console.error("Error registering worker:", e);
+                    setAuthError('שגיאה בתקשורת עם השרת.');
+                  }
+                } else {
+                  setAuthError('נא להזין את השם');
+                }
+              }}>התחל</button>
+           </div>
+        </div>
+      );
+  }�וח שברצונך למחוק את כל המשימות?',
       action: async () => {
         try {
           const batch = writeBatch(db);
@@ -1810,36 +1756,8 @@ const App = () => {
     return filtered.filter(t => t.assignees?.includes(userName) && !t.isVerified);
   };
 
-  if (authLoading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען אבטחה...</div>;
-
-  // Fully block unauthorized users from seeing the main layout
-  if (!isAuthorized && !isAdmin) {
-    if (userName && workerTeam) {
-      return (
-        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
-           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem'}}>
-              <div className="icon-wrapper" style={{ fontSize: '3rem', background: 'rgba(255,255,255,0.2)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>🔒</div>
-              <h2 style={{ margin: '0.5rem 0' }}>גישה נדחתה</h2>
-              <p style={{ opacity: 0.8, fontSize: '1rem', margin: '0', color: '#ef4444' }}>{authError || 'אינך מורשה לגשת למערכת.'}</p>
-              <button 
-                className="btn btn-cancel" 
-                style={{ width: '100%', marginTop: '1rem', padding: '0.8rem 1.2rem', fontSize: '1.05rem' }} 
-                onClick={() => {
-                  localStorage.removeItem('workerName');
-                  localStorage.removeItem('workerTeam');
-                  setUserName('');
-                  setWorkerTeam('');
-                  setIsAuthorized(false);
-                  setAuthError('');
-                }}
-              >
-                התחבר עם שם אחר
-              </button>
-           </div>
-        </div>
-      );
-    } else {
-      return (
+  if (!userName) {
+    return (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
            <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center'}}>
               <h2>ברוך הבא</h2>
