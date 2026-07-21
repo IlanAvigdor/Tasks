@@ -1283,7 +1283,19 @@ const App = () => {
 
         userData = userDocSnap.exists() ? userDocSnap.data() : {};
 
-        // Single-device lock enforcement temporarily disabled to allow unblocked testing
+        // Strict single-device lock enforcement (exempt super admins & localhost testing)
+        const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        if (!isSuper && !isLocalhost && userData.isActivated && userData.uid && userData.uid !== uid) {
+          localStorage.removeItem('workerName');
+          localStorage.removeItem('workerRole');
+          localStorage.removeItem('workerTeam');
+          setUserName('');
+          setUserRole('soldier');
+          setWorkerTeam('');
+          setIsAuthorized(false);
+          setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
+          return false;
+        }
 
         // Pair and bind to this device UID
         await setDoc(userDocRef, {
@@ -1553,7 +1565,21 @@ const App = () => {
         const d = docSnap.data();
         uList.push({ id: docSnap.id, name: docSnap.id, ...d });
 
-        // Device lock check in snapshot disabled for development testing
+        // Strict single-device lock enforcement (exempt super admins & localhost testing)
+        if (userName && docSnap.id === userName && currentFirebaseUser) {
+          const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+          const isSuper = (userName === 'אילן אביגדור' || userName === 'לירי אביגדור');
+          if (!isSuper && !isLocalhost && d.isActivated && d.uid && d.uid !== currentFirebaseUser.uid) {
+            localStorage.removeItem('workerName');
+            localStorage.removeItem('workerRole');
+            localStorage.removeItem('workerTeam');
+            setUserName('');
+            setUserRole('soldier');
+            setWorkerTeam('');
+            setIsAuthorized(false);
+            setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
+          }
+        }
       });
       setWhitelistUsers(uList);
     }, (error) => {
@@ -1622,7 +1648,10 @@ const App = () => {
       });
       setNewTask({ title: '', description: '', assignee: '' });
       setIsFormOpen(false);
-    } catch (e) { console.error("Error saving: ", e); }
+    } catch (e) {
+      console.error("Error saving task: ", e);
+      alert("שגיאה בשמירת המשימה: " + e.message);
+    }
   };
 
   const handleSeedWorkspaceTasks = async (teamName) => {
