@@ -1119,6 +1119,7 @@ const App = () => {
   const [workersLoading, setWorkersLoading] = useState(true);
   const [registeredWorkers, setRegisteredWorkers] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
+  const [showNav, setShowNav] = useState(true);
   const [userRole, setUserRole] = useState(localStorage.getItem('workerRole') || 'soldier');
   const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('workerTeam') || 'מטבח');
   const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
@@ -1129,6 +1130,19 @@ const App = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
   const [whitelistUsers, setWhitelistUsers] = useState([]);
+
+  // UI & Workspace Modal States
+  const [activeTab, setActiveTab] = useState('tasks');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
+  const [activeId, setActiveId] = useState(null);
+  const [activeWorkerId, setActiveWorkerId] = useState(null);
+  const [isOverTrash, setIsOverTrash] = useState(false);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [customBundles, setCustomBundles] = useState([]);
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', message: '', action: null });
+  const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
 
   const isSuperAdmin = useMemo(() => {
     return isAuthorized && (userRole === 'super_admin' || userName === 'אילן אביגדור' || userName === 'לירי אביגדור');
