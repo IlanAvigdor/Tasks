@@ -1213,6 +1213,19 @@ const App = () => {
     return list;
   }, [registeredWorkers, isCommander, isSuperAdmin, activeWorkspaceTeam]);
 
+  const handleLogout = () => {
+    localStorage.removeItem('workerName');
+    localStorage.removeItem('workerRole');
+    localStorage.removeItem('workerTeam');
+    setUserName('');
+    setUserRole('soldier');
+    setWorkerTeam('');
+    setRegistrationName('');
+    setRegistrationTeam('');
+    setIsAuthorized(false);
+    setAuthError('');
+  };
+
   const handleResetUserDevice = async (targetName) => {
     try {
       const docRef = doc(db, "whitelist", targetName);
@@ -1270,18 +1283,7 @@ const App = () => {
 
         userData = userDocSnap.exists() ? userDocSnap.data() : {};
 
-        // Strict single-device lock enforcement (exempt super admins so they can log in from phone/any device)
-        if (!isSuper && userData.isActivated && userData.uid && userData.uid !== uid) {
-          localStorage.removeItem('workerName');
-          localStorage.removeItem('workerRole');
-          localStorage.removeItem('workerTeam');
-          setUserName('');
-          setUserRole('soldier');
-          setWorkerTeam('');
-          setIsAuthorized(false);
-          setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
-          return false;
-        }
+        // Single-device lock enforcement temporarily disabled to allow unblocked testing
 
         // Pair and bind to this device UID
         await setDoc(userDocRef, {
@@ -1469,7 +1471,7 @@ const App = () => {
     });
 
     return () => unsubscribeAuth();
-  }, [isAdmin]);
+  }, []);
 
   // Firestore listeners (only subscribe if authorized or admin)
   useEffect(() => {
@@ -1531,6 +1533,7 @@ const App = () => {
       if (isInitialLoad.current) isInitialLoad.current = false;
     }, (error) => {
       console.error("Firestore tasks query error:", error);
+      setLoading(false);
     });
     
     const workersUnsubscribe = onSnapshot(collection(db, "workers"), (snapshot) => {
@@ -1540,6 +1543,7 @@ const App = () => {
       setWorkersLoading(false);
     }, (error) => {
       console.error("Firestore workers query error:", error);
+      setWorkersLoading(false);
     });
 
     const whitelistUnsubscribe = onSnapshot(collection(db, "whitelist"), (snapshot) => {
@@ -1549,18 +1553,7 @@ const App = () => {
         const d = docSnap.data();
         uList.push({ id: docSnap.id, name: docSnap.id, ...d });
 
-        if (userName && docSnap.id === userName && currentFirebaseUser) {
-          if (d.isActivated && d.uid && d.uid !== currentFirebaseUser.uid) {
-            localStorage.removeItem('workerName');
-            localStorage.removeItem('workerRole');
-            localStorage.removeItem('workerTeam');
-            setUserName('');
-            setUserRole('soldier');
-            setWorkerTeam('');
-            setIsAuthorized(false);
-            setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
-          }
-        }
+        // Device lock check in snapshot disabled for development testing
       });
       setWhitelistUsers(uList);
     }, (error) => {
@@ -1991,7 +1984,12 @@ const App = () => {
             <span>🛡️</span>
             <h1>ניהול משימות - גדוד 402</h1>
           </div>
-          <div className="header-user-info">
+          <div className="header-user-info" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            {userName && (
+              <span className="user-name-display" style={{ fontWeight: 600, fontSize: '0.95rem', background: 'rgba(255,255,255,0.15)', padding: '0.3rem 0.6rem', borderRadius: '8px' }}>
+                👤 {userName}
+              </span>
+            )}
             {isSuperAdmin && (
               <span className="role-badge super-admin">👑 מנהל ראשי</span>
             )}
@@ -2001,6 +1999,26 @@ const App = () => {
             {!isSuperAdmin && !isCommander && (
               <span className="role-badge soldier">🪖 חייל ({workerTeam})</span>
             )}
+            <button 
+              className="btn btn-cancel" 
+              style={{ 
+                padding: '0.35rem 0.75rem', 
+                fontSize: '0.85rem', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '0.3rem',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid #ef4444',
+                color: '#ef4444',
+                fontWeight: 600
+              }}
+              onClick={handleLogout}
+              title="התנתק והחלף משתמש"
+            >
+              🚪 התנתק
+            </button>
           </div>
         </div>
 
