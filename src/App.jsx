@@ -1147,6 +1147,8 @@ const App = () => {
   const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
   const [hideAssigned, setHideAssigned] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [newWorkerName, setNewWorkerName] = useState('');
+  const [newWorkerTeam, setNewWorkerTeam] = useState('מטבח');
 
   const isSuperAdmin = useMemo(() => {
     return isAuthorized && (userRole === 'super_admin' || userName === 'אילן אביגדור' || userName === 'לירי אביגדור');
@@ -1224,6 +1226,24 @@ const App = () => {
     setRegistrationTeam('');
     setIsAuthorized(false);
     setAuthError('');
+  };
+
+  const handleAddWorker = async (e) => {
+    e.preventDefault();
+    if (!newWorkerName.trim()) return;
+    try {
+      const targetTeam = isSuperAdmin ? newWorkerTeam : (workerTeam || 'לוגיסטיקה');
+      await addDoc(collection(db, "workers"), {
+        name: newWorkerName.trim(),
+        team: targetTeam,
+        createdAt: new Date()
+      });
+      setNewWorkerName('');
+      alert(`החייל ${newWorkerName.trim()} נוסף בהצלחה לצוות ${targetTeam}`);
+    } catch (err) {
+      console.error("Error adding worker:", err);
+      alert("שגיאה בהוספת חייל: " + err.message);
+    }
   };
 
   const handleResetUserDevice = async (targetName) => {
@@ -2187,9 +2207,9 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (activeTab === 'devices' && isSuperAdmin) ? (
+        ) : (activeTab === 'devices' && isAdmin) ? (
           <div className="devices-view">
-            {isSuperAdmin && (() => {
+            {isAdmin && (() => {
               const visibleMembers = Object.keys(KNOWN_TEAM_ROLES).filter(memberName => {
                 const mapped = KNOWN_TEAM_ROLES[memberName];
                 return activeWorkspaceTeam === 'הכל' ? true : mapped.team === activeWorkspaceTeam;
@@ -2249,7 +2269,32 @@ const App = () => {
             })()}
           </div>
         ) : (
-          <div className="people-view">
+          <div className="people-view" style={{ padding: '1rem' }}>
+            {isAdmin && (
+              <form onSubmit={handleAddWorker} className="glass-card" style={{ display: 'flex', gap: '0.8rem', padding: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>➕ רישום חייל חדש לצוות:</h4>
+                <input 
+                  className="input-field" 
+                  placeholder="שם מלא של החייל" 
+                  value={newWorkerName} 
+                  onChange={e => setNewWorkerName(e.target.value)} 
+                  style={{ maxWidth: '220px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
+                />
+                {isSuperAdmin && (
+                  <select 
+                    className="input-field" 
+                    value={newWorkerTeam} 
+                    onChange={e => setNewWorkerTeam(e.target.value)}
+                    style={{ maxWidth: '140px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
+                  >
+                    {AVAILABLE_TEAMS.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                )}
+                <button className="btn btn-save" type="submit" style={{ padding: '0.45rem 1rem', fontSize: '0.9rem', width: 'auto', marginTop: 0 }}>רשום חייל</button>
+              </form>
+            )}
             <DndContext 
               sensors={sensors} 
               collisionDetection={closestCenter} 
@@ -2338,7 +2383,7 @@ const App = () => {
           <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
             <i style={{fontSize:'1.3rem'}}>🪖</i> <span>חיילים ושיבוץ</span>
           </div>
-          {isSuperAdmin && (
+          {isAdmin && (
             <div className={`nav-tab ${activeTab === 'devices' ? 'active' : ''}`} onClick={() => setActiveTab('devices')}>
               <i style={{fontSize:'1.3rem'}}>📱</i> <span>חיבורי מכשירים</span>
             </div>
