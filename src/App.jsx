@@ -712,7 +712,18 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onOpenAssignment }) => {
     >
       <div className="person-header">
         <div className="person-header-info">
-          <span className="person-header-title">{worker.name}</span>
+          <span className="person-header-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            {worker.name}
+            {worker.role === 'super_admin' && (
+              <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.2)', color: '#d97706', borderRadius: '4px', fontWeight: 600 }}>👑 מנהל</span>
+            )}
+            {worker.role === 'commander' && (
+              <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.2)', color: '#2563eb', borderRadius: '4px', fontWeight: 600 }}>🎖️ מפקד</span>
+            )}
+            {worker.role === 'soldier' && (
+              <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(107, 114, 128, 0.15)', color: '#4b5563', borderRadius: '4px', fontWeight: 500 }}>🪖 חייל</span>
+            )}
+          </span>
           <span className="person-header-subtitle">{worker.team}</span>
         </div>
         <div className="person-header-meta">
@@ -1182,13 +1193,14 @@ const App = () => {
         }
 
         const teamName = mapped?.team || w.team || 'לוגיסטיקה';
+        const role = mapped?.role || w.role || 'soldier';
         if (!isSuperAdmin || activeWorkspaceTeam !== 'הכל') {
           if (teamName !== activeWorkspaceTeam) return;
         }
 
         if (!seenNames.has(nameClean.toLowerCase())) {
           seenNames.add(nameClean.toLowerCase());
-          list.push({ ...w, team: teamName });
+          list.push({ ...w, team: teamName, role: role });
         }
       }
     });
@@ -1208,7 +1220,7 @@ const App = () => {
 
       if (!seenNames.has(nameClean.toLowerCase())) {
         seenNames.add(nameClean.toLowerCase());
-        list.push({ id: `roster-${nameClean}`, name: nameClean, team: mapped.team });
+        list.push({ id: `roster-${nameClean}`, name: nameClean, team: mapped.team, role: mapped.role });
       }
     });
 
