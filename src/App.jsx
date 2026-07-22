@@ -2304,8 +2304,10 @@ const App = () => {
   const getAllSoldiers = () => {
     const list = [];
     const seen = new Set();
+    const reserves = ["טל זדורייב", "עידן יוסף", "דניאל אלימוב", "חיים גבריאלוב"];
     
     whitelistUsers.forEach(u => {
+      if (reserves.includes(u.name)) return;
       const role = u.role || KNOWN_TEAM_ROLES[u.name]?.role || 'soldier';
       if (role === 'soldier') {
         list.push({
@@ -2319,6 +2321,7 @@ const App = () => {
     });
 
     Object.keys(KNOWN_TEAM_ROLES).forEach(name => {
+      if (reserves.includes(name)) return;
       const info = KNOWN_TEAM_ROLES[name];
       if (info.role === 'soldier' && !seen.has(name.toLowerCase())) {
         list.push({
