@@ -2227,7 +2227,7 @@ const App = () => {
                 return activeWorkspaceTeam === 'הכל' ? true : mapped.team === activeWorkspaceTeam;
               });
 
-              const activeCount = visibleMembers.filter(name => whitelistUsers.find(u => u.name === name)?.isActivated || registeredWorkers.some(w => w.name?.trim().toLowerCase() === name.toLowerCase())).length;
+              const activeCount = visibleMembers.filter(name => whitelistUsers.find(u => u.name === name)?.isActivated).length;
 
               return (
                 <div className="glass-card" style={{ padding: '1.2rem' }}>
@@ -2242,7 +2242,7 @@ const App = () => {
                     {visibleMembers.map(memberName => {
                       const mapped = KNOWN_TEAM_ROLES[memberName];
                       const dbUser = whitelistUsers.find(u => u.name === memberName);
-                      const isAct = dbUser?.isActivated || registeredWorkers.some(w => w.name?.trim().toLowerCase() === memberName.toLowerCase());
+                      const isAct = !!dbUser?.isActivated;
                       
                       return (
                         <div key={memberName} style={{
