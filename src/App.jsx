@@ -1261,15 +1261,15 @@ const App = () => {
   const handleResetUserDevice = async (targetName) => {
     try {
       const docRef = doc(db, "whitelist", targetName);
-      await updateDoc(docRef, {
+      await setDoc(docRef, {
         isActivated: false,
         uid: null,
         resetAt: new Date()
-      });
+      }, { merge: true });
       alert(`נעילת המכשיר של ${targetName} אופסה בהצלחה.`);
     } catch (e) {
       console.error("Error resetting device lock:", e);
-      alert("שגיאה באיפוס המכשיר.");
+      alert("שגיאה באיפוס המכשיר: " + e.message);
     }
   };
   
