@@ -31,5 +31,15 @@ service cloud.firestore {
     match /task_bundles/{bundleId} {
       allow read, write: if isAuthenticated();
     }
+
+    // 5. Attendance rules
+    match /attendance/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 6. Settings rules
+    match /settings/{docId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }

@@ -44,6 +44,7 @@ const KNOWN_TEAM_ROLES = {
   // Super Admins
   "אילן אביגדור": { team: "מפקדה", role: "super_admin" },
   "לירי אביגדור": { team: "לוגיסטיקה", role: "super_admin" },
+  "תמר ביליה": { team: "מפקדה", role: "commander" },
 
   // תקשוב - סגל (Commanders)
   "דביר הרמן": { team: "תקשוב", role: "commander" },
@@ -1141,6 +1142,12 @@ const App = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
   const [whitelistUsers, setWhitelistUsers] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [attendanceTeamFilter, setAttendanceTeamFilter] = useState('הכל');
+  const [attendanceSearchQuery, setAttendanceSearchQuery] = useState('');
+  const [meetingConfig, setMeetingConfig] = useState(null);
+  const [meetingAlert, setMeetingAlert] = useState('none');
 
   // UI & Workspace Modal States
   const [registrationName, setRegistrationName] = useState('');
@@ -1278,6 +1285,61 @@ const App = () => {
   const audioRef = useRef(null);
   const swipeStartX = useRef(0);
   const lastScrollY = useRef(0);
+
+  const getTodayDateStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleSelfCheckin = async (name, status = 'present') => {
+    if (!name) return;
+    try {
+      const today = getTodayDateStr();
+      const docId = `${today}_${name}`;
+      const docRef = doc(db, "attendance", docId);
+      
+      const hours = new Date().getHours();
+      const isMorning = hours < 12;
+      
+      const userDoc = whitelistUsers.find(u => u.name === name);
+      const teamVal = userDoc?.team || KNOWN_TEAM_ROLES[name]?.team || 'תקשוב';
+      
+      const updateData = {
+        name: name,
+        date: today,
+        team: teamVal,
+        updatedAt: new Date()
+      };
+      
+      if (isMorning) {
+        updateData.morning = status;
+        updateData.morningTime = new Date();
+      } else {
+        updateData.evening = status;
+        updateData.eveningTime = new Date();
+      }
+      
+      await setDoc(docRef, updateData, { merge: true });
+      if (audioRef.current) {
+        audioRef.current.play().catch(e => console.error("Sound error:", e));
+      }
+      
+      const statusNames = {
+        'present': 'בבסיס 🟢',
+        'sick': 'בגימלים 🤒',
+        'leave': 'בחופש 🏖️',
+        'duty': 'בתפקיד ⚔️'
+      };
+      
+      alert(`דווחת נוכחות בהצלחה: ${statusNames[status] || 'נוכח'}!`);
+    } catch (err) {
+      console.error("Self check-in error:", err);
+      alert("שגיאה בדיווח נוכחות: " + err.message);
+    }
+  };
 
   const resolveWhitelistedName = (inputName) => {
     if (!inputName) return '';
@@ -1517,6 +1579,60 @@ const App = () => {
     return () => unsubscribeAuth();
   }, []);
 
+  // Handle URL query parameter for self check-in
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'checkin') {
+      const storedName = localStorage.getItem('workerName');
+      if (storedName && isAuthorized) {
+        handleSelfCheckin(storedName);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else {
+        localStorage.setItem('pendingCheckin', 'true');
+      }
+    }
+  }, [isAuthorized]);
+
+  // Monitor scheduled meeting time and trigger alert state
+  useEffect(() => {
+    if (!meetingConfig?.time) {
+      setMeetingAlert('none');
+      return;
+    }
+
+    const checkMeetingTime = () => {
+      const todayStr = getTodayDateStr();
+      if (meetingConfig.date !== todayStr) {
+        setMeetingAlert('none');
+        return;
+      }
+
+      const [hours, minutes] = meetingConfig.time.split(':').map(Number);
+      const meetingDate = new Date();
+      meetingDate.setHours(hours, minutes, 0, 0);
+
+      const now = new Date();
+      const diffMs = meetingDate - now;
+      const diffMins = diffMs / 1000 / 60;
+
+      if (diffMins > 0 && diffMins <= 10) {
+        if (meetingConfig.sendReminder) {
+          setMeetingAlert('reminder');
+        } else {
+          setMeetingAlert('none');
+        }
+      } else if (diffMins <= 0 && diffMins >= -30) {
+        setMeetingAlert('started');
+      } else {
+        setMeetingAlert('none');
+      }
+    };
+
+    checkMeetingTime();
+    const interval = setInterval(checkMeetingTime, 10000);
+    return () => clearInterval(interval);
+  }, [meetingConfig]);
+
   // Firestore listeners (only subscribe if authorized or admin)
   useEffect(() => {
     if (!isAuthorized && !isAdmin) {
@@ -1628,7 +1744,27 @@ const App = () => {
       console.error("Task bundles subscription error:", error);
     });
 
-    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); };
+    const attendanceUnsubscribe = onSnapshot(collection(db, "attendance"), (snapshot) => {
+      const aList = [];
+      snapshot.forEach((docSnap) => {
+        aList.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setAttendanceRecords(aList);
+    }, (error) => {
+      console.error("Attendance query error:", error);
+    });
+
+    const meetingUnsubscribe = onSnapshot(doc(db, "settings", "meeting"), (docSnap) => {
+      if (docSnap.exists()) {
+        setMeetingConfig(docSnap.data());
+      } else {
+        setMeetingConfig(null);
+      }
+    }, (error) => {
+      console.error("Meeting config query error:", error);
+    });
+
+    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); meetingUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
 
   const handleDeployTasksBatch = async (taskList) => {
@@ -2011,6 +2147,10 @@ const App = () => {
                       setUserName(resolved);
                       setWorkerTeam(teamToUse);
                       setIsAuthorized(true);
+                      if (localStorage.getItem('pendingCheckin') === 'true') {
+                        localStorage.removeItem('pendingCheckin');
+                        handleSelfCheckin(resolved);
+                      }
                     }
                   } catch (e) {
                     console.error("Error registering worker:", e);
@@ -2034,6 +2174,531 @@ const App = () => {
     acc[teamName].push(worker);
     return acc;
   }, {});
+
+  const todayDateStr = getTodayDateStr();
+  const hoursVal = new Date().getHours();
+  const isMorningSession = hoursVal < 12;
+  const myAttendance = attendanceRecords.find(r => r.date === todayDateStr && r.name === userName);
+  const morningChecked = myAttendance?.morning === 'present';
+  const eveningChecked = myAttendance?.evening === 'present';
+  const isSoldierUser = userRole === 'soldier';
+  const isCheckedIn = isMorningSession ? morningChecked : eveningChecked;
+  
+  const formatTime = (ts) => {
+    if (!ts) return '';
+    let d = null;
+    if (typeof ts.toDate === 'function') d = ts.toDate();
+    else if (ts.seconds) d = new Date(ts.seconds * 1000);
+    else d = new Date(ts);
+    return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderAttendanceBanner = () => {
+    if (!isAuthorized || !userName || userName === 'תמר ביליה' || userRole === 'super_admin' || userRole === 'commander') return null;
+    
+    const today = getTodayDateStr();
+    const hours = new Date().getHours();
+    const isMorning = hours < 12;
+    
+    return (
+      <div className="glass-card attendance-banner" style={{
+        marginBottom: '1rem',
+        padding: '1rem',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.8rem'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>📅</span>
+            <span>דיווח נוכחות יומי ({today.split('-').reverse().join('.')})</span>
+          </h3>
+          <div style={{ display: 'flex', gap: '0.8rem' }}>
+            <span style={{ fontSize: '0.85rem', color: morningChecked ? '#10b981' : '#64748b', fontWeight: 600 }}>
+              בוקר: {morningChecked ? `🟢 (דיווח ב-${formatTime(myAttendance?.morningTime)})` : '⚪ טרם דיווח'}
+            </span>
+            <span style={{ fontSize: '0.85rem', color: eveningChecked ? '#10b981' : '#64748b', fontWeight: 600 }}>
+              ערב: {eveningChecked ? `🟢 (דיווח ב-${formatTime(myAttendance?.eveningTime)})` : '⚪ טרם דיווח'}
+            </span>
+          </div>
+        </div>
+
+        {isMorning ? (
+          !morningChecked ? (
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', width: '100%' }}>
+              <button className="btn" style={{ flex: 1, minWidth: '110px', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 700, margin: 0, padding: '0.6rem 0.4rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleSelfCheckin(userName, 'present')}>🟢 אני בבסיס</button>
+              <button className="btn" style={{ flex: 1, minWidth: '110px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', fontWeight: 700, margin: 0, padding: '0.6rem 0.4rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleSelfCheckin(userName, 'sick')}>🤒 אני בגימלים</button>
+              <button className="btn" style={{ flex: 1, minWidth: '110px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', fontWeight: 700, margin: 0, padding: '0.6rem 0.4rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleSelfCheckin(userName, 'leave')}>🏖️ אני בחופש</button>
+              <button className="btn" style={{ flex: 1, minWidth: '110px', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: 'white', fontWeight: 700, margin: 0, padding: '0.6rem 0.4rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleSelfCheckin(userName, 'duty')}>⚔️ אני בתפקיד</button>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '0.4rem', color: '#10b981', fontWeight: 600, fontSize: '0.9rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', width: '100%' }}>
+              דיווחת נוכחות בוקר בהצלחה! ☀️ יום מוצלח.
+            </div>
+          )
+        ) : (
+          !eveningChecked ? (
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', width: '100%' }}>
+              <button className="btn" style={{ flex: 1, minWidth: '110px', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 700, margin: 0, padding: '0.6rem 0.4rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleSelfCheckin(userName, 'present')}>🟢 אני בבסיס</button>
+              <button className="btn" style={{ flex: 1, minWidth: '110px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', fontWeight: 700, margin: 0, padding: '0.6rem 0.4rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleSelfCheckin(userName, 'sick')}>🤒 אני בגימלים</button>
+              <button className="btn" style={{ flex: 1, minWidth: '110px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', fontWeight: 700, margin: 0, padding: '0.6rem 0.4rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleSelfCheckin(userName, 'leave')}>🏖️ אני בחופש</button>
+              <button className="btn" style={{ flex: 1, minWidth: '110px', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: 'white', fontWeight: 700, margin: 0, padding: '0.6rem 0.4rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleSelfCheckin(userName, 'duty')}>⚔️ אני בתפקיד</button>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '0.4rem', color: '#10b981', fontWeight: 600, fontSize: '0.9rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', width: '100%' }}>
+              דיווחת נוכחות ערב בהצלחה! 🌙 לילה טוב.
+            </div>
+          )
+        )}
+      </div>
+    );
+  };
+
+  const renderMeetingReminderBanner = () => {
+    if (!isAuthorized || !isSoldierUser || isCheckedIn || meetingAlert !== 'reminder') return null;
+    return (
+      <div className="glass-card" style={{
+        background: 'rgba(245, 158, 11, 0.15)',
+        border: '1px solid #f59e0b',
+        color: '#f59e0b',
+        padding: '0.8rem 1rem',
+        borderRadius: '12px',
+        marginBottom: '1rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        fontWeight: 'bold',
+        fontSize: '0.95rem'
+      }}>
+        <span>⚠️</span>
+        <span>תזכורת: מסדר/מפגש גדודי מתוזמן לעוד פחות מ-10 דקות (בשעה {meetingConfig?.time})! נא להישאר זמינים במכשיר.</span>
+      </div>
+    );
+  };
+
+  const renderMeetingPopupModal = () => {
+    if (!isAuthorized || !isSoldierUser || isCheckedIn || meetingAlert !== 'started') return null;
+    return (
+      <div className="registration-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass-card" style={{ width: '90%', maxWidth: '400px', textAlign: 'center', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', border: '2px solid var(--accent-1)' }}>
+          <div style={{ fontSize: '3rem' }}>📢</div>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>זמן מסדר הגיע!</h2>
+          <p style={{ margin: 0, fontSize: '1rem', opacity: 0.9 }}>
+            תמר קוראת לכולם למסדר/מפגש גדודי כעת בשעה {meetingConfig?.time}.
+          </p>
+          <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7 }}>
+            אנא לחץ על כפתור דיווח הנוכחות למטה כדי לאשר הגעה מיידית.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%' }}>
+            <button className="btn" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, padding: '0.8rem', border: 'none', borderRadius: '8px', cursor: 'pointer', margin: 0 }} onClick={() => handleSelfCheckin(userName, 'present')}>🟢 אני בבסיס</button>
+            <button className="btn" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', fontWeight: 800, padding: '0.8rem', border: 'none', borderRadius: '8px', cursor: 'pointer', margin: 0 }} onClick={() => handleSelfCheckin(userName, 'sick')}>🤒 אני בגימלים</button>
+            <button className="btn" style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', fontWeight: 800, padding: '0.8rem', border: 'none', borderRadius: '8px', cursor: 'pointer', margin: 0 }} onClick={() => handleSelfCheckin(userName, 'leave')}>🏖️ אני בחופש</button>
+            <button className="btn" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: 'white', fontWeight: 800, padding: '0.8rem', border: 'none', borderRadius: '8px', cursor: 'pointer', margin: 0 }} onClick={() => handleSelfCheckin(userName, 'duty')}>⚔️ אני בתפקיד</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const getAllSoldiers = () => {
+    const list = [];
+    const seen = new Set();
+    
+    whitelistUsers.forEach(u => {
+      const role = u.role || KNOWN_TEAM_ROLES[u.name]?.role || 'soldier';
+      if (role === 'soldier') {
+        list.push({
+          name: u.name,
+          team: u.team || KNOWN_TEAM_ROLES[u.name]?.team || 'תקשוב',
+          isActivated: !!u.isActivated,
+          role: role
+        });
+        seen.add(u.name.toLowerCase());
+      }
+    });
+
+    Object.keys(KNOWN_TEAM_ROLES).forEach(name => {
+      const info = KNOWN_TEAM_ROLES[name];
+      if (info.role === 'soldier' && !seen.has(name.toLowerCase())) {
+        list.push({
+          name: name,
+          team: info.team,
+          isActivated: false,
+          role: 'soldier'
+        });
+      }
+    });
+
+    return list;
+  };
+
+  const handleToggleAttendance = async (soldierName, period, currentVal) => {
+    try {
+      const today = getTodayDateStr();
+      const docId = `${today}_${soldierName}`;
+      const docRef = doc(db, "attendance", docId);
+      
+      const nextStatusMap = {
+        'present': 'absent',
+        'absent': 'sick',
+        'sick': 'leave',
+        'leave': 'duty',
+        'duty': null,
+        [null]: 'present',
+        'undefined': 'present'
+      };
+      
+      const nextVal = nextStatusMap[currentVal] || 'present';
+      
+      const userDoc = whitelistUsers.find(u => u.name === soldierName);
+      const teamVal = userDoc?.team || KNOWN_TEAM_ROLES[soldierName]?.team || 'תקשוב';
+      
+      const updateData = {
+        name: soldierName,
+        date: today,
+        team: teamVal,
+        updatedAt: new Date()
+      };
+      
+      if (period === 'morning') {
+        updateData.morning = nextVal;
+        if (nextVal) updateData.morningTime = new Date();
+      } else {
+        updateData.evening = nextVal;
+        if (nextVal) updateData.eveningTime = new Date();
+      }
+      
+      await setDoc(docRef, updateData, { merge: true });
+    } catch (err) {
+      console.error("Error updating attendance:", err);
+      alert("שגיאה בעדכון נוכחות: " + err.message);
+    }
+  };
+
+  const handleExportWhatsApp = () => {
+    const today = getTodayDateStr().split('-').reverse().join('.');
+    let msg = `*דוח נוכחות - גדוד 402 - ${today}*\n\n`;
+    
+    const soldiersOnly = getAllSoldiers();
+
+    const teams = {};
+    soldiersOnly.forEach(u => {
+      const teamVal = u.team || 'תקשוב';
+      if (!teams[teamVal]) teams[teamVal] = [];
+      teams[teamVal].push(u);
+    });
+    
+    Object.keys(teams).forEach(teamName => {
+      msg += `*צוות ${teamName}:*\n`;
+      let presentMorning = 0;
+      let presentEvening = 0;
+      let details = [];
+      
+      teams[teamName].forEach(u => {
+        const record = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
+        const mStatus = record?.morning;
+        const eStatus = record?.evening;
+        
+        if (mStatus === 'present') presentMorning++;
+        if (eStatus === 'present') presentEvening++;
+        
+        let statusStr = '';
+        if (mStatus && mStatus !== 'present') {
+          const statusHeb = mStatus === 'absent' ? 'נפקד' : mStatus === 'sick' ? 'גימלים' : mStatus === 'leave' ? 'חופש' : mStatus === 'duty' ? 'בתפקיד' : '';
+          if (statusHeb) statusStr += `בוקר: ${statusHeb}`;
+        }
+        if (eStatus && eStatus !== 'present') {
+          const statusHeb = eStatus === 'absent' ? 'נפקד' : eStatus === 'sick' ? 'גימלים' : eStatus === 'leave' ? 'חופש' : eStatus === 'duty' ? 'בתפקיד' : '';
+          if (statusHeb) {
+            statusStr += statusStr ? `, ערב: ${statusHeb}` : `ערב: ${statusHeb}`;
+          }
+        }
+        
+        if (statusStr) {
+          details.push(`${u.name} (${statusStr})`);
+        }
+      });
+      
+      msg += `בוקר: ${presentMorning}/${teams[teamName].length}\n`;
+      msg += `ערב: ${presentEvening}/${teams[teamName].length}\n`;
+      if (details.length > 0) {
+        msg += `חריגים:\n- ${details.join('\n- ')}\n`;
+      }
+      msg += `\n`;
+    });
+    
+    navigator.clipboard.writeText(msg).then(() => {
+      alert("דוח נוכחות הועתק ללוח! ניתן להדביק בווטסאפ.");
+    }).catch(err => {
+      console.error("Clipboard copy error:", err);
+      alert("שגיאה בהעתקת הדוח ללוח.");
+    });
+  };
+
+  const handleSaveMeeting = async (timeStr, sendRem) => {
+    try {
+      const today = getTodayDateStr();
+      await setDoc(doc(db, "settings", "meeting"), {
+        time: timeStr,
+        sendReminder: sendRem,
+        date: today,
+        scheduledBy: userName,
+        updatedAt: new Date()
+      });
+    } catch (err) {
+      console.error("Error saving meeting:", err);
+      alert("שגיאה בעדכון זמן מסדר: " + err.message);
+    }
+  };
+
+  const handleClearMeeting = async () => {
+    try {
+      await deleteDoc(doc(db, "settings", "meeting"));
+    } catch (err) {
+      console.error("Error clearing meeting:", err);
+      alert("שגיאה בביטול מסדר.");
+    }
+  };
+
+  const renderAttendanceDashboard = () => {
+    const allSoldiers = getAllSoldiers();
+    const filteredUsers = allSoldiers.filter(u => {
+      const matchesSearch = u.name.toLowerCase().includes(attendanceSearchQuery.toLowerCase());
+      const matchesTeam = attendanceTeamFilter === 'הכל' ? true : u.team === attendanceTeamFilter;
+      return matchesSearch && matchesTeam;
+    });
+
+    const totalCount = filteredUsers.length;
+    const morningCount = filteredUsers.filter(u => {
+      const rec = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
+      return rec?.morning && rec.morning !== 'absent';
+    }).length;
+
+    const eveningCount = filteredUsers.filter(u => {
+      const rec = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
+      return rec?.evening && rec.evening !== 'absent';
+    }).length;
+
+    const getStatusStyleAndText = (val) => {
+      switch (val) {
+        case 'present':
+          return { text: '🟢 נוכח', style: { color: '#059669', background: 'rgba(16, 185, 129, 0.15)' } };
+        case 'absent':
+          return { text: '🔴 נפקד', style: { color: '#dc2626', background: 'rgba(220, 38, 38, 0.15)' } };
+        case 'sick':
+          return { text: '🤒 גימלים', style: { color: '#d97706', background: 'rgba(217, 119, 6, 0.15)' } };
+        case 'leave':
+          return { text: '🏖️ חופש', style: { color: '#2563eb', background: 'rgba(37, 99, 235, 0.15)' } };
+        case 'duty':
+          return { text: '⚔️ בתפקיד', style: { color: '#7c3aed', background: 'rgba(124, 58, 237, 0.15)' } };
+        default:
+          return { text: '⚪ טרם דיווח', style: { color: '#64748b', background: 'rgba(100, 116, 139, 0.1)' } };
+      }
+    };
+
+    return (
+      <div className="attendance-dashboard" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+        <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 800 }}>📊 סטטיסטיקת נוכחות להיום</h2>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>בוקר: <strong style={{color:'#10b981'}}>{morningCount}</strong> / {totalCount} נוכחים</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>ערב: <strong style={{color:'#10b981'}}>{eveningCount}</strong> / {totalCount} נוכחים</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <button className="btn btn-save" style={{ margin: 0, padding: '0.5rem 1rem', width: 'auto' }} onClick={() => setIsQrModalOpen(true)}>
+              📱 קישור / ברקוד סריקה
+            </button>
+            <button className="btn" style={{ margin: 0, padding: '0.5rem 1rem', background: '#2563eb', color: 'white', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={handleExportWhatsApp}>
+              <span>💬</span> העתק לווטסאפ
+            </button>
+          </div>
+        </div>
+
+        {/* Meeting Scheduler Card */}
+        <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>⏰</span>
+            <span>קביעת זמן מסדר/מפגש גדודי</span>
+          </h3>
+          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontWeight: 600 }}>שעה:</label>
+              <input 
+                type="time" 
+                className="input-field" 
+                style={{ width: '130px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }} 
+                value={meetingConfig?.time || ''} 
+                onChange={(e) => handleSaveMeeting(e.target.value, meetingConfig?.sendReminder ?? true)}
+              />
+            </div>
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontWeight: 600 }}>
+              <input 
+                type="checkbox" 
+                checked={meetingConfig?.sendReminder ?? true} 
+                onChange={(e) => {
+                  if (meetingConfig?.time) {
+                    handleSaveMeeting(meetingConfig.time, e.target.checked);
+                  } else {
+                    alert("נא לקבוע שעה תחילה.");
+                  }
+                }}
+              />
+              <span>שלח תזכורת 10 דקות לפני</span>
+            </label>
+
+            {meetingConfig?.time && (
+              <button 
+                className="btn btn-cancel" 
+                style={{ margin: 0, padding: '0.4rem 1rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', width: 'auto' }} 
+                onClick={handleClearMeeting}
+              >
+                🗑️ ביטול מסדר
+              </button>
+            )}
+          </div>
+          {meetingConfig?.time && (
+            <div style={{ fontSize: '0.85rem', opacity: 0.8, color: '#10b981', fontWeight: 600 }}>
+              מסדר מתוזמן להיום בשעה {meetingConfig.time} {meetingConfig.sendReminder ? "(עם תזכורת 10 דק' לפני)" : "(ללא תזכורת לפני)"}
+            </div>
+          )}
+          {meetingConfig?.time && (
+            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+              <button 
+                className="btn" 
+                style={{ background: 'rgba(37, 99, 235, 0.15)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.3)', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: 'auto', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                onClick={() => {
+                  const msg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה ולהיות מוכנים לדיווח נוכחות!`;
+                  navigator.clipboard.writeText(msg).then(() => alert("תזכורת הועתקה ללוח!"));
+                }}
+              >
+                💬 העתק תזכורת 10 דק' לווטסאפ
+              </button>
+              <button 
+                className="btn" 
+                style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: 'auto', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                onClick={() => {
+                  const msg = `🚨 *זמן מסדר הגיע!* 🚨\nהמסדר הגדודי התחיל כעת (*${meetingConfig.time}*).\nנא להיכנס כולם לאפליקציה ולדווח נוכחות ("אני בבסיס/גימלים/חופש") באופן מיידי!`;
+                  navigator.clipboard.writeText(msg).then(() => alert("הודעת תחילת מסדר הועתקה ללוח!"));
+                }}
+              >
+                🚨 העתק הודעת תחילת מסדר לווטסאפ
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="glass-card" style={{ padding: '1rem', display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600 }}>סנן לפי:</span>
+          <input 
+            className="input-field" 
+            placeholder="חיפוש חייל..." 
+            value={attendanceSearchQuery} 
+            onChange={e => setAttendanceSearchQuery(e.target.value)} 
+            style={{ maxWidth: '200px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
+          />
+          <select 
+            className="input-field" 
+            value={attendanceTeamFilter} 
+            onChange={e => setAttendanceTeamFilter(e.target.value)}
+            style={{ maxWidth: '150px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
+          >
+            <option value="הכל">כל הצוותים</option>
+            {AVAILABLE_TEAMS.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="glass-card" style={{ padding: '1rem', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>שם חייל</th>
+                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>צוות</th>
+                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>נוכחות בוקר</th>
+                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>נוכחות ערב</th>
+                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>מכשיר</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map(user => {
+                const record = attendanceRecords.find(r => r.date === todayDateStr && r.name === user.name);
+                const mVal = record?.morning || null;
+                const eVal = record?.evening || null;
+                const mInfo = getStatusStyleAndText(mVal);
+                const eInfo = getStatusStyleAndText(eVal);
+
+                return (
+                  <tr key={user.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '0.8rem 0.5rem', fontWeight: 600 }}>{user.name}</td>
+                    <td style={{ padding: '0.8rem 0.5rem', opacity: 0.8 }}>{user.team || 'תקשוב'}</td>
+                    <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
+                      <button 
+                        onClick={() => handleToggleAttendance(user.name, 'morning', mVal)}
+                        style={{
+                          border: 'none',
+                          borderRadius: '20px',
+                          padding: '0.35rem 0.85rem',
+                          fontWeight: 600,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          width: '110px',
+                          transition: 'all 0.2s',
+                          ...mInfo.style
+                        }}
+                      >
+                        {mInfo.text}
+                      </button>
+                    </td>
+                    <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
+                      <button 
+                        onClick={() => handleToggleAttendance(user.name, 'evening', eVal)}
+                        style={{
+                          border: 'none',
+                          borderRadius: '20px',
+                          padding: '0.35rem 0.85rem',
+                          fontWeight: 600,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          width: '110px',
+                          transition: 'all 0.2s',
+                          ...eInfo.style
+                        }}
+                      >
+                        {eInfo.text}
+                      </button>
+                    </td>
+                    <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
+                      {user.isActivated ? (
+                        <button 
+                          onClick={() => handleResetUserDevice(user.name)}
+                          style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '2px 6px', fontSize: '0.75rem', cursor: 'pointer' }}
+                          title="אפס נעילת מכשיר"
+                        >
+                          🔄 אפס נעילה
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>לא מופעל</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', opacity: 0.6 }}>לא נמצאו חיילים התואמים את הסינון.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="app-shell">
@@ -2138,6 +2803,8 @@ const App = () => {
       )}
 
       <main className="container">
+        {renderMeetingReminderBanner()}
+        {renderAttendanceBanner()}
         {activeTab === 'tasks' ? (
           <div className="swipe-viewport" style={{overflow:'hidden', width: '100%'}}>
             <DndContext 
@@ -2280,6 +2947,8 @@ const App = () => {
               );
             })()}
           </div>
+        ) : (activeTab === 'attendance' && userName === 'תמר ביליה') ? (
+          renderAttendanceDashboard()
         ) : (
           <div className="people-view" style={{ padding: '1rem' }}>
             {isAdmin && (
@@ -2400,6 +3069,11 @@ const App = () => {
               <i style={{fontSize:'1.3rem'}}>📱</i> <span>חיבורי מכשירים</span>
             </div>
           )}
+          {userName === 'תמר ביליה' && (
+            <div className={`nav-tab ${activeTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveTab('attendance')}>
+              <i style={{fontSize:'1.3rem'}}>📅</i> <span>דוח נוכחות</span>
+            </div>
+          )}
         </nav>
       )}
 
@@ -2419,6 +3093,45 @@ const App = () => {
            </div>
         </div>
       )}
+      {isQrModalOpen && (
+        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={() => setIsQrModalOpen(false)}>
+           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '2rem'}} onClick={e => e.stopPropagation()}>
+              <h2 style={{ margin: '0 0 0.5rem 0' }}>סרוק לדיווח נוכחות</h2>
+              <p style={{ opacity: 0.8, fontSize: '0.9rem', margin: '0' }}>החיילים יכולים לסרוק את הברקוד כדי להגיע ישירות לעמוד הדיווח העצמי:</p>
+              
+              <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + window.location.pathname + '?action=checkin')}`} 
+                  alt="QR Code" 
+                  style={{ width: '200px', height: '200px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
+                <button 
+                  className="btn btn-save" 
+                  onClick={() => {
+                    const checkinUrl = window.location.origin + window.location.pathname + '?action=checkin';
+                    navigator.clipboard.writeText(checkinUrl).then(() => {
+                      alert("הקישור הועתק ללוח!");
+                    });
+                  }}
+                  style={{ width: '100%', marginTop: '0.5rem' }}
+                >
+                  📋 העתק קישור ישיר
+                </button>
+                <button 
+                  className="btn btn-cancel" 
+                  style={{ width: '100%', marginTop: '0.2rem' }} 
+                  onClick={() => setIsQrModalOpen(false)}
+                >
+                  סגור
+                </button>
+              </div>
+           </div>
+        </div>
+      )}
+      {renderMeetingPopupModal()}
       {confirmModal.isOpen && (
         <div className="compact-form-overlay" onClick={() => setConfirmModal({ isOpen: false, type: '', message: '', action: null })}>
           <div className="task-item compact-form" onClick={e => e.stopPropagation()} style={{ padding: '2rem', textAlign: 'center', borderRadius: '24px', flexDirection: 'column', alignItems: 'stretch' }}>
