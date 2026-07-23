@@ -31,6 +31,7 @@ const db = admin.firestore();
 let meetingConfig = null;
 let activeWhitelist = [];
 let contactMap = new Map(); // Name -> JID
+let activeDialogs = new Map(); // JID -> { state, name, team, period }
 let sentAlertsToday = {
   date: '',
   warning10Min: false,
@@ -232,22 +233,37 @@ setInterval(async () => {
   // 1. 10-Minute Warning
   if (meetingConfig.sendReminder && diffMinutes === 10 && !sentAlertsToday.warning10Min) {
     sentAlertsToday.warning10Min = true;
-    const msg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה ולהיות מוכנים לדיווח נוכחות!`;
     
-    // Send to group
+    // Send public notice to group if found
     const group = await findGroupChat(client);
     if (group) {
-      await group.sendMessage(msg);
+      const groupMsg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה או לענות להודעה הפרטית של הבוט לדיווח נוכחות!`;
+      await group.sendMessage(groupMsg);
       console.log('Sent 10-minute warning to WhatsApp group.');
-    } else {
-      console.log('Fallback: Sending direct reminders to all soldiers (no group found)...');
-      for (const soldier of activeWhitelist) {
-        const jid = getJidForSoldier(soldier.name);
-        if (jid) {
-          await client.sendMessage(jid, msg);
-        }
+    }
+
+    // Send interactive direct message to all soldiers on the whitelist
+    const period = hours < 14 ? 'morning' : 'evening';
+    const greeting = hours < 14 ? 'בוקר טוב' : 'ערב טוב';
+
+    for (const soldier of activeWhitelist) {
+      const jid = getJidForSoldier(soldier.name);
+      if (jid) {
+        const dm = `${greeting} ${soldier.name}! מה שלומך?\n\nהמסדר הגדודי מתוזמן לעוד 10 דקות (בשעה *${meetingConfig.time}*).\nהאם אתה מגיע?\n\n1. אני מגיע 🟢`;
+        await client.sendMessage(jid, dm).catch(e => {
+          console.error(`Failed to send initial dialog to ${soldier.name}:`, e.message);
+        });
+        
+        // Save dialog state
+        activeDialogs.set(jid, {
+          state: 'ASKED_COMING',
+          name: soldier.name,
+          team: soldier.team || 'תקשוב',
+          period: period
+        });
       }
     }
+    console.log(`Sent direct interactive reminders to ${activeWhitelist.length} soldiers.`);
   }
 
   // 2. Meeting Started Alert + Missing Soldiers Roll Call
@@ -322,12 +338,52 @@ setInterval(async () => {
 }, 60000);
 
 // ==========================================
-// 7. General Message Handlers
+// 7. General Message & Dialog Handlers
 // ==========================================
 client.on('message', async (msg) => {
+  const jid = msg.from;
   const text = msg.body.trim();
-  
-  // Basic secretary commands or checks
+
+  // A. Check if there is an active dialog with this user
+  if (activeDialogs.has(jid)) {
+    const dialog = activeDialogs.get(jid);
+    
+    if (dialog.state === 'ASKED_COMING') {
+      if (text === '1' || text.toLowerCase().includes('מגיע') || text.toLowerCase().includes('אני מגיע') || text.toLowerCase() === 'כן') {
+        try {
+          const today = getTodayDateStr();
+          const docId = `${today}_${dialog.name}`;
+          const docRef = db.collection('attendance').doc(docId);
+          
+          const updateData = {
+            name: dialog.name,
+            date: today,
+            team: dialog.team,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          };
+
+          if (dialog.period === 'morning') {
+            updateData.morningPreCheck = 'coming';
+          } else {
+            updateData.eveningPreCheck = 'coming';
+          }
+
+          await docRef.set(updateData, { merge: true });
+          await msg.reply('רשמתי שאתה בדרך! מחכים לך במסדר. אל תשכח לסרוק את הברקוד כשתגיע! 🟢');
+          activeDialogs.delete(jid);
+          console.log(`Updated Firestore: ${dialog.name} confirmed coming via WhatsApp (${dialog.period})`);
+        } catch (err) {
+          console.error('Error saving WhatsApp pre-check:', err);
+          await msg.reply('שגיאה בעדכון הנתונים. אנא פנה למפקד.');
+        }
+      } else {
+        await msg.reply('נא להשיב "1" או "אני מגיע" כדי לאשר הגעה למסדר! 🟢');
+      }
+      return; // Stop processing further for this message
+    }
+  }
+
+  // B. General command triggers
   if (text === '!נוכחות' || text === '!סטטוס') {
     const today = getTodayDateStr();
     try {

@@ -1145,6 +1145,7 @@ const App = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [attendanceTeamFilter, setAttendanceTeamFilter] = useState('הכל');
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('הכל');
   const [attendanceSearchQuery, setAttendanceSearchQuery] = useState('');
   const [meetingConfig, setMeetingConfig] = useState(null);
   const [meetingAlert, setMeetingAlert] = useState('none');
@@ -1303,6 +1304,18 @@ const App = () => {
       
       const hours = new Date().getHours();
       const isMorning = hours < 12;
+      
+      // Anti-cheating check: Only allow being marked present if they pre-confirmed on WhatsApp first
+      if (status === 'present') {
+        const docSnap = await getDoc(docRef);
+        const docData = docSnap.exists() ? docSnap.data() : null;
+        const preCheck = isMorning ? docData?.morningPreCheck : docData?.eveningPreCheck;
+        
+        if (preCheck !== 'coming') {
+          alert("❌ שגיאה: לא ניתן לדווח נוכחות. עליך לאשר הגעה תחילה בצ'אט עם הבוט בווטסאפ (שלח '1') לפני שתוכל לסרוק את הברקוד!");
+          return;
+        }
+      }
       
       const userDoc = whitelistUsers.find(u => u.name === name);
       const teamVal = userDoc?.team || KNOWN_TEAM_ROLES[name]?.team || 'תקשוב';
@@ -2470,7 +2483,25 @@ const App = () => {
     const filteredUsers = allSoldiers.filter(u => {
       const matchesSearch = u.name.toLowerCase().includes(attendanceSearchQuery.toLowerCase());
       const matchesTeam = attendanceTeamFilter === 'הכל' ? true : u.team === attendanceTeamFilter;
-      return matchesSearch && matchesTeam;
+      
+      const record = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
+      const mVal = record?.morning || null;
+      const eVal = record?.evening || null;
+      const mPre = record?.morningPreCheck || null;
+      const ePre = record?.eveningPreCheck || null;
+
+      let matchesStatus = true;
+      if (attendanceStatusFilter === 'no_morning') {
+        matchesStatus = (mVal !== 'present');
+      } else if (attendanceStatusFilter === 'no_evening') {
+        matchesStatus = (eVal !== 'present');
+      } else if (attendanceStatusFilter === 'exceptions') {
+        matchesStatus = (mVal && mVal !== 'present') || (eVal && eVal !== 'present');
+      } else if (attendanceStatusFilter === 'confirmed_whatsapp') {
+        matchesStatus = (mVal !== 'present' && mPre === 'coming') || (eVal !== 'present' && ePre === 'coming');
+      }
+
+      return matchesSearch && matchesTeam && matchesStatus;
     });
 
     const totalCount = filteredUsers.length;
@@ -2615,6 +2646,18 @@ const App = () => {
               <option key={t} value={t}>{t}</option>
             ))}
           </select>
+          <select 
+            className="input-field" 
+            value={attendanceStatusFilter} 
+            onChange={e => setAttendanceStatusFilter(e.target.value)}
+            style={{ maxWidth: '220px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
+          >
+            <option value="הכל">כל הסטטוסים</option>
+            <option value="no_morning">לא נוכחים בבוקר 🔴</option>
+            <option value="no_evening">לא נוכחים בערב 🔴</option>
+            <option value="exceptions">חריגים (גימלים/חופש/תפקיד) ⚠️</option>
+            <option value="confirmed_whatsapp">אישרו הגעה בווטסאפ (טרם סרקו) 💬</option>
+          </select>
         </div>
 
         <div className="glass-card" style={{ padding: '1rem', overflowX: 'auto' }}>
@@ -2657,6 +2700,11 @@ const App = () => {
                       >
                         {mInfo.text}
                       </button>
+                      {mVal !== 'present' && record?.morningPreCheck === 'coming' && (
+                        <div style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                          💬 מגיע (אישר בווטסאפ)
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
                       <button 
@@ -2675,6 +2723,11 @@ const App = () => {
                       >
                         {eInfo.text}
                       </button>
+                      {eVal !== 'present' && record?.eveningPreCheck === 'coming' && (
+                        <div style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                          💬 מגיע (אישר בווטסאפ)
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
                       {user.isActivated ? (
