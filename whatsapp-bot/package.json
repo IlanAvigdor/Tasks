@@ -1,0 +1,17 @@
+{
+  "name": "whatsapp-tasks-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp bot to sync attendance and reminders with Firebase",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.0.0",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.26.0"
+  }
+}
