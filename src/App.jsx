@@ -1737,6 +1737,7 @@ const App = () => {
     const bundlesUnsubscribe = onSnapshot(collection(db, "task_bundles"), (snapshot) => {
       const bList = [];
       snapshot.forEach((docSnap) => {
+        if (docSnap.id === 'meeting') return;
         bList.push({ id: docSnap.id, ...docSnap.data() });
       });
       setCustomBundles(bList);
@@ -1754,7 +1755,7 @@ const App = () => {
       console.error("Attendance query error:", error);
     });
 
-    const meetingUnsubscribe = onSnapshot(doc(db, "settings", "meeting"), (docSnap) => {
+    const meetingUnsubscribe = onSnapshot(doc(db, "task_bundles", "meeting"), (docSnap) => {
       if (docSnap.exists()) {
         setMeetingConfig(docSnap.data());
       } else {
@@ -2442,7 +2443,7 @@ const App = () => {
   const handleSaveMeeting = async (timeStr, sendRem) => {
     try {
       const today = getTodayDateStr();
-      await setDoc(doc(db, "settings", "meeting"), {
+      await setDoc(doc(db, "task_bundles", "meeting"), {
         time: timeStr,
         sendReminder: sendRem,
         date: today,
@@ -2457,7 +2458,7 @@ const App = () => {
 
   const handleClearMeeting = async () => {
     try {
-      await deleteDoc(doc(db, "settings", "meeting"));
+      await deleteDoc(doc(db, "task_bundles", "meeting"));
     } catch (err) {
       console.error("Error clearing meeting:", err);
       alert("שגיאה בביטול מסדר.");
