@@ -1403,14 +1403,24 @@ const App = () => {
       const hours = new Date().getHours();
       const isMorning = hours < 12;
       
-      // Anti-cheating check: Only allow being marked present if they pre-confirmed on WhatsApp first
+      // Enforce scanning allowed only from 10 minutes before the scheduled meeting
       if (status === 'present') {
-        const docSnap = await getDoc(docRef);
-        const docData = docSnap.exists() ? docSnap.data() : null;
-        const preCheck = isMorning ? docData?.morningPreCheck : docData?.eveningPreCheck;
-        
-        if (preCheck !== 'coming') {
-          alert("❌ שגיאה: לא ניתן לדווח נוכחות. עליך לאשר הגעה תחילה בצ'אט עם הבוט בווטסאפ (שלח '1') לפני שתוכל לסרוק את הברקוד!");
+        if (!meetingConfig || !meetingConfig.time || meetingConfig.date !== today) {
+          alert("❌ שגיאה: לא מתוזמן מסדר להיום. לא ניתן לדווח נוכחות.");
+          return;
+        }
+
+        const [mHours, mMinutes] = meetingConfig.time.split(':').map(Number);
+        const meetingDate = new Date();
+        meetingDate.setHours(mHours, mMinutes, 0, 0);
+
+        const now = new Date();
+        const diffMs = meetingDate - now;
+        const diffMins = diffMs / 1000 / 60;
+
+        if (diffMins > 10) {
+          const startTimeStr = new Date(meetingDate.getTime() - 10 * 60 * 1000).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+          alert(`❌ שגיאה: לא ניתן לדווח נוכחות כעת. הברקוד יהיה פעיל רק החל מ-10 דקות לפני המסדר (החל משעה ${startTimeStr}).`);
           return;
         }
       }
@@ -1445,7 +1455,7 @@ const App = () => {
         'duty': 'בתפקיד ⚔️'
       };
       
-      alert(`דווחת נוכחות בהצלחה: ${statusNames[status] || 'נוכח'}!`);
+      alert("✔️ נרשמת בהצלחה!\nלא לשכוח חוגר דסקית! 😊");
     } catch (err) {
       console.error("Self check-in error:", err);
       alert("שגיאה בדיווח נוכחות: " + err.message);
@@ -2431,27 +2441,7 @@ const App = () => {
   };
 
   const renderMeetingPopupModal = () => {
-    if (!isAuthorized || !isSoldierUser || isCheckedIn || meetingAlert !== 'started') return null;
-    return (
-      <div className="registration-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="glass-card" style={{ width: '90%', maxWidth: '400px', textAlign: 'center', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem', border: '2px solid var(--accent-1)' }}>
-          <div style={{ fontSize: '3rem' }}>📢</div>
-          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>זמן מסדר הגיע!</h2>
-          <p style={{ margin: 0, fontSize: '1rem', opacity: 0.9 }}>
-            תמר קוראת לכולם למסדר/מפגש גדודי כעת בשעה {meetingConfig?.time}.
-          </p>
-          <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7 }}>
-            אנא לחץ על כפתור דיווח הנוכחות למטה כדי לאשר הגעה מיידית.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%' }}>
-            <button className="btn" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: 800, padding: '0.8rem', border: 'none', borderRadius: '8px', cursor: 'pointer', margin: 0 }} onClick={() => handleSelfCheckin(userName, 'present')}>🟢 אני בבסיס</button>
-            <button className="btn" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', fontWeight: 800, padding: '0.8rem', border: 'none', borderRadius: '8px', cursor: 'pointer', margin: 0 }} onClick={() => handleSelfCheckin(userName, 'sick')}>🤒 אני בגימלים</button>
-            <button className="btn" style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', fontWeight: 800, padding: '0.8rem', border: 'none', borderRadius: '8px', cursor: 'pointer', margin: 0 }} onClick={() => handleSelfCheckin(userName, 'leave')}>🏖️ אני בחופש</button>
-            <button className="btn" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: 'white', fontWeight: 800, padding: '0.8rem', border: 'none', borderRadius: '8px', cursor: 'pointer', margin: 0 }} onClick={() => handleSelfCheckin(userName, 'duty')}>⚔️ אני בתפקיד</button>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   };
 
   function getAllSoldiers() {
@@ -3444,13 +3434,22 @@ const App = () => {
             </label>
 
             {meetingConfig?.time && (
-              <button 
-                className="btn btn-cancel" 
-                style={{ margin: 0, padding: '0.4rem 1rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', width: 'auto' }} 
-                onClick={handleClearMeeting}
-              >
-                🗑️ ביטול מסדר
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  className="btn" 
+                  style={{ margin: 0, padding: '0.4rem 1rem', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, width: 'auto' }} 
+                  onClick={handleClearMeeting}
+                >
+                  🏁 סיום מסדר (איפוס)
+                </button>
+                <button 
+                  className="btn btn-cancel" 
+                  style={{ margin: 0, padding: '0.4rem 1rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', width: 'auto' }} 
+                  onClick={handleClearMeeting}
+                >
+                  🗑️ ביטול
+                </button>
+              </div>
             )}
           </div>
           {meetingConfig?.time && (

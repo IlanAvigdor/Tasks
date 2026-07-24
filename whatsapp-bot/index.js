@@ -201,143 +201,7 @@ client.on('ready', async () => {
   setInterval(() => mapContacts(client), 3600000);
 });
 
-// ==========================================
-// 6. Ticker / Scheduler Loop (Runs every minute)
-// ==========================================
-setInterval(async () => {
-  if (!client.info || !meetingConfig || !meetingConfig.time) return;
 
-  const today = getTodayDateStr();
-  
-  // Reset alert states if it is a new day
-  if (sentAlertsToday.date !== today) {
-    sentAlertsToday = {
-      date: today,
-      warning10Min: false,
-      started: false
-    };
-  }
-
-  // Ensure the scheduled meeting is for today
-  if (meetingConfig.date !== today) return;
-
-  const [hours, minutes] = meetingConfig.time.split(':').map(Number);
-  const now = new Date();
-  
-  const meetingDate = new Date(now);
-  meetingDate.setHours(hours, minutes, 0, 0);
-
-  const diffMs = meetingDate - now;
-  const diffMinutes = Math.round(diffMs / 60000);
-
-  // 1. 10-Minute Warning
-  if (meetingConfig.sendReminder && diffMinutes === 10 && !sentAlertsToday.warning10Min) {
-    sentAlertsToday.warning10Min = true;
-    
-    const period = hours < 14 ? 'morning' : 'evening';
-    const gearReminder = period === 'morning' ? '\n*נא לזכור להביא דסקית וחוגר! 🪖*' : '';
-
-    // Send public notice to group if found
-    const group = await findGroupChat(client);
-    if (group) {
-      const groupMsg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה או לענות להודעה הפרטית של הבוט לדיווח נוכחות!${gearReminder}`;
-      await group.sendMessage(groupMsg);
-      console.log('Sent 10-minute warning to WhatsApp group.');
-    }
-
-    // Send interactive direct message to all soldiers on the whitelist
-    const greeting = hours < 14 ? 'בוקר טוב' : 'ערב טוב';
-
-    for (const soldier of activeWhitelist) {
-      const jid = getJidForSoldier(soldier.name);
-      if (jid) {
-        const dm = `${greeting} ${soldier.name}! מה שלומך?\n\nהמסדר הגדודי מתוזמן לעוד 10 דקות (בשעה *${meetingConfig.time}*).\nהאם אתה מגיע?\n\n1. אני מגיע 🟢${gearReminder}`;
-        await client.sendMessage(jid, dm).catch(e => {
-          console.error(`Failed to send initial dialog to ${soldier.name}:`, e.message);
-        });
-        
-        // Save dialog state
-        activeDialogs.set(jid, {
-          state: 'ASKED_COMING',
-          name: soldier.name,
-          team: soldier.team || 'תקשוב',
-          period: period
-        });
-      }
-    }
-    console.log(`Sent direct interactive reminders to ${activeWhitelist.length} soldiers.`);
-  }
-
-  // 2. Meeting Started Alert + Missing Soldiers Roll Call
-  if (diffMinutes <= 0 && !sentAlertsToday.started) {
-    sentAlertsToday.started = true;
-    const startMsg = `🚨 *זמן מסדר הגיע!* 🚨\nהמסדר הגדודי התחיל כעת (*${meetingConfig.time}*).\nנא להיכנס כולם לאפליקציה ולדווח נוכחות ("אני בבסיס/גימלים/חופש") באופן מיידי!`;
-    
-    const group = await findGroupChat(client);
-    if (group) {
-      await group.sendMessage(startMsg);
-      console.log('Sent meeting started alert to WhatsApp group.');
-    }
-
-    // Determine period based on meeting time
-    const period = hours < 14 ? 'morning' : 'evening';
-    
-    // Fetch today's attendance records to see who has NOT checked in yet
-    setTimeout(async () => {
-      try {
-        const attendanceSnap = await db.collection('attendance')
-          .where('date', '==', today)
-          .get();
-
-        const checkedInNames = new Set();
-        attendanceSnap.forEach(doc => {
-          const data = doc.data();
-          if (period === 'morning' && data.morning) {
-            checkedInNames.add(normalizeName(data.name));
-          } else if (period === 'evening' && data.evening) {
-            checkedInNames.add(normalizeName(data.name));
-          }
-        });
-
-        // Find missing soldiers
-        const missingSoldiers = activeWhitelist.filter(soldier => {
-          return !checkedInNames.has(normalizeName(soldier.name));
-        });
-
-        if (missingSoldiers.length > 0) {
-          console.log(`Found ${missingSoldiers.length} missing soldiers. Sending individual reminders...`);
-          
-          let groupReportMsg = `⚠️ *חיילים שטרם דיווחו נוכחות (${period === 'morning' ? 'בוקר' : 'ערב'}):*\n`;
-          
-          for (const soldier of missingSoldiers) {
-            groupReportMsg += `- ${soldier.name}\n`;
-            
-            // Send direct WhatsApp warning if mapped
-            const jid = getJidForSoldier(soldier.name);
-            if (jid) {
-              const dm = `שלום ${soldier.name}, טרם דיווחת נוכחות למסדר של שעה ${meetingConfig.time}. נא להיכנס לאפליקציה ולדווח כעת!`;
-              await client.sendMessage(jid, dm).catch(e => {
-                console.error(`Failed to DM ${soldier.name}:`, e.message);
-              });
-            }
-          }
-
-          // Post the missing list to the group
-          if (group) {
-            await group.sendMessage(groupReportMsg);
-            console.log('Posted missing list to WhatsApp group.');
-          }
-        } else {
-          if (group) {
-            await group.sendMessage(`✅ כל החיילים ביצעו דיווח נוכחות למסדר!`);
-          }
-        }
-      } catch (err) {
-        console.error('Error running missing soldiers checks:', err);
-      }
-    }, 5000); // Wait 5 seconds after starting to allow initial check-ins
-  }
-}, 60000);
 
 // ==========================================
 // 7. General Message & Dialog Handlers
@@ -345,45 +209,6 @@ setInterval(async () => {
 client.on('message', async (msg) => {
   const jid = msg.from;
   const text = msg.body.trim();
-
-  // A. Check if there is an active dialog with this user
-  if (activeDialogs.has(jid)) {
-    const dialog = activeDialogs.get(jid);
-    
-    if (dialog.state === 'ASKED_COMING') {
-      if (text === '1' || text.toLowerCase().includes('מגיע') || text.toLowerCase().includes('אני מגיע') || text.toLowerCase() === 'כן') {
-        try {
-          const today = getTodayDateStr();
-          const docId = `${today}_${dialog.name}`;
-          const docRef = db.collection('attendance').doc(docId);
-          
-          const updateData = {
-            name: dialog.name,
-            date: today,
-            team: dialog.team,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-          };
-
-          if (dialog.period === 'morning') {
-            updateData.morningPreCheck = 'coming';
-          } else {
-            updateData.eveningPreCheck = 'coming';
-          }
-
-          await docRef.set(updateData, { merge: true });
-          await msg.reply('רשמתי שאתה בדרך! מחכים לך במסדר. אל תשכח לסרוק את הברקוד כשתגיע! 🟢');
-          activeDialogs.delete(jid);
-          console.log(`Updated Firestore: ${dialog.name} confirmed coming via WhatsApp (${dialog.period})`);
-        } catch (err) {
-          console.error('Error saving WhatsApp pre-check:', err);
-          await msg.reply('שגיאה בעדכון הנתונים. אנא פנה למפקד.');
-        }
-      } else {
-        await msg.reply('נא להשיב "1" או "אני מגיע" כדי לאשר הגעה למסדר! 🟢');
-      }
-      return; // Stop processing further for this message
-    }
-  }
 
   // B. General command triggers
   if (text === '!נוכחות' || text === '!סטטוס') {
@@ -409,5 +234,60 @@ client.on('message', async (msg) => {
   }
 });
 
+// ==========================================
+// 8. Tasks Real-time Notifications Listener
+// ==========================================
+db.collection('tasks').onSnapshot(snapshot => {
+  snapshot.docChanges().forEach(async change => {
+    if (change.type === 'added' || change.type === 'modified') {
+      const taskData = change.doc.data();
+      const taskId = change.doc.id;
+      
+      // If task is verified, no need to notify
+      if (taskData.isVerified) return;
+
+      const assignees = taskData.assignees || [];
+      const notified = taskData.notifiedAssignees || [];
+
+      // Find assignees who have not been notified yet
+      const toNotify = assignees.filter(name => !notified.includes(name));
+
+      if (toNotify.length > 0) {
+        for (const name of toNotify) {
+          const jid = getJidForSoldier(name);
+          if (jid) {
+            const siteUrl = process.env.SITE_URL || 'https://tasks-b9e9e.web.app';
+            const timeHeb = taskData.timeOfDay === 'morning' ? 'בוקר' : taskData.timeOfDay === 'noon' ? 'צהריים' : taskData.timeOfDay === 'evening' ? 'ערב' : '';
+            const timeStr = timeHeb ? ` [משימת ${timeHeb}]` : '';
+            
+            const msg = `🔔 *שלום ${name}, שוייכה אליך משימה חדשה בצוות ${taskData.team}!*${timeStr}\n\n*${taskData.title}*\n${taskData.description ? `_תיאור: ${taskData.description}_\n` : ''}\nלפרטים נוספים ועדכון סטטוס, כנס לאתר: ${siteUrl}`;
+            
+            try {
+              await client.sendMessage(jid, msg);
+              console.log(`Successfully sent task notification to ${name} (${jid})`);
+            } catch (err) {
+              console.error(`Failed to send WhatsApp task notification to ${name}:`, err.message);
+            }
+          } else {
+            console.warn(`JID not found for soldier: ${name}`);
+          }
+        }
+
+        // Save notification state in Firestore to prevent duplicate messages
+        try {
+          await db.collection('tasks').doc(taskId).update({
+            notifiedAssignees: admin.firestore.FieldValue.arrayUnion(...toNotify)
+          });
+        } catch (err) {
+          console.error(`Failed to update notifiedAssignees for task ${taskId}:`, err.message);
+        }
+      }
+    }
+  });
+}, err => {
+  console.error('Tasks snapshot listener error:', err);
+});
+
 // Start the client
 client.initialize();
+
