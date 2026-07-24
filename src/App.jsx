@@ -3100,7 +3100,7 @@ const App = () => {
                           className="input-field"
                           value={kitchenMode}
                           onChange={(e) => setKitchenMode(e.target.value)}
-                          style={{ margin: 0, padding: '0.2rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
+                          style={{ margin: 0, padding: '0.25rem 1rem 0.25rem 1.8rem', fontSize: '0.8rem', width: 'auto' }}
                         >
                           <option value="half">חצי יום</option>
                           <option value="full">יום שלם</option>
@@ -3163,7 +3163,7 @@ const App = () => {
                           className="input-field"
                           value={rasarMode}
                           onChange={(e) => setRasarMode(e.target.value)}
-                          style={{ margin: 0, padding: '0.2rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
+                          style={{ margin: 0, padding: '0.25rem 1rem 0.25rem 1.8rem', fontSize: '0.8rem', width: 'auto' }}
                         >
                           <option value="half">חצי יום</option>
                           <option value="full">יום שלם</option>
