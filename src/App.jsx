@@ -12,7 +12,8 @@ import {
   getDocs,
   writeBatch,
   getDoc,
-  setDoc
+  setDoc,
+  where
 } from "firebase/firestore";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -1393,10 +1394,29 @@ const App = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const getActiveOpenMeeting = () => {
+  const getActiveOpenMeeting = async () => {
     const today = getTodayDateStr();
     const now = new Date();
-    const activeMeetings = customBundles.filter(b => b.type === 'meeting' && b.status === 'active' && (b.isRecurring || b.date === today));
+    
+    const activeMeetings = [];
+    try {
+      const q = query(
+        collection(db, "task_bundles"),
+        where("type", "==", "meeting"),
+        where("status", "==", "active")
+      );
+      const snap = await getDocs(q);
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.isRecurring || data.date === today) {
+          activeMeetings.push({ id: d.id, ...data });
+        }
+      });
+    } catch (e) {
+      console.error("Error fetching active meetings from Firestore:", e);
+      // Fallback
+      return null;
+    }
     
     for (const meeting of activeMeetings) {
       const [mHours, mMinutes] = meeting.time.split(':').map(Number);
@@ -1429,7 +1449,7 @@ const App = () => {
       
       // Enforce scanning allowed only from 10 minutes before the scheduled meeting
       if (status === 'present') {
-        const openMeeting = getActiveOpenMeeting();
+        const openMeeting = await getActiveOpenMeeting();
         if (!openMeeting) {
           alert("❌ שגיאה: לא מתוזמן מסדר פעיל כעת (הברקוד נפתח 10 דקות לפני המסדר ונסגר בסיומו).");
           return;
