@@ -1895,6 +1895,31 @@ const App = () => {
     return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); meetingUnsubscribe(); dutiesUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
 
+  useEffect(() => {
+    if (whitelistUsers.length > 0 && registeredWorkers.length > 0) {
+      registeredWorkers.forEach(async (w) => {
+        const nameKey = w.name?.trim();
+        if (!nameKey) return;
+        const exists = whitelistUsers.some(u => u.name?.trim().toLowerCase() === nameKey.toLowerCase());
+        if (!exists) {
+          console.log(`Auto-syncing worker ${nameKey} to whitelist...`);
+          try {
+            await setDoc(doc(db, "whitelist", nameKey), {
+              name: nameKey,
+              team: w.team || 'לוגיסטיקה',
+              role: 'soldier',
+              isActivated: false,
+              uid: null,
+              createdAt: new Date()
+            }, { merge: true });
+          } catch (e) {
+            console.error("Auto-sync error for " + nameKey, e);
+          }
+        }
+      });
+    }
+  }, [whitelistUsers, registeredWorkers]);
+
   const handleDeployTasksBatch = async (taskList) => {
     try {
       const batch = writeBatch(db);
