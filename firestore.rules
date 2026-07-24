@@ -41,5 +41,10 @@ service cloud.firestore {
     match /settings/{docId} {
       allow read, write: if isAuthenticated();
     }
+
+    // 7. Duties rules
+    match /duties/{docId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }

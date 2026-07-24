@@ -234,22 +234,24 @@ setInterval(async () => {
   if (meetingConfig.sendReminder && diffMinutes === 10 && !sentAlertsToday.warning10Min) {
     sentAlertsToday.warning10Min = true;
     
+    const period = hours < 14 ? 'morning' : 'evening';
+    const gearReminder = period === 'morning' ? '\n*נא לזכור להביא דסקית וחוגר! 🪖*' : '';
+
     // Send public notice to group if found
     const group = await findGroupChat(client);
     if (group) {
-      const groupMsg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה או לענות להודעה הפרטית של הבוט לדיווח נוכחות!`;
+      const groupMsg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה או לענות להודעה הפרטית של הבוט לדיווח נוכחות!${gearReminder}`;
       await group.sendMessage(groupMsg);
       console.log('Sent 10-minute warning to WhatsApp group.');
     }
 
     // Send interactive direct message to all soldiers on the whitelist
-    const period = hours < 14 ? 'morning' : 'evening';
     const greeting = hours < 14 ? 'בוקר טוב' : 'ערב טוב';
 
     for (const soldier of activeWhitelist) {
       const jid = getJidForSoldier(soldier.name);
       if (jid) {
-        const dm = `${greeting} ${soldier.name}! מה שלומך?\n\nהמסדר הגדודי מתוזמן לעוד 10 דקות (בשעה *${meetingConfig.time}*).\nהאם אתה מגיע?\n\n1. אני מגיע 🟢`;
+        const dm = `${greeting} ${soldier.name}! מה שלומך?\n\nהמסדר הגדודי מתוזמן לעוד 10 דקות (בשעה *${meetingConfig.time}*).\nהאם אתה מגיע?\n\n1. אני מגיע 🟢${gearReminder}`;
         await client.sendMessage(jid, dm).catch(e => {
           console.error(`Failed to send initial dialog to ${soldier.name}:`, e.message);
         });

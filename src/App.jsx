@@ -39,6 +39,7 @@ const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.04';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'רכב וניוד', 'רפואה', 'טנ"א (חימוש)', 'מטבח', 'שלישות', 'מפקדה'];
+const PLATOON_SERGEANTS = ["מעיין ישראלי", "מעיין נקאש", "דביר אגסי", "דמקה אייזנאו", "דמקה אזנאו"];
 
 const KNOWN_TEAM_ROLES = {
   // Super Admins
@@ -722,7 +723,11 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onOpenAssignment }) => {
               <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.2)', color: '#2563eb', borderRadius: '4px', fontWeight: 600 }}>🎖️ מפקד</span>
             )}
             {worker.role === 'soldier' && (
-              <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(107, 114, 128, 0.15)', color: '#4b5563', borderRadius: '4px', fontWeight: 500 }}>🪖 חייל</span>
+              PLATOON_SERGEANTS.includes(worker.name) ? (
+                <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', borderRadius: '4px', fontWeight: 600 }}>⚡ סמל</span>
+              ) : (
+                <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(107, 114, 128, 0.15)', color: '#4b5563', borderRadius: '4px', fontWeight: 500 }}>🪖 חייל</span>
+              )
             )}
           </span>
           <span className="person-header-subtitle">{worker.team}</span>
@@ -1125,6 +1130,35 @@ const TaskBankModal = ({ isOpen, onClose, activeTeam, onDeployTasks, onSaveCusto
 };
 
 const App = () => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [wallPeriod, setWallPeriod] = useState(new Date().getHours() < 12 ? 'morning' : 'evening');
+  const [duties, setDuties] = useState({});
+  const [attendanceTimeOfDay, setAttendanceTimeOfDay] = useState(new Date().getHours() < 12 ? 'morning' : 'evening');
+  const [currentCalendarMonth, setCurrentCalendarMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [monthlyDuties, setMonthlyDuties] = useState({});
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
+  const [dutiesTab, setDutiesTab] = useState('calendar');
+  const [kitchenMode, setKitchenMode] = useState('half');
+  const [rasarMode, setRasarMode] = useState('half');
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (!selectedCalendarDay) return;
+    const dayData = monthlyDuties[selectedCalendarDay] || {};
+    const isKitchenFull = dayData.kitchen_morning && dayData.kitchen_evening && dayData.kitchen_morning === dayData.kitchen_evening;
+    setKitchenMode(isKitchenFull ? 'full' : 'half');
+    
+    const isRasarFull = dayData.rasar_morning && dayData.rasar_evening && dayData.rasar_morning === dayData.rasar_evening;
+    setRasarMode(isRasarFull ? 'full' : 'half');
+  }, [selectedCalendarDay, monthlyDuties]);
   const [viewTime, setViewTime] = useState('morning');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1178,6 +1212,46 @@ const App = () => {
   }, [isAuthorized, userRole]);
 
   const isAdmin = isSuperAdmin || isCommander;
+
+  const isDutyOrganizer = useMemo(() => {
+    return isAuthorized && (userName === 'תמר ביליה' || PLATOON_SERGEANTS.includes(userName));
+  }, [isAuthorized, userName]);
+
+  const statsList = useMemo(() => {
+    if (!isAuthorized) return [];
+    const isTamar = userName === 'תמר ביליה';
+    const sergeantTeam = whitelistUsers.find(u => u.name === userName)?.team || KNOWN_TEAM_ROLES[userName]?.team || 'תקשוב';
+    
+    const allSoldiers = getAllSoldiers();
+    const teamSoldiers = allSoldiers.filter(s => s.team === sergeantTeam);
+    const targetList = isTamar ? allSoldiers : teamSoldiers;
+    
+    return targetList.map(soldier => {
+      let kitchenCount = 0;
+      let rasarCount = 0;
+      let shabbatCount = 0;
+      
+      Object.keys(monthlyDuties).forEach(dateStr => {
+        if (dateStr.startsWith(currentCalendarMonth)) {
+          const d = monthlyDuties[dateStr];
+          if (d.kitchen_morning === soldier.name) kitchenCount += 0.5;
+          if (d.kitchen_evening === soldier.name) kitchenCount += 0.5;
+          if (d.rasar_morning === soldier.name) rasarCount += 0.5;
+          if (d.rasar_evening === soldier.name) rasarCount += 0.5;
+          if (d.closed_shabbat === soldier.name) shabbatCount += 1;
+        }
+      });
+      
+      return {
+        name: soldier.name,
+        team: soldier.team,
+        kitchen: kitchenCount,
+        rasar: rasarCount,
+        shabbat: shabbatCount,
+        total: kitchenCount + rasarCount
+      };
+    }).sort((a, b) => a.total - b.total);
+  }, [isAuthorized, userName, whitelistUsers, monthlyDuties, currentCalendarMonth]);
 
   const activeWorkspaceTeam = useMemo(() => {
     if (isSuperAdmin) {
@@ -1778,7 +1852,23 @@ const App = () => {
       console.error("Meeting config query error:", error);
     });
 
-    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); meetingUnsubscribe(); };
+    const dutiesUnsubscribe = onSnapshot(collection(db, "duties"), (snapshot) => {
+      const allD = {};
+      snapshot.forEach(docSnap => {
+        allD[docSnap.id] = docSnap.data();
+      });
+      setMonthlyDuties(allD);
+      const todayStr = getTodayDateStr();
+      if (allD[todayStr]) {
+        setDuties(allD[todayStr]);
+      } else {
+        setDuties({});
+      }
+    }, (error) => {
+      console.error("Duties collection query error:", error);
+    });
+
+    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); meetingUnsubscribe(); dutiesUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
 
   const handleDeployTasksBatch = async (taskList) => {
@@ -2208,7 +2298,7 @@ const App = () => {
   };
 
   const renderAttendanceBanner = () => {
-    if (!isAuthorized || !userName || userName === 'תמר ביליה' || userRole === 'super_admin' || userRole === 'commander') return null;
+    return null;
     
     const today = getTodayDateStr();
     const hours = new Date().getHours();
@@ -2315,7 +2405,7 @@ const App = () => {
     );
   };
 
-  const getAllSoldiers = () => {
+  function getAllSoldiers() {
     const list = [];
     const seen = new Set();
     const reserves = ["טל זדורייב", "עידן יוסף", "דניאל אלימוב", "חיים גבריאלוב"];
@@ -2348,7 +2438,7 @@ const App = () => {
     });
 
     return list;
-  };
+  }
 
   const handleToggleAttendance = async (soldierName, period, currentVal) => {
     try {
@@ -2478,6 +2568,685 @@ const App = () => {
     }
   };
 
+  const renderDutiesDashboard = () => {
+    const isTamar = userName === 'תמר ביליה';
+    const sergeantTeam = whitelistUsers.find(u => u.name === userName)?.team || KNOWN_TEAM_ROLES[userName]?.team || 'תקשוב';
+    
+    const allSoldiers = getAllSoldiers();
+    const teamSoldiers = allSoldiers.filter(s => s.team === sergeantTeam);
+
+    const TEAM_COLORS = {
+      'לוגיסטיקה': '#1d4ed8', // Bolder Blue
+      'שלישות': '#db2777',    // Bolder Pink
+      'טנ"א (חימוש)': '#ea580c', // Bolder Orange
+      'טנ"א': '#ea580c', // Bolder Orange
+      'תקשוב': '#d97706' // Bolder Golden Yellow
+    };
+
+    const getSoldierTeam = (name) => {
+      if (!name) return null;
+      const s = allSoldiers.find(x => x.name === name);
+      return s ? s.team : null;
+    };
+
+    const getTeamColor = (teamName) => {
+      return TEAM_COLORS[teamName] || 'rgba(255, 255, 255, 0.08)';
+    };
+    
+    const [yearStr, monthStr] = currentCalendarMonth.split('-');
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr) - 1;
+    
+    const monthNamesHe = [
+      'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 
+      'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
+    ];
+    
+    const handlePrevMonth = () => {
+      let newM = month - 1;
+      let newY = year;
+      if (newM < 0) {
+        newM = 11;
+        newY -= 1;
+      }
+      setCurrentCalendarMonth(`${newY}-${String(newM + 1).padStart(2, '0')}`);
+    };
+    
+    const handleNextMonth = () => {
+      let newM = month + 1;
+      let newY = year;
+      if (newM > 11) {
+        newM = 0;
+        newY += 1;
+      }
+      setCurrentCalendarMonth(`${newY}-${String(newM + 1).padStart(2, '0')}`);
+    };
+    
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    
+    const calendarDays = [];
+    
+    let prevMonthYear = year;
+    let prevMonthNum = month - 1;
+    if (prevMonthNum < 0) {
+      prevMonthNum = 11;
+      prevMonthYear -= 1;
+    }
+    const prevMonthTotalDays = new Date(prevMonthYear, prevMonthNum + 1, 0).getDate();
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const prevDayVal = prevMonthTotalDays - i;
+      const prevDateStr = `${prevMonthYear}-${String(prevMonthNum + 1).padStart(2, '0')}-${String(prevDayVal).padStart(2, '0')}`;
+      calendarDays.push({
+        day: prevDayVal,
+        dateStr: prevDateStr,
+        isCurrentMonth: false
+      });
+    }
+
+    for (let d = 1; d <= totalDays; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      calendarDays.push({
+        day: d,
+        dateStr: dateStr,
+        isCurrentMonth: true
+      });
+    }
+
+    let nextMonthYear = year;
+    let nextMonthNum = month + 1;
+    if (nextMonthNum > 11) {
+      nextMonthNum = 0;
+      nextMonthYear += 1;
+    }
+    const remainingSlots = 42 - calendarDays.length;
+    for (let d = 1; d <= remainingSlots; d++) {
+      const nextDateStr = `${nextMonthYear}-${String(nextMonthNum + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      calendarDays.push({
+        day: d,
+        dateStr: nextDateStr,
+        isCurrentMonth: false
+      });
+    }
+    
+    const getDayDuties = (dateStr) => {
+      return monthlyDuties[dateStr] || {};
+    };
+
+    const handleSaveDayDuty = async (dateStr, dutyKey, value) => {
+      try {
+        const docRef = doc(db, "duties", dateStr);
+        await setDoc(docRef, { [dutyKey]: value }, { merge: true });
+      } catch (err) {
+        console.error("Error saving duty:", err);
+        alert("שגיאה בשמירת התורנות: " + err.message);
+      }
+    };
+
+    const handleSaveFullDayDuty = async (dateStr, dutyPrefix, value) => {
+      try {
+        const docRef = doc(db, "duties", dateStr);
+        await setDoc(docRef, { 
+          [`${dutyPrefix}_morning`]: value, 
+          [`${dutyPrefix}_evening`]: value 
+        }, { merge: true });
+      } catch (err) {
+        console.error("Error saving full day duty:", err);
+        alert("שגיאה בשמירת התורנות: " + err.message);
+      }
+    };
+
+    // statsList is defined at the top level of the App component to comply with React Rules of Hooks.
+    
+    return (
+      <div className="duties-dashboard" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <button className="btn btn-cancel" onClick={handlePrevMonth} style={{ width: 'auto', margin: 0, padding: '0.4rem 0.8rem' }}>◀ חודש קודם</button>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, minWidth: '120px', textAlign: 'center' }}>
+              {monthNamesHe[month]} {year}
+            </h2>
+            <button className="btn btn-cancel" onClick={handleNextMonth} style={{ width: 'auto', margin: 0, padding: '0.4rem 0.8rem' }}>חודש הבא ▶</button>
+          </div>
+
+          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '3px' }}>
+            <button 
+              onClick={() => setDutiesTab('calendar')}
+              style={{
+                background: dutiesTab === 'calendar' ? 'var(--accent-primary)' : 'none',
+                color: dutiesTab === 'calendar' ? '#fff' : 'rgba(255,255,255,0.7)',
+                border: 'none', borderRadius: '8px', padding: '0.4rem 1rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+              }}
+            >
+              📅 לוח שנה חודשי
+            </button>
+            <button 
+              onClick={() => setDutiesTab('stats')}
+              style={{
+                background: dutiesTab === 'stats' ? 'var(--accent-primary)' : 'none',
+                color: dutiesTab === 'stats' ? '#fff' : 'rgba(255,255,255,0.7)',
+                border: 'none', borderRadius: '8px', padding: '0.4rem 1rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+              }}
+            >
+              📊 מדד עומס תורנויות
+            </button>
+          </div>
+        </div>
+
+        {dutiesTab === 'calendar' ? (
+          <div className="glass-card" style={{ padding: '1.2rem', overflowX: 'auto' }}>
+            <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '1rem', marginTop: 0 }}>
+              {isTamar 
+                ? 'לחצי על יום בלוח השנה כדי לשבץ צוותים לתורנות מקלחות ושירותים.'
+                : `שלום ${userName} (${sergeantTeam}). לחץ על יום כדי לשבץ את חיילי הצוות שלך למטבח, רס"ר ושבת.`
+              }
+            </p>
+
+            <div style={{ minWidth: '600px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.4rem', marginBottom: '0.4rem', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem', opacity: 0.8 }}>
+                <div>ראשון</div>
+                <div>שני</div>
+                <div>שלישי</div>
+                <div>רביעי</div>
+                <div>חמישי</div>
+                <div>שישי</div>
+                <div style={{ color: '#f87171' }}>שבת</div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.4rem' }}>
+                {calendarDays.map((cell, idx) => {
+                  const dateStr = cell.dateStr;
+                  const dayData = getDayDuties(dateStr);
+                  const isToday = dateStr === getTodayDateStr();
+                  const isShabbat = idx % 7 === 6;
+
+                  return (
+                    <div 
+                      key={`day-${idx}-${dateStr}`}
+                      onClick={() => setSelectedCalendarDay(dateStr)}
+                      style={{
+                        background: isToday ? 'rgba(59, 130, 246, 0.15)' : cell.isCurrentMonth ? 'var(--card-bg, #ffffff)' : 'rgba(235, 235, 235, 0.4)',
+                        border: isToday ? '2px solid #3b82f6' : '1px solid var(--border-color, rgba(0,0,0,0.12))',
+                        borderRadius: '10px',
+                        minHeight: '95px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        opacity: cell.isCurrentMonth ? 1 : 0.85,
+                        transition: 'transform 0.2s, background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = isToday ? 'rgba(59, 130, 246, 0.15)' : cell.isCurrentMonth ? 'var(--card-bg, #ffffff)' : 'rgba(150,150,150,0.15)'}
+                    >
+                      {/* Day number overlay */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        zIndex: 10,
+                        background: 'rgba(255, 255, 255, 0.75)',
+                        border: '1px solid rgba(0, 0, 0, 0.08)',
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        fontSize: '0.72rem',
+                        fontWeight: '800',
+                        color: isShabbat ? '#ef4444' : isToday ? '#2563eb' : '#334155',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                      }}>
+                        {cell.day}
+                      </div>
+
+                      {/* Shabbat Closer indicator */}
+                      {dayData.closed_shabbat && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '4px',
+                          right: '4px',
+                          zIndex: 10,
+                          background: '#f87171',
+                          color: '#fff',
+                          padding: '1px 4px',
+                          borderRadius: '4px',
+                          fontSize: '0.62rem',
+                          fontWeight: 'bold'
+                        }} title={`סוגר שבת: ${dayData.closed_shabbat}`}>
+                          ⚡ {dayData.closed_shabbat.split(' ')[0]}
+                        </div>
+                      )}
+
+                      {/* Split Rows */}
+                      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', flex: 1 }}>
+                        {isTamar ? (
+                          /* Tamar View: Showers and Toilets */
+                          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', flex: 1, padding: '24px 4px 4px 4px', gap: '3px' }}>
+                            {dayData.showers && (
+                              <div style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', padding: '2px 4px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                🧼 {dayData.showers}
+                              </div>
+                            )}
+                            {dayData.toilets && (
+                              <div style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399', padding: '2px 4px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                🚽 {dayData.toilets}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* Sergeants View: Kitchen and Rasar split rows with team colors */
+                          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', flex: 1, paddingTop: '0' }}>
+                            {/* Kitchen Row */}
+                            {(() => {
+                              const morningSoldier = dayData.kitchen_morning;
+                              const eveningSoldier = dayData.kitchen_evening;
+                              const morningTeam = getSoldierTeam(morningSoldier);
+                              const eveningTeam = getSoldierTeam(eveningSoldier);
+                              const isFull = morningSoldier && eveningSoldier && morningSoldier === eveningSoldier;
+
+                              if (!morningSoldier && !eveningSoldier) {
+                                return (
+                                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', opacity: 0.25, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                    🍳
+                                  </div>
+                                );
+                              }
+
+                              if (isFull) {
+                                return (
+                                  <div style={{
+                                    flex: 1,
+                                    background: getTeamColor(morningTeam),
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 'bold',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis',
+                                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                    padding: '0 2px'
+                                  }} title={`🍳 מטבח: ${morningSoldier}`}>
+                                    🍳 {morningSoldier.split(' ')[0]}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div style={{ flex: 1, display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                  <div style={{
+                                    flex: 1,
+                                    background: morningSoldier ? getTeamColor(morningTeam) : 'transparent',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 'bold',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis',
+                                    borderLeft: '1px solid rgba(255,255,255,0.06)',
+                                    padding: '0 2px'
+                                  }} title={morningSoldier ? `🍳 בוקר: ${morningSoldier}` : ''}>
+                                    {morningSoldier ? morningSoldier.split(' ')[0] : '🍳'}
+                                  </div>
+                                  <div style={{
+                                    flex: 1,
+                                    background: eveningSoldier ? getTeamColor(eveningTeam) : 'transparent',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 'bold',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis',
+                                    padding: '0 2px'
+                                  }} title={eveningSoldier ? `🍳 ערב: ${eveningSoldier}` : ''}>
+                                    {eveningSoldier ? eveningSoldier.split(' ')[0] : '🍳'}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Rasar Row */}
+                            {(() => {
+                              const morningSoldier = dayData.rasar_morning;
+                              const eveningSoldier = dayData.rasar_evening;
+                              const morningTeam = getSoldierTeam(morningSoldier);
+                              const eveningTeam = getSoldierTeam(eveningSoldier);
+                              const isFull = morningSoldier && eveningSoldier && morningSoldier === eveningSoldier;
+
+                              if (!morningSoldier && !eveningSoldier) {
+                                return (
+                                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', opacity: 0.25 }}>
+                                    🛠️
+                                  </div>
+                                );
+                              }
+
+                              if (isFull) {
+                                return (
+                                  <div style={{
+                                    flex: 1,
+                                    background: getTeamColor(morningTeam),
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 'bold',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis',
+                                    padding: '0 2px'
+                                  }} title={`🛠️ רס"ר: ${morningSoldier}`}>
+                                    🛠️ {morningSoldier.split(' ')[0]}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                                  <div style={{
+                                    flex: 1,
+                                    background: morningSoldier ? getTeamColor(morningTeam) : 'transparent',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 'bold',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis',
+                                    borderLeft: '1px solid rgba(255,255,255,0.06)',
+                                    padding: '0 2px'
+                                  }} title={morningSoldier ? `🛠️ בוקר: ${morningSoldier}` : ''}>
+                                    {morningSoldier ? morningSoldier.split(' ')[0] : '🛠️'}
+                                  </div>
+                                  <div style={{
+                                    flex: 1,
+                                    background: eveningSoldier ? getTeamColor(eveningTeam) : 'transparent',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 'bold',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis',
+                                    padding: '0 2px'
+                                  }} title={eveningSoldier ? `🛠️ ערב: ${eveningSoldier}` : ''}>
+                                    {eveningSoldier ? eveningSoldier.split(' ')[0] : '🛠️'}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card" style={{ padding: '1.2rem' }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 700 }}>
+              📈 טבלת חלוקת עומס תורנויות - {isTamar ? 'כלל הגדוד' : `צוות ${sergeantTeam}`}
+            </h3>
+            <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '1.2rem', marginTop: 0 }}>
+              החיילים מסודרים מהעומס הנמוך ביותר לגבוה ביותר. השתמש בטבלה כדי לבחור את הבא בתור למשימה.
+            </p>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700 }}>שם חייל</th>
+                  {isTamar && <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700 }}>צוות</th>}
+                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>ימי מטבח (🍳)</th>
+                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>ימי רס"ר (🛠️)</th>
+                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>שבתות שסגר (⚡)</th>
+                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>סך הכל עומס</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statsList.map(soldier => (
+                  <tr key={soldier.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '0.6rem 0.4rem', fontWeight: 600 }}>{soldier.name}</td>
+                    {isTamar && <td style={{ padding: '0.6rem 0.4rem', opacity: 0.8 }}>{soldier.team}</td>}
+                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center' }}>{soldier.kitchen}</td>
+                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center' }}>{soldier.rasar}</td>
+                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center', fontWeight: soldier.shabbat > 0 ? 'bold' : 'normal', color: soldier.shabbat > 0 ? '#f87171' : 'inherit' }}>
+                      {soldier.shabbat}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center' }}>
+                      <span style={{
+                        background: soldier.total === 0 ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.08)',
+                        color: soldier.total === 0 ? '#34d399' : '#fff',
+                        padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold'
+                      }}>
+                        {soldier.total}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {selectedCalendarDay && (() => {
+          const dayVal = selectedCalendarDay.split('-').reverse().join('.');
+          const dayData = monthlyDuties[selectedCalendarDay] || {};
+
+          return (
+            <div className="registration-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:2100, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={() => setSelectedCalendarDay(null)}>
+              <div className="glass-card" style={{width:'90%', maxWidth:'450px', textAlign:'right', display: 'flex', flexDirection: 'column', gap: '1.2rem', padding: '1.5rem'}} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>🛠️ שיבוץ תורנויות ליום: {dayVal}</h3>
+                  <button onClick={() => setSelectedCalendarDay(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#fff' }}>✕</button>
+                </div>
+
+                {isTamar ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>🧼 תורנות מקלחות (צוות):</label>
+                      <select
+                        className="input-field"
+                        value={dayData.showers || ''}
+                        onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'showers', e.target.value)}
+                        style={{ margin: 0 }}
+                      >
+                        <option value="">-- בחר צוות --</option>
+                        {AVAILABLE_TEAMS.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>🚽 תורנות שירותים (צוות):</label>
+                      <select
+                        className="input-field"
+                        value={dayData.toilets || ''}
+                        onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'toilets', e.target.value)}
+                        style={{ margin: 0 }}
+                      >
+                        <option value="">-- בחר צוות --</option>
+                        {AVAILABLE_TEAMS.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ fontSize: '0.85rem', background: 'rgba(255,255,255,0.06)', padding: '0.6rem', borderRadius: '8px', opacity: 0.8 }}>
+                      שייך חיילים מתוך <strong>צוות {sergeantTeam}</strong> לתורנויות היומיות.
+                    </div>
+
+                    {/* Kitchen Section */}
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>🍳 תורנות מטבח:</span>
+                        <select
+                          className="input-field"
+                          value={kitchenMode}
+                          onChange={(e) => setKitchenMode(e.target.value)}
+                          style={{ margin: 0, padding: '0.2rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
+                        >
+                          <option value="half">חצי יום</option>
+                          <option value="full">יום שלם</option>
+                        </select>
+                      </div>
+
+                      {kitchenMode === 'full' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <select
+                            className="input-field"
+                            value={dayData.kitchen_morning || ''}
+                            onChange={(e) => handleSaveFullDayDuty(selectedCalendarDay, 'kitchen', e.target.value)}
+                            style={{ margin: 0 }}
+                          >
+                            <option value="">-- בחר חייל ליום שלם --</option>
+                            {teamSoldiers.map(s => (
+                              <option key={s.name} value={s.name}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>חלק ראשון (בוקר):</label>
+                            <select
+                              className="input-field"
+                              value={dayData.kitchen_morning || ''}
+                              onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'kitchen_morning', e.target.value)}
+                              style={{ margin: 0, fontSize: '0.85rem' }}
+                            >
+                              <option value="">-- בחר חייל --</option>
+                              {teamSoldiers.map(s => (
+                                <option key={s.name} value={s.name}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>חלק שני (ערב):</label>
+                            <select
+                              className="input-field"
+                              value={dayData.kitchen_evening || ''}
+                              onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'kitchen_evening', e.target.value)}
+                              style={{ margin: 0, fontSize: '0.85rem' }}
+                            >
+                              <option value="">-- בחר חייל --</option>
+                              {teamSoldiers.map(s => (
+                                <option key={s.name} value={s.name}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rasar Section */}
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>🛠️ תורנות רס"ר:</span>
+                        <select
+                          className="input-field"
+                          value={rasarMode}
+                          onChange={(e) => setRasarMode(e.target.value)}
+                          style={{ margin: 0, padding: '0.2rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
+                        >
+                          <option value="half">חצי יום</option>
+                          <option value="full">יום שלם</option>
+                        </select>
+                      </div>
+
+                      {rasarMode === 'full' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <select
+                            className="input-field"
+                            value={dayData.rasar_morning || ''}
+                            onChange={(e) => handleSaveFullDayDuty(selectedCalendarDay, 'rasar', e.target.value)}
+                            style={{ margin: 0 }}
+                          >
+                            <option value="">-- בחר חייל ליום שלם --</option>
+                            {teamSoldiers.map(s => (
+                              <option key={s.name} value={s.name}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>חלק ראשון (בוקר):</label>
+                            <select
+                              className="input-field"
+                              value={dayData.rasar_morning || ''}
+                              onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'rasar_morning', e.target.value)}
+                              style={{ margin: 0, fontSize: '0.85rem' }}
+                            >
+                              <option value="">-- בחר חייל --</option>
+                              {teamSoldiers.map(s => (
+                                <option key={s.name} value={s.name}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>חלק שני (ערב):</label>
+                            <select
+                              className="input-field"
+                              value={dayData.rasar_evening || ''}
+                              onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'rasar_evening', e.target.value)}
+                              style={{ margin: 0, fontSize: '0.85rem' }}
+                            >
+                              <option value="">-- בחר חייל --</option>
+                              {teamSoldiers.map(s => (
+                                <option key={s.name} value={s.name}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Shabbat Closer - Only shown on Saturdays */}
+                    {new Date(selectedCalendarDay).getDay() === 6 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#f87171' }}>⚡ סוגר שבת (לסופ"ש הקרוב):</label>
+                        <select
+                          className="input-field"
+                          value={dayData.closed_shabbat || ''}
+                          onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'closed_shabbat', e.target.value)}
+                          style={{ margin: 0 }}
+                        >
+                          <option value="">-- בחר חייל לסגירה --</option>
+                          {teamSoldiers.map(s => (
+                            <option key={s.name} value={s.name}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button className="btn btn-save" onClick={() => setSelectedCalendarDay(null)} style={{ marginTop: '0.5rem' }}>אישור וסגירה</button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  };
+
   const renderAttendanceDashboard = () => {
     const allSoldiers = getAllSoldiers();
     const filteredUsers = allSoldiers.filter(u => {
@@ -2485,34 +3254,26 @@ const App = () => {
       const matchesTeam = attendanceTeamFilter === 'הכל' ? true : u.team === attendanceTeamFilter;
       
       const record = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
-      const mVal = record?.morning || null;
-      const eVal = record?.evening || null;
-      const mPre = record?.morningPreCheck || null;
-      const ePre = record?.eveningPreCheck || null;
+      const val = attendanceTimeOfDay === 'morning' ? record?.morning : record?.evening;
+      const pre = attendanceTimeOfDay === 'morning' ? record?.morningPreCheck : record?.eveningPreCheck;
 
       let matchesStatus = true;
       if (attendanceStatusFilter === 'no_morning') {
-        matchesStatus = (mVal !== 'present');
-      } else if (attendanceStatusFilter === 'no_evening') {
-        matchesStatus = (eVal !== 'present');
+        matchesStatus = (val !== 'present');
       } else if (attendanceStatusFilter === 'exceptions') {
-        matchesStatus = (mVal && mVal !== 'present') || (eVal && eVal !== 'present');
+        matchesStatus = val && val !== 'present';
       } else if (attendanceStatusFilter === 'confirmed_whatsapp') {
-        matchesStatus = (mVal !== 'present' && mPre === 'coming') || (eVal !== 'present' && ePre === 'coming');
+        matchesStatus = val !== 'present' && pre === 'coming';
       }
 
       return matchesSearch && matchesTeam && matchesStatus;
     });
 
     const totalCount = filteredUsers.length;
-    const morningCount = filteredUsers.filter(u => {
+    const sessionCount = filteredUsers.filter(u => {
       const rec = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
-      return rec?.morning && rec.morning !== 'absent';
-    }).length;
-
-    const eveningCount = filteredUsers.filter(u => {
-      const rec = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
-      return rec?.evening && rec.evening !== 'absent';
+      const val = attendanceTimeOfDay === 'morning' ? rec?.morning : rec?.evening;
+      return val && val !== 'absent';
     }).length;
 
     const getStatusStyleAndText = (val) => {
@@ -2536,15 +3297,37 @@ const App = () => {
       <div className="attendance-dashboard" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
         <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 800 }}>📊 סטטיסטיקת נוכחות להיום</h2>
+            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 800 }}>📊 סטטיסטיקת נוכחות ({attendanceTimeOfDay === 'morning' ? 'בוקר' : 'ערב'})</h2>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>בוקר: <strong style={{color:'#10b981'}}>{morningCount}</strong> / {totalCount} נוכחים</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>ערב: <strong style={{color:'#10b981'}}>{eveningCount}</strong> / {totalCount} נוכחים</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>נוכחים במסדר: <strong style={{color:'#10b981'}}>{sessionCount}</strong> / {totalCount}</span>
             </div>
           </div>
+          
+          {/* Morning/Evening Session Selector */}
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px' }}>
+            <button 
+              onClick={() => setAttendanceTimeOfDay('morning')}
+              style={{
+                border: 'none', background: attendanceTimeOfDay === 'morning' ? 'var(--primary, #3b82f6)' : 'none',
+                color: 'white', fontWeight: 700, padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer'
+              }}
+            >
+              🌅 בוקר
+            </button>
+            <button 
+              onClick={() => setAttendanceTimeOfDay('evening')}
+              style={{
+                border: 'none', background: attendanceTimeOfDay === 'evening' ? 'var(--primary, #3b82f6)' : 'none',
+                color: 'white', fontWeight: 700, padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer'
+              }}
+            >
+              🌙 ערב
+            </button>
+          </div>
+
           <div style={{ display: 'flex', gap: '0.6rem' }}>
             <button className="btn btn-save" style={{ margin: 0, padding: '0.5rem 1rem', width: 'auto' }} onClick={() => setIsQrModalOpen(true)}>
-              📱 קישור / ברקוד סריקה
+              📱 ברקוד מהיר
             </button>
             <button className="btn" style={{ margin: 0, padding: '0.5rem 1rem', background: '#2563eb', color: 'white', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={handleExportWhatsApp}>
               <span>💬</span> העתק לווטסאפ
@@ -2606,7 +3389,10 @@ const App = () => {
                 className="btn" 
                 style={{ background: 'rgba(37, 99, 235, 0.15)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.3)', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: 'auto', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => {
-                  const msg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה ולהיות מוכנים לדיווח נוכחות!`;
+                  const [hStr] = (meetingConfig?.time || '00:00').split(':');
+                  const isMorning = parseInt(hStr, 10) < 14;
+                  const gearReminder = isMorning ? '\n*נא לזכור להביא דסקית וחוגר! 🪖*' : '';
+                  const msg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה ולהיות מוכנים לדיווח נוכחות!${gearReminder}`;
                   navigator.clipboard.writeText(msg).then(() => alert("תזכורת הועתקה ללוח!"));
                 }}
               >
@@ -2616,7 +3402,10 @@ const App = () => {
                 className="btn" 
                 style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: 'auto', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => {
-                  const msg = `🚨 *זמן מסדר הגיע!* 🚨\nהמסדר הגדודי התחיל כעת (*${meetingConfig.time}*).\nנא להיכנס כולם לאפליקציה ולדווח נוכחות ("אני בבסיס/גימלים/חופש") באופן מיידי!`;
+                  const [hStr] = (meetingConfig?.time || '00:00').split(':');
+                  const isMorning = parseInt(hStr, 10) < 14;
+                  const gearReminder = isMorning ? '\n*נא לזכור להביא דסקית וחוגר! 🪖*' : '';
+                  const msg = `🚨 *זמן מסדר הגיע!* 🚨\nהמסדר הגדודי התחיל כעת (*${meetingConfig.time}*).\nנא להיכנס כולם לאפליקציה ולדווח נוכחות ("אני בבסיס/גימלים/חופש") באופן מיידי!${gearReminder}`;
                   navigator.clipboard.writeText(msg).then(() => alert("הודעת תחילת מסדר הועתקה ללוח!"));
                 }}
               >
@@ -2653,8 +3442,7 @@ const App = () => {
             style={{ maxWidth: '220px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
           >
             <option value="הכל">כל הסטטוסים</option>
-            <option value="no_morning">לא נוכחים בבוקר 🔴</option>
-            <option value="no_evening">לא נוכחים בערב 🔴</option>
+            <option value="no_morning">לא נוכחים במסדר 🔴</option>
             <option value="exceptions">חריגים (גימלים/חופש/תפקיד) ⚠️</option>
             <option value="confirmed_whatsapp">אישרו הגעה בווטסאפ (טרם סרקו) 💬</option>
           </select>
@@ -2666,18 +3454,15 @@ const App = () => {
               <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
                 <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>שם חייל</th>
                 <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>צוות</th>
-                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>נוכחות בוקר</th>
-                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>נוכחות ערב</th>
-                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>מכשיר</th>
+                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>במסדר?</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map(user => {
                 const record = attendanceRecords.find(r => r.date === todayDateStr && r.name === user.name);
-                const mVal = record?.morning || null;
-                const eVal = record?.evening || null;
-                const mInfo = getStatusStyleAndText(mVal);
-                const eInfo = getStatusStyleAndText(eVal);
+                const val = attendanceTimeOfDay === 'morning' ? record?.morning : record?.evening;
+                const pre = attendanceTimeOfDay === 'morning' ? record?.morningPreCheck : record?.eveningPreCheck;
+                const info = getStatusStyleAndText(val);
 
                 return (
                   <tr key={user.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -2685,7 +3470,7 @@ const App = () => {
                     <td style={{ padding: '0.8rem 0.5rem', opacity: 0.8 }}>{user.team || 'תקשוב'}</td>
                     <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
                       <button 
-                        onClick={() => handleToggleAttendance(user.name, 'morning', mVal)}
+                        onClick={() => handleToggleAttendance(user.name, attendanceTimeOfDay, val)}
                         style={{
                           border: 'none',
                           borderRadius: '20px',
@@ -2695,51 +3480,15 @@ const App = () => {
                           cursor: 'pointer',
                           width: '110px',
                           transition: 'all 0.2s',
-                          ...mInfo.style
+                          ...info.style
                         }}
                       >
-                        {mInfo.text}
+                        {info.text}
                       </button>
-                      {mVal !== 'present' && record?.morningPreCheck === 'coming' && (
+                      {val !== 'present' && pre === 'coming' && (
                         <div style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
                           💬 מגיע (אישר בווטסאפ)
                         </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
-                      <button 
-                        onClick={() => handleToggleAttendance(user.name, 'evening', eVal)}
-                        style={{
-                          border: 'none',
-                          borderRadius: '20px',
-                          padding: '0.35rem 0.85rem',
-                          fontWeight: 600,
-                          fontSize: '0.8rem',
-                          cursor: 'pointer',
-                          width: '110px',
-                          transition: 'all 0.2s',
-                          ...eInfo.style
-                        }}
-                      >
-                        {eInfo.text}
-                      </button>
-                      {eVal !== 'present' && record?.eveningPreCheck === 'coming' && (
-                        <div style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                          💬 מגיע (אישר בווטסאפ)
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
-                      {user.isActivated ? (
-                        <button 
-                          onClick={() => handleResetUserDevice(user.name)}
-                          style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '2px 6px', fontSize: '0.75rem', cursor: 'pointer' }}
-                          title="אפס נעילת מכשיר"
-                        >
-                          🔄 אפס נעילה
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>לא מופעל</span>
                       )}
                     </td>
                   </tr>
@@ -2747,7 +3496,7 @@ const App = () => {
               })}
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', opacity: 0.6 }}>לא נמצאו חיילים התואמים את הסינון.</td>
+                  <td colSpan="3" style={{ textAlign: 'center', padding: '2rem', opacity: 0.6 }}>לא נמצאו חיילים התואמים את הסינון.</td>
                 </tr>
               )}
             </tbody>
@@ -2780,7 +3529,11 @@ const App = () => {
               <span className="role-badge commander">🎖️ מפקד צוות ({workerTeam})</span>
             )}
             {!isSuperAdmin && !isCommander && (
-              <span className="role-badge soldier">🪖 חייל ({workerTeam})</span>
+              PLATOON_SERGEANTS.includes(userName) ? (
+                <span className="role-badge sergeant" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem' }}>⚡ סמל ({workerTeam})</span>
+              ) : (
+                <span className="role-badge soldier">🪖 חייל ({workerTeam})</span>
+              )
             )}
             <button 
               className="btn btn-cancel" 
@@ -2859,7 +3612,7 @@ const App = () => {
         </div>
       )}
 
-      <main className="container">
+      <main className="container" style={activeTab === 'duties' ? { maxWidth: '1000px', width: '100%' } : undefined}>
         {renderMeetingReminderBanner()}
         {renderAttendanceBanner()}
         {activeTab === 'tasks' ? (
@@ -3006,6 +3759,8 @@ const App = () => {
           </div>
         ) : (activeTab === 'attendance' && userName === 'תמר ביליה') ? (
           renderAttendanceDashboard()
+        ) : (activeTab === 'duties' && isDutyOrganizer) ? (
+          renderDutiesDashboard()
         ) : (
           <div className="people-view" style={{ padding: '1rem' }}>
             {isAdmin && (
@@ -3113,23 +3868,44 @@ const App = () => {
         </div>
       )}
 
-      {isAdmin && (
+      {(isAdmin || isDutyOrganizer) && (
         <nav className="bottom-nav">
-          <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
-            <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
-          </div>
-          <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
-            <i style={{fontSize:'1.3rem'}}>🪖</i> <span>חיילים ושיבוץ</span>
-          </div>
-          {isAdmin && (
-            <div className={`nav-tab ${activeTab === 'devices' ? 'active' : ''}`} onClick={() => setActiveTab('devices')}>
-              <i style={{fontSize:'1.3rem'}}>📱</i> <span>חיבורי מכשירים</span>
-            </div>
-          )}
-          {userName === 'תמר ביליה' && (
-            <div className={`nav-tab ${activeTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveTab('attendance')}>
-              <i style={{fontSize:'1.3rem'}}>📅</i> <span>דוח נוכחות</span>
-            </div>
+          {userName === 'תמר ביליה' ? (
+            <>
+              <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
+                <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
+              </div>
+              <div className={`nav-tab ${activeTab === 'attendance' ? 'active' : ''}`} onClick={() => {
+                setAttendanceTimeOfDay(new Date().getHours() < 12 ? 'morning' : 'evening');
+                setActiveTab('attendance');
+              }}>
+                <i style={{fontSize:'1.3rem'}}>📅</i> <span>דוח נוכחות</span>
+              </div>
+              <div className={`nav-tab ${activeTab === 'duties' ? 'active' : ''}`} onClick={() => setActiveTab('duties')}>
+                <i style={{fontSize:'1.3rem'}}>📆</i> <span>לוח תורנויות</span>
+              </div>
+            </>
+          ) : PLATOON_SERGEANTS.includes(userName) ? (
+            <>
+              <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
+                <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
+              </div>
+              <div className={`nav-tab ${activeTab === 'duties' ? 'active' : ''}`} onClick={() => setActiveTab('duties')}>
+                <i style={{fontSize:'1.3rem'}}>📆</i> <span>לוח תורנויות</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
+                <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
+              </div>
+              <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
+                <i style={{fontSize:'1.3rem'}}>🪖</i> <span>חיילים ושיבוץ</span>
+              </div>
+              <div className={`nav-tab ${activeTab === 'devices' ? 'active' : ''}`} onClick={() => setActiveTab('devices')}>
+                <i style={{fontSize:'1.3rem'}}>📱</i> <span>חיבורי מכשירים</span>
+              </div>
+            </>
           )}
         </nav>
       )}
@@ -3176,6 +3952,59 @@ const App = () => {
                   style={{ width: '100%', marginTop: '0.5rem' }}
                 >
                   📋 העתק קישור ישיר
+                </button>
+                <button 
+                  className="btn btn-save" 
+                  onClick={() => {
+                    const printWindow = window.open('', '_blank');
+                    const checkinUrl = window.location.origin + window.location.pathname + '?action=checkin';
+                    printWindow.document.write(`
+                      <html lang="he" dir="rtl">
+                      <head>
+                        <title>הדפסת ברקוד נוכחות</title>
+                        <style>
+                          body {
+                            font-family: Arial, sans-serif;
+                            text-align: center;
+                            padding: 3rem;
+                            direction: rtl;
+                          }
+                          .qr-container {
+                            border: 3px solid black;
+                            display: inline-block;
+                            padding: 2rem;
+                            border-radius: 16px;
+                            margin: 2rem 0;
+                          }
+                          h1 { font-size: 3rem; margin-bottom: 0.5rem; }
+                          h2 { font-size: 1.8rem; margin-top: 0; opacity: 0.8; }
+                          p { font-size: 1.4rem; font-weight: bold; }
+                          .footer { font-size: 1rem; opacity: 0.6; margin-top: 3rem; }
+                        </style>
+                      </head>
+                      <body>
+                        <h1>ברקוד דיווח נוכחות עצמי</h1>
+                        <h2>גדוד 402</h2>
+                        <div class="qr-container">
+                          <img src="https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(checkinUrl)}" style="width:350px; height:350px;" />
+                        </div>
+                        <p>הוראות לחייל:</p>
+                        <p>1. פתח מצלמה 📸 ➔ 2. סרוק את הברקוד 📱 ➔ 3. אשר נוכחות בטלפון שלך 🟢</p>
+                        <div class="footer">הברקוד הינו קבוע ורב-פעמי. נא לשמור על התקינות שלו.</div>
+                        <script>
+                          window.onload = function() {
+                            window.print();
+                            setTimeout(function() { window.close(); }, 500);
+                          };
+                        </script>
+                      </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                  }}
+                  style={{ width: '100%', marginTop: '0.2rem', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+                >
+                  🖨️ הדפס ברקוד לקיר
                 </button>
                 <button 
                   className="btn btn-cancel" 
