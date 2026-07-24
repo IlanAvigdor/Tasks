@@ -1141,8 +1141,8 @@ const App = () => {
   const [monthlyDuties, setMonthlyDuties] = useState({});
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
   const [dutiesTab, setDutiesTab] = useState('calendar');
-  const [kitchenMode, setKitchenMode] = useState('half');
-  const [rasarMode, setRasarMode] = useState('half');
+  const [kitchenMode, setKitchenMode] = useState('full');
+  const [rasarMode, setRasarMode] = useState('full');
 
   useEffect(() => {
     const timer = setInterval(() => {
