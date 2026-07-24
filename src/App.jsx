@@ -1338,11 +1338,24 @@ const App = () => {
     if (!newWorkerName.trim()) return;
     try {
       const targetTeam = isSuperAdmin ? newWorkerTeam : (workerTeam || 'לוגיסטיקה');
+      
+      // Write to workers collection
       await addDoc(collection(db, "workers"), {
         name: newWorkerName.trim(),
         team: targetTeam,
         createdAt: new Date()
       });
+      
+      // Write to whitelist collection so they can log in and show up on the attendance list
+      await setDoc(doc(db, "whitelist", newWorkerName.trim()), {
+        name: newWorkerName.trim(),
+        team: targetTeam,
+        role: 'soldier',
+        isActivated: false,
+        uid: null,
+        createdAt: new Date()
+      }, { merge: true });
+
       setNewWorkerName('');
       alert(`החייל ${newWorkerName.trim()} נוסף בהצלחה לצוות ${targetTeam}`);
     } catch (err) {
