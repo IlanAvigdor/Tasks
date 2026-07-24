@@ -1153,11 +1153,22 @@ const App = () => {
   useEffect(() => {
     if (!selectedCalendarDay) return;
     const dayData = monthlyDuties[selectedCalendarDay] || {};
-    const isKitchenFull = dayData.kitchen_morning && dayData.kitchen_evening && dayData.kitchen_morning === dayData.kitchen_evening;
-    setKitchenMode(isKitchenFull ? 'full' : 'half');
     
-    const isRasarFull = dayData.rasar_morning && dayData.rasar_evening && dayData.rasar_morning === dayData.rasar_evening;
-    setRasarMode(isRasarFull ? 'full' : 'half');
+    const hasKitchenAssignment = dayData.kitchen_morning || dayData.kitchen_evening;
+    if (!hasKitchenAssignment) {
+      setKitchenMode('full');
+    } else {
+      const isKitchenFull = dayData.kitchen_morning && dayData.kitchen_evening && dayData.kitchen_morning === dayData.kitchen_evening;
+      setKitchenMode(isKitchenFull ? 'full' : 'half');
+    }
+    
+    const hasRasarAssignment = dayData.rasar_morning || dayData.rasar_evening;
+    if (!hasRasarAssignment) {
+      setRasarMode('full');
+    } else {
+      const isRasarFull = dayData.rasar_morning && dayData.rasar_evening && dayData.rasar_morning === dayData.rasar_evening;
+      setRasarMode(isRasarFull ? 'full' : 'half');
+    }
   }, [selectedCalendarDay, monthlyDuties]);
   const [viewTime, setViewTime] = useState('morning');
   const [tasks, setTasks] = useState([]);
