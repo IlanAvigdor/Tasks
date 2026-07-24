@@ -2625,11 +2625,11 @@ const App = () => {
     const teamSoldiers = allSoldiers.filter(s => s.team === sergeantTeam);
 
     const TEAM_COLORS = {
-      'לוגיסטיקה': '#1d4ed8', // Bolder Blue
-      'שלישות': '#db2777',    // Bolder Pink
-      'טנ"א (חימוש)': '#ea580c', // Bolder Orange
-      'טנ"א': '#ea580c', // Bolder Orange
-      'תקשוב': '#d97706' // Bolder Golden Yellow
+      'לוגיסטיקה': '#1d4ed8', // Royal Blue
+      'שלישות': '#db2777',    // Deep Magenta Pink
+      'טנ"א (חימוש)': '#ff6b00', // Electric Orange
+      'טנ"א': '#ff6b00', // Electric Orange
+      'תקשוב': '#eab308' // Canary Yellow
     };
 
     const getSoldierTeam = (name) => {
