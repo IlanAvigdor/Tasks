@@ -1249,7 +1249,7 @@ const App = () => {
           if (d.kitchen_evening === soldier.name) kitchenCount += 0.5;
           if (d.rasar_morning === soldier.name) rasarCount += 0.5;
           if (d.rasar_evening === soldier.name) rasarCount += 0.5;
-          if (d.closed_shabbat === soldier.name) shabbatCount += 1;
+          if (d.closed_shabbat === soldier.name || d[`closed_shabbat_${soldier.team}`] === soldier.name) shabbatCount += 1;
         }
       });
       
@@ -2809,6 +2809,28 @@ const App = () => {
                   const isToday = dateStr === getTodayDateStr();
                   const isShabbat = idx % 7 === 6;
 
+                  const visibleClosers = (() => {
+                    const list = [];
+                    if (isTamar) {
+                      if (dayData.closed_shabbat) list.push(dayData.closed_shabbat);
+                      AVAILABLE_TEAMS.forEach(team => {
+                        const val = dayData[`closed_shabbat_${team}`];
+                        if (val && !list.includes(val)) list.push(val);
+                      });
+                    } else {
+                      const teamVal = dayData[`closed_shabbat_${sergeantTeam}`];
+                      if (teamVal) {
+                        list.push(teamVal);
+                      } else if (dayData.closed_shabbat) {
+                        const legacyTeam = getSoldierTeam(dayData.closed_shabbat);
+                        if (legacyTeam === sergeantTeam) {
+                          list.push(dayData.closed_shabbat);
+                        }
+                      }
+                    }
+                    return list;
+                  })();
+
                   return (
                     <div 
                       key={`day-${idx}-${dateStr}`}
@@ -2848,7 +2870,7 @@ const App = () => {
                       </div>
 
                       {/* Shabbat Closer indicator */}
-                      {dayData.closed_shabbat && (
+                      {visibleClosers.length > 0 && (
                         <div style={{
                           position: 'absolute',
                           bottom: '4px',
@@ -2859,9 +2881,13 @@ const App = () => {
                           padding: '1px 4px',
                           borderRadius: '4px',
                           fontSize: '0.62rem',
-                          fontWeight: 'bold'
-                        }} title={`סוגר שבת: ${dayData.closed_shabbat}`}>
-                          ⚡ {dayData.closed_shabbat.split(' ')[0]}
+                          fontWeight: 'bold',
+                          maxWidth: '90%',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }} title={`סוגר שבת: ${visibleClosers.join(', ')}`}>
+                          ⚡ {visibleClosers.map(c => c.split(' ')[0]).join(', ')}
                         </div>
                       )}
 
@@ -3273,8 +3299,8 @@ const App = () => {
                         <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#f87171' }}>⚡ סוגר שבת (לסופ"ש הקרוב):</label>
                         <select
                           className="input-field"
-                          value={dayData.closed_shabbat || ''}
-                          onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'closed_shabbat', e.target.value)}
+                          value={dayData[`closed_shabbat_${sergeantTeam}`] || dayData.closed_shabbat || ''}
+                          onChange={(e) => handleSaveDayDuty(selectedCalendarDay, `closed_shabbat_${sergeantTeam}`, e.target.value)}
                           style={{ margin: 0 }}
                         >
                           <option value="">-- בחר חייל לסגירה --</option>
