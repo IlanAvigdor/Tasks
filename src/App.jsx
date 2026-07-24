@@ -1192,8 +1192,8 @@ const App = () => {
   const [attendanceTeamFilter, setAttendanceTeamFilter] = useState('הכל');
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('הכל');
   const [attendanceSearchQuery, setAttendanceSearchQuery] = useState('');
-  const [meetingConfig, setMeetingConfig] = useState(null);
-  const [meetingAlert, setMeetingAlert] = useState('none');
+  const [isMeetingFormOpen, setIsMeetingFormOpen] = useState(false);
+  const [newMeeting, setNewMeeting] = useState({ title: '', time: '', isRecurring: false });
 
   // UI & Workspace Modal States
   const [registrationName, setRegistrationName] = useState('');
@@ -1393,6 +1393,27 @@ const App = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const getActiveOpenMeeting = () => {
+    const today = getTodayDateStr();
+    const now = new Date();
+    const activeMeetings = customBundles.filter(b => b.type === 'meeting' && b.status === 'active' && (b.isRecurring || b.date === today));
+    
+    for (const meeting of activeMeetings) {
+      const [mHours, mMinutes] = meeting.time.split(':').map(Number);
+      const meetingDate = new Date();
+      meetingDate.setHours(mHours, mMinutes, 0, 0);
+      
+      const diffMs = meetingDate - now;
+      const diffMins = diffMs / 1000 / 60;
+      
+      // Scanning is allowed starting 10 minutes before the meeting
+      if (diffMins <= 10) {
+        return meeting;
+      }
+    }
+    return null;
+  };
+
   const handleSelfCheckin = async (name, status = 'present') => {
     if (!name) return;
     try {
@@ -1403,26 +1424,18 @@ const App = () => {
       const hours = new Date().getHours();
       const isMorning = hours < 12;
       
+      let meetingId = null;
+      let meetingTitle = null;
+      
       // Enforce scanning allowed only from 10 minutes before the scheduled meeting
       if (status === 'present') {
-        if (!meetingConfig || !meetingConfig.time || meetingConfig.date !== today) {
-          alert("❌ שגיאה: לא מתוזמן מסדר להיום. לא ניתן לדווח נוכחות.");
+        const openMeeting = getActiveOpenMeeting();
+        if (!openMeeting) {
+          alert("❌ שגיאה: לא מתוזמן מסדר פעיל כעת (הברקוד נפתח 10 דקות לפני המסדר ונסגר בסיומו).");
           return;
         }
-
-        const [mHours, mMinutes] = meetingConfig.time.split(':').map(Number);
-        const meetingDate = new Date();
-        meetingDate.setHours(mHours, mMinutes, 0, 0);
-
-        const now = new Date();
-        const diffMs = meetingDate - now;
-        const diffMins = diffMs / 1000 / 60;
-
-        if (diffMins > 10) {
-          const startTimeStr = new Date(meetingDate.getTime() - 10 * 60 * 1000).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-          alert(`❌ שגיאה: לא ניתן לדווח נוכחות כעת. הברקוד יהיה פעיל רק החל מ-10 דקות לפני המסדר (החל משעה ${startTimeStr}).`);
-          return;
-        }
+        meetingId = openMeeting.id;
+        meetingTitle = openMeeting.title;
       }
       
       const userDoc = whitelistUsers.find(u => u.name === name);
@@ -1434,6 +1447,11 @@ const App = () => {
         team: teamVal,
         updatedAt: new Date()
       };
+
+      if (meetingId) {
+        updateData.meetingId = meetingId;
+        updateData.meetingTitle = meetingTitle;
+      }
       
       if (isMorning) {
         updateData.morning = status;
@@ -1714,45 +1732,7 @@ const App = () => {
     }
   }, [isAuthorized]);
 
-  // Monitor scheduled meeting time and trigger alert state
-  useEffect(() => {
-    if (!meetingConfig?.time) {
-      setMeetingAlert('none');
-      return;
-    }
 
-    const checkMeetingTime = () => {
-      const todayStr = getTodayDateStr();
-      if (meetingConfig.date !== todayStr) {
-        setMeetingAlert('none');
-        return;
-      }
-
-      const [hours, minutes] = meetingConfig.time.split(':').map(Number);
-      const meetingDate = new Date();
-      meetingDate.setHours(hours, minutes, 0, 0);
-
-      const now = new Date();
-      const diffMs = meetingDate - now;
-      const diffMins = diffMs / 1000 / 60;
-
-      if (diffMins > 0 && diffMins <= 10) {
-        if (meetingConfig.sendReminder) {
-          setMeetingAlert('reminder');
-        } else {
-          setMeetingAlert('none');
-        }
-      } else if (diffMins <= 0 && diffMins >= -30) {
-        setMeetingAlert('started');
-      } else {
-        setMeetingAlert('none');
-      }
-    };
-
-    checkMeetingTime();
-    const interval = setInterval(checkMeetingTime, 10000);
-    return () => clearInterval(interval);
-  }, [meetingConfig]);
 
   // Firestore listeners (only subscribe if authorized or admin)
   useEffect(() => {
@@ -1876,15 +1856,7 @@ const App = () => {
       console.error("Attendance query error:", error);
     });
 
-    const meetingUnsubscribe = onSnapshot(doc(db, "task_bundles", "meeting"), (docSnap) => {
-      if (docSnap.exists()) {
-        setMeetingConfig(docSnap.data());
-      } else {
-        setMeetingConfig(null);
-      }
-    }, (error) => {
-      console.error("Meeting config query error:", error);
-    });
+
 
     const dutiesUnsubscribe = onSnapshot(collection(db, "duties"), (snapshot) => {
       const allD = {};
@@ -2419,25 +2391,7 @@ const App = () => {
   };
 
   const renderMeetingReminderBanner = () => {
-    if (!isAuthorized || !isSoldierUser || isCheckedIn || meetingAlert !== 'reminder') return null;
-    return (
-      <div className="glass-card" style={{
-        background: 'rgba(245, 158, 11, 0.15)',
-        border: '1px solid #f59e0b',
-        color: '#f59e0b',
-        padding: '0.8rem 1rem',
-        borderRadius: '12px',
-        marginBottom: '1rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        fontWeight: 'bold',
-        fontSize: '0.95rem'
-      }}>
-        <span>⚠️</span>
-        <span>תזכורת: מסדר/מפגש גדודי מתוזמן לעוד פחות מ-10 דקות (בשעה {meetingConfig?.time})! נא להישאר זמינים במכשיר.</span>
-      </div>
-    );
+    return null;
   };
 
   const renderMeetingPopupModal = () => {
@@ -2582,29 +2536,163 @@ const App = () => {
     });
   };
 
-  const handleSaveMeeting = async (timeStr, sendRem) => {
+  const handleAddMeeting = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!newMeeting.title || !newMeeting.time) {
+      alert("נא למלא שם מסדר ושעה.");
+      return;
+    }
     try {
       const today = getTodayDateStr();
-      await setDoc(doc(db, "task_bundles", "meeting"), {
-        time: timeStr,
-        sendReminder: sendRem,
+      const id = `meeting_${Date.now()}`;
+      await setDoc(doc(db, "task_bundles", id), {
+        type: 'meeting',
+        title: newMeeting.title,
+        time: newMeeting.time,
+        isRecurring: newMeeting.isRecurring,
         date: today,
         scheduledBy: userName,
-        updatedAt: new Date()
+        createdAt: new Date(),
+        status: 'active'
       });
+      setNewMeeting({ title: '', time: '', isRecurring: false });
+      setIsMeetingFormOpen(false);
     } catch (err) {
-      console.error("Error saving meeting:", err);
-      alert("שגיאה בעדכון זמן מסדר: " + err.message);
+      console.error("Error saving meeting: ", err);
+      alert("שגיאה בשמירת המסדר: " + err.message);
     }
   };
 
-  const handleClearMeeting = async () => {
-    try {
-      await deleteDoc(doc(db, "task_bundles", "meeting"));
-    } catch (err) {
-      console.error("Error clearing meeting:", err);
-      alert("שגיאה בביטול מסדר.");
+  const renderMeetingsSection = () => {
+    const today = getTodayDateStr();
+    const meetings = customBundles.filter(b => b.type === 'meeting' && (b.isRecurring || b.date === today));
+    
+    if (meetings.length === 0) {
+      return (
+        <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center', opacity: 0.8, marginBottom: '1rem' }}>
+          <p style={{ margin: 0 }}>אין מסדרים מתוזמנים להיום. לחץ על כפתור ה-+ כדי להוסיף מסדר חדש.</p>
+        </div>
+      );
     }
+    
+    return (
+      <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>⏰</span>
+          <span>רשימת מסדרים להיום</span>
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+          {meetings.map(meeting => {
+            const isActive = meeting.status === 'active';
+            return (
+              <div key={meeting.id} className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', border: isActive ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{meeting.title}</span>
+                  <span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: isActive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: isActive ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                    {isActive ? 'פעיל' : 'הסתיים'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+                  <span>שעה: <strong>{meeting.time}</strong></span>
+                  {meeting.isRecurring && <span style={{ marginRight: '0.5rem', color: '#3b82f6', fontWeight: 600 }}>(קבוע 🔁)</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+                  {isActive && (
+                    <button 
+                      className="btn" 
+                      style={{ margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', flex: 1 }}
+                      onClick={async () => {
+                        try {
+                          await updateDoc(doc(db, "task_bundles", meeting.id), { status: 'finished' });
+                        } catch (e) {
+                          alert("שגיאה בסיום המסדר: " + e.message);
+                        }
+                      }}
+                    >
+                      🏁 סיום מסדר
+                    </button>
+                  )}
+                  <button 
+                    className="btn btn-cancel" 
+                    style={{ margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', width: 'auto' }}
+                    onClick={async () => {
+                      if (confirm("האם למחוק מסדר זה?")) {
+                        try {
+                          await deleteDoc(doc(db, "task_bundles", meeting.id));
+                        } catch (e) {
+                          alert("שגיאה במחיקת המסדר: " + e.message);
+                        }
+                      }
+                    }}
+                  >
+                    🗑️ מחק
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMeetingFormModal = () => {
+    if (!isMeetingFormOpen) return null;
+    return (
+      <div className="registration-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass-card" style={{ width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '1.2rem', padding: '2rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>➕ הוספת מסדר חדש</h3>
+          <form onSubmit={handleAddMeeting} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontWeight: 600 }}>שם המסדר:</label>
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="לדוגמה: מסדר בוקר, מסדר ערב" 
+                value={newMeeting.title} 
+                onChange={e => setNewMeeting({ ...newMeeting, title: e.target.value })} 
+                required 
+              />
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontWeight: 600 }}>שעה:</label>
+              <input 
+                type="time" 
+                className="input-field" 
+                value={newMeeting.time} 
+                onChange={e => setNewMeeting({ ...newMeeting, time: e.target.value })} 
+                required 
+              />
+            </div>
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontWeight: 600, marginTop: '0.4rem' }}>
+              <input 
+                type="checkbox" 
+                checked={newMeeting.isRecurring} 
+                onChange={e => setNewMeeting({ ...newMeeting, isRecurring: e.target.checked })} 
+              />
+              <span>מסדר קבוע (יומי) 🔁</span>
+            </label>
+            
+            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
+              <button type="submit" className="btn btn-save" style={{ flex: 1, margin: 0 }}>שמור</button>
+              <button 
+                type="button" 
+                className="btn btn-cancel" 
+                style={{ flex: 1, margin: 0 }} 
+                onClick={() => {
+                  setNewMeeting({ title: '', time: '', isRecurring: false });
+                  setIsMeetingFormOpen(false);
+                }}
+              >
+                ביטול
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
   };
 
   const renderDutiesDashboard = () => {
@@ -3400,94 +3488,7 @@ const App = () => {
           </div>
         </div>
 
-        {/* Meeting Scheduler Card */}
-        <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>⏰</span>
-            <span>קביעת זמן מסדר/מפגש גדודי</span>
-          </h3>
-          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label style={{ fontWeight: 600 }}>שעה:</label>
-              <input 
-                type="time" 
-                className="input-field" 
-                style={{ width: '130px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }} 
-                value={meetingConfig?.time || ''} 
-                onChange={(e) => handleSaveMeeting(e.target.value, meetingConfig?.sendReminder ?? true)}
-              />
-            </div>
-            
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontWeight: 600 }}>
-              <input 
-                type="checkbox" 
-                checked={meetingConfig?.sendReminder ?? true} 
-                onChange={(e) => {
-                  if (meetingConfig?.time) {
-                    handleSaveMeeting(meetingConfig.time, e.target.checked);
-                  } else {
-                    alert("נא לקבוע שעה תחילה.");
-                  }
-                }}
-              />
-              <span>שלח תזכורת 10 דקות לפני</span>
-            </label>
-
-            {meetingConfig?.time && (
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button 
-                  className="btn" 
-                  style={{ margin: 0, padding: '0.4rem 1rem', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, width: 'auto' }} 
-                  onClick={handleClearMeeting}
-                >
-                  🏁 סיום מסדר (איפוס)
-                </button>
-                <button 
-                  className="btn btn-cancel" 
-                  style={{ margin: 0, padding: '0.4rem 1rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', width: 'auto' }} 
-                  onClick={handleClearMeeting}
-                >
-                  🗑️ ביטול
-                </button>
-              </div>
-            )}
-          </div>
-          {meetingConfig?.time && (
-            <div style={{ fontSize: '0.85rem', opacity: 0.8, color: '#10b981', fontWeight: 600 }}>
-              מסדר מתוזמן להיום בשעה {meetingConfig.time} {meetingConfig.sendReminder ? "(עם תזכורת 10 דק' לפני)" : "(ללא תזכורת לפני)"}
-            </div>
-          )}
-          {meetingConfig?.time && (
-            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-              <button 
-                className="btn" 
-                style={{ background: 'rgba(37, 99, 235, 0.15)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.3)', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: 'auto', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-                onClick={() => {
-                  const [hStr] = (meetingConfig?.time || '00:00').split(':');
-                  const isMorning = parseInt(hStr, 10) < 14;
-                  const gearReminder = isMorning ? '\n*נא לזכור להביא דסקית וחוגר! 🪖*' : '';
-                  const msg = `📢 *תזכורת למסדר גדודי* 📢\nהמסדר יתחיל בעוד 10 דקות בשעה *${meetingConfig.time}*.\nנא להיכנס לאפליקציה ולהיות מוכנים לדיווח נוכחות!${gearReminder}`;
-                  navigator.clipboard.writeText(msg).then(() => alert("תזכורת הועתקה ללוח!"));
-                }}
-              >
-                💬 העתק תזכורת 10 דק' לווטסאפ
-              </button>
-              <button 
-                className="btn" 
-                style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: 'auto', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-                onClick={() => {
-                  const [hStr] = (meetingConfig?.time || '00:00').split(':');
-                  const isMorning = parseInt(hStr, 10) < 14;
-                  const gearReminder = isMorning ? '\n*נא לזכור להביא דסקית וחוגר! 🪖*' : '';
-                  const msg = `🚨 *זמן מסדר הגיע!* 🚨\nהמסדר הגדודי התחיל כעת (*${meetingConfig.time}*).\nנא להיכנס כולם לאפליקציה ולדווח נוכחות ("אני בבסיס/גימלים/חופש") באופן מיידי!${gearReminder}`;
-                  navigator.clipboard.writeText(msg).then(() => alert("הודעת תחילת מסדר הועתקה ללוח!"));
-                }}
-              >
-                🚨 העתק הודעת תחילת מסדר לווטסאפ
-              </button>
-            </div>
-          )}
-        </div>
+        {renderMeetingsSection()}
 
         <div className="glass-card" style={{ padding: '1rem', display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600 }}>סנן לפי:</span>
@@ -3953,7 +3954,7 @@ const App = () => {
                 setAttendanceTimeOfDay(new Date().getHours() < 12 ? 'morning' : 'evening');
                 setActiveTab('attendance');
               }}>
-                <i style={{fontSize:'1.3rem'}}>📅</i> <span>דוח נוכחות</span>
+                <i style={{fontSize:'1.3rem'}}>⏰</i> <span>מסדרים</span>
               </div>
               <div className={`nav-tab ${activeTab === 'duties' ? 'active' : ''}`} onClick={() => setActiveTab('duties')}>
                 <i style={{fontSize:'1.3rem'}}>📆</i> <span>לוח תורנויות</span>
@@ -3983,6 +3984,9 @@ const App = () => {
           )}
         </nav>
       )}
+
+      {userName === 'תמר ביליה' && activeTab === 'attendance' && <button className="add-task-fab" onClick={() => setIsMeetingFormOpen(true)}>+</button>}
+      {renderMeetingFormModal()}
 
       {!isAdmin && showWelcomeBack && isAuthorized && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
