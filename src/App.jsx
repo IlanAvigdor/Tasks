@@ -1775,6 +1775,71 @@ const App = () => {
     }
   }, [isAuthorized]);
 
+  // Auto-reset or Auto-delete meetings 5 minutes after their start time
+  useEffect(() => {
+    if (!isAuthorized || userName !== 'תמר ביליה') return;
+    
+    const checkAndCleanupMeetings = async () => {
+      const today = getTodayDateStr();
+      const now = new Date();
+      const meetings = customBundles.filter(b => b.type === 'meeting');
+      
+      for (const meeting of meetings) {
+        const [mHours, mMinutes] = meeting.time.split(':').map(Number);
+        const meetingDate = new Date();
+        meetingDate.setHours(mHours, mMinutes, 0, 0);
+        
+        const diffMs = meetingDate - now;
+        const diffMins = diffMs / 1000 / 60;
+        
+        // If past 5 minutes (diffMins < -5)
+        if (diffMins < -5) {
+          if (!meeting.isRecurring) {
+            // Delete custom one-time meeting
+            try {
+              await deleteDoc(doc(db, "task_bundles", meeting.id));
+              console.log("Auto-deleted one-time meeting past 5 minutes:", meeting.title);
+            } catch (err) {
+              console.error("Error auto-deleting meeting:", err);
+            }
+          } else {
+            // Reset recurring meeting attendance for today
+            try {
+              const meetingRecords = attendanceRecords.filter(r => r.date === today && r.meetingId === meeting.id);
+              for (const r of meetingRecords) {
+                const docRef = doc(db, "attendance", `${today}_${r.name}`);
+                
+                // Determine if we clear morning or evening attendance
+                if (meeting.id === 'meeting_morning' || meeting.title.includes('בוקר')) {
+                  await setDoc(docRef, {
+                    morning: null,
+                    morningTime: null,
+                    meetingId: null,
+                    meetingTitle: null
+                  }, { merge: true });
+                } else {
+                  await setDoc(docRef, {
+                    evening: null,
+                    eveningTime: null,
+                    meetingId: null,
+                    meetingTitle: null
+                  }, { merge: true });
+                }
+              }
+              console.log("Auto-reset recurring meeting attendance past 5 minutes:", meeting.title);
+            } catch (err) {
+              console.error("Error auto-resetting recurring meeting:", err);
+            }
+          }
+        }
+      }
+    };
+    
+    checkAndCleanupMeetings();
+    const interval = setInterval(checkAndCleanupMeetings, 10000);
+    return () => clearInterval(interval);
+  }, [isAuthorized, userName, customBundles, attendanceRecords]);
+
 
 
   // Firestore listeners (only subscribe if authorized or admin)
@@ -3504,7 +3569,7 @@ const App = () => {
             const now = new Date();
             const diffMins = (meetingDate - now) / 1000 / 60;
             const isOpen = diffMins <= 10 && diffMins >= 0;
-            const isTimeUp = diffMins < 0;
+            const isTimeUp = diffMins < 0 && diffMins >= -5;
 
             return (
               <div 
@@ -3586,6 +3651,23 @@ const App = () => {
                       }
                     }}
                   />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.2rem' }} onClick={e => e.stopPropagation()}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={meeting.isRecurring || false} 
+                      onChange={async (e) => {
+                        try {
+                          await updateDoc(doc(db, "task_bundles", meeting.id), { isRecurring: e.target.checked });
+                        } catch (err) {
+                          alert("שגיאה בעדכון סוג המסדר: " + err.message);
+                        }
+                      }}
+                    />
+                    <span>מסדר קבוע 🔁</span>
+                  </label>
                 </div>
                 
                 <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.2rem' }}>
