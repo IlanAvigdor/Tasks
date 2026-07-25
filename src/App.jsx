@@ -1194,6 +1194,8 @@ const App = () => {
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('הכל');
   const [attendanceSearchQuery, setAttendanceSearchQuery] = useState('');
   const [selectedMeetingId, setSelectedMeetingId] = useState(null);
+  const [isMeetingFormOpen, setIsMeetingFormOpen] = useState(false);
+  const [newMeeting, setNewMeeting] = useState({ title: '', time: '', isRecurring: false });
 
   // UI & Workspace Modal States
   const [registrationName, setRegistrationName] = useState('');
@@ -2668,6 +2670,92 @@ const App = () => {
 
 
 
+  const handleAddMeeting = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!newMeeting.title || !newMeeting.time) {
+      alert("נא למלא שם מסדר ושעה.");
+      return;
+    }
+    try {
+      const today = getTodayDateStr();
+      const id = `meeting_${Date.now()}`;
+      await setDoc(doc(db, "task_bundles", id), {
+        type: 'meeting',
+        title: newMeeting.title,
+        time: newMeeting.time,
+        isRecurring: newMeeting.isRecurring,
+        date: today,
+        scheduledBy: userName,
+        createdAt: new Date(),
+        status: 'active'
+      });
+      setNewMeeting({ title: '', time: '', isRecurring: false });
+      setIsMeetingFormOpen(false);
+    } catch (err) {
+      console.error("Error saving meeting: ", err);
+      alert("שגיאה בשמירת המסדר: " + err.message);
+    }
+  };
+
+  const renderMeetingFormModal = () => {
+    if (!isMeetingFormOpen) return null;
+    return (
+      <div className="registration-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass-card" style={{ width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '1.2rem', padding: '2rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>➕ הוספת מסדר חדש</h3>
+          <form onSubmit={handleAddMeeting} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontWeight: 600 }}>שם המסדר:</label>
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="לדוגמה: מסדר בוקר, מסדר ערב" 
+                value={newMeeting.title} 
+                onChange={e => setNewMeeting({ ...newMeeting, title: e.target.value })} 
+                required 
+              />
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontWeight: 600 }}>שעה:</label>
+              <input 
+                type="time" 
+                className="input-field" 
+                value={newMeeting.time} 
+                onChange={e => setNewMeeting({ ...newMeeting, time: e.target.value })} 
+                required 
+              />
+            </div>
+            
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontWeight: 600, marginTop: '0.4rem' }}>
+              <input 
+                type="checkbox" 
+                checked={newMeeting.isRecurring} 
+                onChange={e => setNewMeeting({ ...newMeeting, isRecurring: e.target.checked })} 
+              />
+              <span>מסדר קבוע (יומי) 🔁</span>
+            </label>
+            
+            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
+              <button type="submit" className="btn btn-save" style={{ flex: 1, margin: 0 }}>שמור</button>
+              <button 
+                type="button" 
+                className="btn btn-cancel" 
+                style={{ flex: 1, margin: 0 }} 
+                onClick={() => {
+                  setNewMeeting({ title: '', time: '', isRecurring: false });
+                  setIsMeetingFormOpen(false);
+                }}
+              >
+                ביטול
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   const renderDutiesDashboard = () => {
     const isTamar = userName === 'תמר ביליה';
     const sergeantTeam = whitelistUsers.find(u => u.name === userName)?.team || KNOWN_TEAM_ROLES[userName]?.team || 'תקשוב';
@@ -3437,16 +3525,49 @@ const App = () => {
                   <span style={{ fontWeight: 800, fontSize: '1.15rem' }}>
                     {meeting.id === 'meeting_morning' ? '🌅' : meeting.id === 'meeting_evening' ? '🌙' : '⏰'} {meeting.title}
                   </span>
-                  <span style={{ 
-                    fontSize: '0.75rem', 
-                    padding: '0.2rem 0.5rem', 
-                    borderRadius: '4px', 
-                    background: isOpen ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)', 
-                    color: isOpen ? '#10b981' : 'rgba(255,255,255,0.6)', 
-                    fontWeight: 700 
-                  }}>
-                    {isOpen ? '● פתוח לדיווח' : 'סגור'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ 
+                      fontSize: '0.75rem', 
+                      padding: '0.2rem 0.5rem', 
+                      borderRadius: '4px', 
+                      background: isOpen ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)', 
+                      color: isOpen ? '#10b981' : 'rgba(255,255,255,0.6)', 
+                      fontWeight: 700 
+                    }}>
+                      {isOpen ? '● פתוח לדיווח' : 'סגור'}
+                    </span>
+                    <button 
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (confirm("האם למחוק מסדר זה?")) {
+                          try {
+                            await deleteDoc(doc(db, "task_bundles", meeting.id));
+                            if (selectedMeetingId === meeting.id) {
+                              setSelectedMeetingId(null);
+                            }
+                          } catch (err) {
+                            alert("שגיאה במחיקת המסדר: " + err.message);
+                          }
+                        }
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        fontSize: '1.1rem',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                        transition: 'background 0.2s'
+                      }}
+                      title="מחק מסדר"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.2rem' }} onClick={e => e.stopPropagation()}>
@@ -4017,6 +4138,9 @@ const App = () => {
       )}
 
 
+
+      {userName === 'תמר ביליה' && activeTab === 'attendance' && <button className="add-task-fab" onClick={() => setIsMeetingFormOpen(true)}>+</button>}
+      {renderMeetingFormModal()}
 
       {!isAdmin && showWelcomeBack && isAuthorized && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
