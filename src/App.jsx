@@ -2434,7 +2434,6 @@ const App = () => {
                       setIsAuthorized(true);
                       if (localStorage.getItem('pendingCheckin') === 'true') {
                         localStorage.removeItem('pendingCheckin');
-                        handleSelfCheckin(resolved);
                       }
                     }
                   } catch (e) {
