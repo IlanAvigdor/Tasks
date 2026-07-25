@@ -3503,7 +3503,8 @@ const App = () => {
             meetingDate.setHours(mHours, mMinutes, 0, 0);
             const now = new Date();
             const diffMins = (meetingDate - now) / 1000 / 60;
-            const isOpen = diffMins <= 10 && diffMins >= -5;
+            const isOpen = diffMins <= 10 && diffMins >= 0;
+            const isTimeUp = diffMins < 0;
 
             return (
               <div 
@@ -3530,11 +3531,11 @@ const App = () => {
                       fontSize: '0.75rem', 
                       padding: '0.2rem 0.5rem', 
                       borderRadius: '4px', 
-                      background: isOpen ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)', 
-                      color: isOpen ? '#10b981' : 'rgba(255,255,255,0.6)', 
+                      background: isOpen ? 'rgba(16,185,129,0.2)' : (isTimeUp ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.1)'), 
+                      color: isOpen ? '#10b981' : (isTimeUp ? '#f59e0b' : 'rgba(255,255,255,0.6)'), 
                       fontWeight: 700 
                     }}>
-                      {isOpen ? '● פתוח לדיווח' : 'סגור'}
+                      {isOpen ? '● פתוח לדיווח' : (isTimeUp ? '🕒 הזמן תם' : 'סגור')}
                     </span>
                     <button 
                       onClick={async (e) => {
