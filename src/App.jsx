@@ -3647,11 +3647,32 @@ const App = () => {
           };
 
           return (
-            <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>
-                  📋 נוכחות עבור: {selectedMeeting.title} ({presentCount} / {filteredUsers.length})
-                </h3>
+            <div className="registration-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setSelectedMeetingId(null)}>
+              <div className="glass-card" style={{ width: '95%', maxWidth: '650px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem', overflowY: 'auto', position: 'relative', border: '1px solid rgba(255,255,255,0.2)' }} onClick={e => e.stopPropagation()}>
+                
+                {/* Close button */}
+                <button 
+                  onClick={() => setSelectedMeetingId(null)}
+                  style={{
+                    position: 'absolute',
+                    top: '1rem',
+                    left: '1rem',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-1, white)',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    opacity: 0.8
+                  }}
+                  title="סגור"
+                >
+                  ✕
+                </button>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem', paddingLeft: '2rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
+                    📋 נוכחות עבור: {selectedMeeting.title} ({presentCount} / {filteredUsers.length})
+                  </h3>
                 
                 {/* Filters */}
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -3727,6 +3748,7 @@ const App = () => {
                 </table>
               </div>
             </div>
+          </div>
           );
         })()}
       </div>
