@@ -1193,8 +1193,7 @@ const App = () => {
   const [attendanceTeamFilter, setAttendanceTeamFilter] = useState('הכל');
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('הכל');
   const [attendanceSearchQuery, setAttendanceSearchQuery] = useState('');
-  const [isMeetingFormOpen, setIsMeetingFormOpen] = useState(false);
-  const [newMeeting, setNewMeeting] = useState({ title: '', time: '', isRecurring: false });
+  const [selectedMeetingId, setSelectedMeetingId] = useState(null);
 
   // UI & Workspace Modal States
   const [registrationName, setRegistrationName] = useState('');
@@ -1407,8 +1406,9 @@ const App = () => {
       const diffMs = meetingDate - now;
       const diffMins = diffMs / 1000 / 60;
       
-      // Scanning/checking is allowed starting 10 minutes before the meeting
-      if (diffMins <= 10) {
+      // Scanning/checking is allowed starting 10 minutes before (diffMins <= 10)
+      // and ending 5 minutes after (diffMins >= -5)
+      if (diffMins <= 10 && diffMins >= -5) {
         return meeting;
       }
     }
@@ -1435,7 +1435,6 @@ const App = () => {
       });
     } catch (e) {
       console.error("Error fetching active meetings from Firestore:", e);
-      // Fallback
       return null;
     }
     
@@ -1447,8 +1446,9 @@ const App = () => {
       const diffMs = meetingDate - now;
       const diffMins = diffMs / 1000 / 60;
       
-      // Scanning is allowed starting 10 minutes before the meeting
-      if (diffMins <= 10) {
+      // Scanning is allowed starting 10 minutes before (diffMins <= 10)
+      // and ending 5 minutes after (diffMins >= -5)
+      if (diffMins <= 10 && diffMins >= -5) {
         return meeting;
       }
     }
@@ -1781,6 +1781,48 @@ const App = () => {
       setLoading(false);
       setWorkersLoading(false);
       return;
+    }
+
+    // Initialize Tamar's default morning and evening meetings if missing
+    const initDefaultMeetings = async () => {
+      try {
+        const morningId = 'meeting_morning';
+        const eveningId = 'meeting_evening';
+        
+        const morningDoc = await getDoc(doc(db, "task_bundles", morningId));
+        if (!morningDoc.exists()) {
+          await setDoc(doc(db, "task_bundles", morningId), {
+            type: 'meeting',
+            title: 'מסדר בוקר',
+            time: '08:00',
+            isRecurring: true,
+            status: 'active',
+            scheduledBy: 'תמר ביליה',
+            createdAt: new Date(),
+            date: ''
+          });
+        }
+        
+        const eveningDoc = await getDoc(doc(db, "task_bundles", eveningId));
+        if (!eveningDoc.exists()) {
+          await setDoc(doc(db, "task_bundles", eveningId), {
+            type: 'meeting',
+            title: 'מסדר ערב',
+            time: '20:00',
+            isRecurring: true,
+            status: 'active',
+            scheduledBy: 'תמר ביליה',
+            createdAt: new Date(),
+            date: ''
+          });
+        }
+      } catch (e) {
+        console.error("Error initializing default meetings:", e);
+      }
+    };
+    
+    if (userName === 'תמר ביליה') {
+      initDefaultMeetings();
     }
 
     setLoading(true);
@@ -2513,7 +2555,7 @@ const App = () => {
     return list;
   }
 
-  const handleToggleAttendance = async (soldierName, period, currentVal) => {
+  const handleToggleAttendance = async (soldierName, period, currentVal, meetingId = null) => {
     try {
       const today = getTodayDateStr();
       const docId = `${today}_${soldierName}`;
@@ -2547,6 +2589,14 @@ const App = () => {
       } else {
         updateData.evening = nextVal;
         if (nextVal) updateData.eveningTime = new Date();
+      }
+
+      if (meetingId) {
+        updateData.meetingId = meetingId;
+        const meeting = customBundles.find(b => b.id === meetingId);
+        if (meeting) {
+          updateData.meetingTitle = meeting.title;
+        }
       }
       
       await setDoc(docRef, updateData, { merge: true });
@@ -2616,164 +2666,7 @@ const App = () => {
     });
   };
 
-  const handleAddMeeting = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!newMeeting.title || !newMeeting.time) {
-      alert("נא למלא שם מסדר ושעה.");
-      return;
-    }
-    try {
-      const today = getTodayDateStr();
-      const id = `meeting_${Date.now()}`;
-      await setDoc(doc(db, "task_bundles", id), {
-        type: 'meeting',
-        title: newMeeting.title,
-        time: newMeeting.time,
-        isRecurring: newMeeting.isRecurring,
-        date: today,
-        scheduledBy: userName,
-        createdAt: new Date(),
-        status: 'active'
-      });
-      setNewMeeting({ title: '', time: '', isRecurring: false });
-      setIsMeetingFormOpen(false);
-    } catch (err) {
-      console.error("Error saving meeting: ", err);
-      alert("שגיאה בשמירת המסדר: " + err.message);
-    }
-  };
 
-  const renderMeetingsSection = () => {
-    const today = getTodayDateStr();
-    const meetings = customBundles.filter(b => b.type === 'meeting' && (b.isRecurring || b.date === today));
-    
-    if (meetings.length === 0) {
-      return (
-        <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center', opacity: 0.8, marginBottom: '1rem' }}>
-          <p style={{ margin: 0 }}>אין מסדרים מתוזמנים להיום. לחץ על כפתור ה-+ כדי להוסיף מסדר חדש.</p>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>⏰</span>
-          <span>רשימת מסדרים להיום</span>
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-          {meetings.map(meeting => {
-            const isActive = meeting.status === 'active';
-            return (
-              <div key={meeting.id} className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', border: isActive ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{meeting.title}</span>
-                  <span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: isActive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: isActive ? '#10b981' : '#ef4444', fontWeight: 600 }}>
-                    {isActive ? 'פעיל' : 'הסתיים'}
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-                  <span>שעה: <strong>{meeting.time}</strong></span>
-                  {meeting.isRecurring && <span style={{ marginRight: '0.5rem', color: '#3b82f6', fontWeight: 600 }}>(קבוע 🔁)</span>}
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
-                  {isActive && (
-                    <button 
-                      className="btn" 
-                      style={{ margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', flex: 1 }}
-                      onClick={async () => {
-                        try {
-                          await updateDoc(doc(db, "task_bundles", meeting.id), { status: 'finished' });
-                        } catch (e) {
-                          alert("שגיאה בסיום המסדר: " + e.message);
-                        }
-                      }}
-                    >
-                      🏁 סיום מסדר
-                    </button>
-                  )}
-                  <button 
-                    className="btn btn-cancel" 
-                    style={{ margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', width: 'auto' }}
-                    onClick={async () => {
-                      if (confirm("האם למחוק מסדר זה?")) {
-                        try {
-                          await deleteDoc(doc(db, "task_bundles", meeting.id));
-                        } catch (e) {
-                          alert("שגיאה במחיקת המסדר: " + e.message);
-                        }
-                      }
-                    }}
-                  >
-                    🗑️ מחק
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderMeetingFormModal = () => {
-    if (!isMeetingFormOpen) return null;
-    return (
-      <div className="registration-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="glass-card" style={{ width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '1.2rem', padding: '2rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>➕ הוספת מסדר חדש</h3>
-          <form onSubmit={handleAddMeeting} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontWeight: 600 }}>שם המסדר:</label>
-              <input 
-                type="text" 
-                className="input-field" 
-                placeholder="לדוגמה: מסדר בוקר, מסדר ערב" 
-                value={newMeeting.title} 
-                onChange={e => setNewMeeting({ ...newMeeting, title: e.target.value })} 
-                required 
-              />
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontWeight: 600 }}>שעה:</label>
-              <input 
-                type="time" 
-                className="input-field" 
-                value={newMeeting.time} 
-                onChange={e => setNewMeeting({ ...newMeeting, time: e.target.value })} 
-                required 
-              />
-            </div>
-            
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontWeight: 600, marginTop: '0.4rem' }}>
-              <input 
-                type="checkbox" 
-                checked={newMeeting.isRecurring} 
-                onChange={e => setNewMeeting({ ...newMeeting, isRecurring: e.target.checked })} 
-              />
-              <span>מסדר קבוע (יומי) 🔁</span>
-            </label>
-            
-            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
-              <button type="submit" className="btn btn-save" style={{ flex: 1, margin: 0 }}>שמור</button>
-              <button 
-                type="button" 
-                className="btn btn-cancel" 
-                style={{ flex: 1, margin: 0 }} 
-                onClick={() => {
-                  setNewMeeting({ title: '', time: '', isRecurring: false });
-                  setIsMeetingFormOpen(false);
-                }}
-              >
-                ביטול
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
 
   const renderDutiesDashboard = () => {
     const isTamar = userName === 'תמר ביליה';
@@ -3481,83 +3374,26 @@ const App = () => {
   };
 
   const renderAttendanceDashboard = () => {
-    const allSoldiers = getAllSoldiers();
-    const filteredUsers = allSoldiers.filter(u => {
-      const matchesSearch = u.name.toLowerCase().includes(attendanceSearchQuery.toLowerCase());
-      const matchesTeam = attendanceTeamFilter === 'הכל' ? true : u.team === attendanceTeamFilter;
-      
-      const record = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
-      const val = attendanceTimeOfDay === 'morning' ? record?.morning : record?.evening;
-      const pre = attendanceTimeOfDay === 'morning' ? record?.morningPreCheck : record?.eveningPreCheck;
-
-      let matchesStatus = true;
-      if (attendanceStatusFilter === 'no_morning') {
-        matchesStatus = (val !== 'present');
-      } else if (attendanceStatusFilter === 'exceptions') {
-        matchesStatus = val && val !== 'present';
-      } else if (attendanceStatusFilter === 'confirmed_whatsapp') {
-        matchesStatus = val !== 'present' && pre === 'coming';
-      }
-
-      return matchesSearch && matchesTeam && matchesStatus;
+    const today = getTodayDateStr();
+    const meetings = customBundles.filter(b => b.type === 'meeting');
+    
+    meetings.sort((a, b) => {
+      if (a.id === 'meeting_morning') return -1;
+      if (b.id === 'meeting_morning') return 1;
+      if (a.id === 'meeting_evening') return -1;
+      if (b.id === 'meeting_evening') return 1;
+      return a.time.localeCompare(b.time);
     });
-
-    const totalCount = filteredUsers.length;
-    const sessionCount = filteredUsers.filter(u => {
-      const rec = attendanceRecords.find(r => r.date === todayDateStr && r.name === u.name);
-      const val = attendanceTimeOfDay === 'morning' ? rec?.morning : rec?.evening;
-      return val && val !== 'absent';
-    }).length;
-
-    const getStatusStyleAndText = (val) => {
-      switch (val) {
-        case 'present':
-          return { text: '🟢 נוכח', style: { color: '#059669', background: 'rgba(16, 185, 129, 0.15)' } };
-        case 'absent':
-          return { text: '🔴 נפקד', style: { color: '#dc2626', background: 'rgba(220, 38, 38, 0.15)' } };
-        case 'sick':
-          return { text: '🤒 גימלים', style: { color: '#d97706', background: 'rgba(217, 119, 6, 0.15)' } };
-        case 'leave':
-          return { text: '🏖️ חופש', style: { color: '#2563eb', background: 'rgba(37, 99, 235, 0.15)' } };
-        case 'duty':
-          return { text: '⚔️ בתפקיד', style: { color: '#7c3aed', background: 'rgba(124, 58, 237, 0.15)' } };
-        default:
-          return { text: '⚪ טרם דיווח', style: { color: '#64748b', background: 'rgba(100, 116, 139, 0.1)' } };
-      }
-    };
 
     return (
       <div className="attendance-dashboard" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+        
+        {/* Header with Quick QR Barcode */}
         <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 800 }}>📊 סטטיסטיקת נוכחות ({attendanceTimeOfDay === 'morning' ? 'בוקר' : 'ערב'})</h2>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>נוכחים במסדר: <strong style={{color:'#10b981'}}>{sessionCount}</strong> / {totalCount}</span>
-            </div>
+            <h2 style={{ margin: '0 0 0.2rem 0', fontSize: '1.2rem', fontWeight: 800 }}>⏰ ניהול מסדרים גדודיים</h2>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.8 }}>לחצי על מסדר כדי לצפות ברשימת הנוכחות שלו. המסדר נפתח אוטומטית 10 דקות לפני הזמן ונסגר 5 דקות אחריו.</p>
           </div>
-          
-          {/* Morning/Evening Session Selector */}
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px' }}>
-            <button 
-              onClick={() => setAttendanceTimeOfDay('morning')}
-              style={{
-                border: 'none', background: attendanceTimeOfDay === 'morning' ? 'var(--primary, #3b82f6)' : 'none',
-                color: 'white', fontWeight: 700, padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer'
-              }}
-            >
-              🌅 בוקר
-            </button>
-            <button 
-              onClick={() => setAttendanceTimeOfDay('evening')}
-              style={{
-                border: 'none', background: attendanceTimeOfDay === 'evening' ? 'var(--primary, #3b82f6)' : 'none',
-                color: 'white', fontWeight: 700, padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer'
-              }}
-            >
-              🌙 ערב
-            </button>
-          </div>
-
           <div style={{ display: 'flex', gap: '0.6rem' }}>
             <button className="btn btn-save" style={{ margin: 0, padding: '0.5rem 1rem', width: 'auto' }} onClick={() => setIsQrModalOpen(true)}>
               📱 ברקוד מהיר
@@ -3568,95 +3404,201 @@ const App = () => {
           </div>
         </div>
 
-        {renderMeetingsSection()}
+        {/* Meetings List */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.2rem' }}>
+          {meetings.map(meeting => {
+            const isSelected = selectedMeetingId === meeting.id;
+            
+            // Calculate active status based on time window
+            const [mHours, mMinutes] = meeting.time.split(':').map(Number);
+            const meetingDate = new Date();
+            meetingDate.setHours(mHours, mMinutes, 0, 0);
+            const now = new Date();
+            const diffMins = (meetingDate - now) / 1000 / 60;
+            const isOpen = diffMins <= 10 && diffMins >= -5;
 
-        <div className="glass-card" style={{ padding: '1rem', display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600 }}>סנן לפי:</span>
-          <input 
-            className="input-field" 
-            placeholder="חיפוש חייל..." 
-            value={attendanceSearchQuery} 
-            onChange={e => setAttendanceSearchQuery(e.target.value)} 
-            style={{ maxWidth: '200px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
-          />
-          <select 
-            className="input-field" 
-            value={attendanceTeamFilter} 
-            onChange={e => setAttendanceTeamFilter(e.target.value)}
-            style={{ maxWidth: '150px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
-          >
-            <option value="הכל">כל הצוותים</option>
-            {AVAILABLE_TEAMS.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <select 
-            className="input-field" 
-            value={attendanceStatusFilter} 
-            onChange={e => setAttendanceStatusFilter(e.target.value)}
-            style={{ maxWidth: '220px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
-          >
-            <option value="הכל">כל הסטטוסים</option>
-            <option value="no_morning">לא נוכחים במסדר 🔴</option>
-            <option value="exceptions">חריגים (גימלים/חופש/תפקיד) ⚠️</option>
-            <option value="confirmed_whatsapp">אישרו הגעה בווטסאפ (טרם סרקו) 💬</option>
-          </select>
+            return (
+              <div 
+                key={meeting.id} 
+                className="glass-card" 
+                onClick={() => setSelectedMeetingId(isSelected ? null : meeting.id)}
+                style={{ 
+                  padding: '1.5rem', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0.8rem', 
+                  cursor: 'pointer',
+                  border: isSelected ? '2px solid var(--primary, #3b82f6)' : (isOpen ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.1)'),
+                  background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'var(--card-bg)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 800, fontSize: '1.15rem' }}>
+                    {meeting.id === 'meeting_morning' ? '🌅' : meeting.id === 'meeting_evening' ? '🌙' : '⏰'} {meeting.title}
+                  </span>
+                  <span style={{ 
+                    fontSize: '0.75rem', 
+                    padding: '0.2rem 0.5rem', 
+                    borderRadius: '4px', 
+                    background: isOpen ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.1)', 
+                    color: isOpen ? '#10b981' : 'rgba(255,255,255,0.6)', 
+                    fontWeight: 700 
+                  }}>
+                    {isOpen ? '● פתוח לדיווח' : 'סגור'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.2rem' }} onClick={e => e.stopPropagation()}>
+                  <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>שעת מסדר:</label>
+                  <input 
+                    type="time" 
+                    className="input-field" 
+                    style={{ width: '110px', margin: 0, padding: '0.3rem 0.6rem', fontSize: '0.85rem', textAlign: 'center' }} 
+                    value={meeting.time || ''} 
+                    onChange={async (e) => {
+                      try {
+                        await updateDoc(doc(db, "task_bundles", meeting.id), { time: e.target.value });
+                      } catch (err) {
+                        alert("שגיאה בעדכון השעה: " + err.message);
+                      }
+                    }}
+                  />
+                </div>
+                
+                <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.2rem' }}>
+                  לחצי כאן כדי לצפות ברשימת הנוכחים
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="glass-card" style={{ padding: '1rem', overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
-                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>שם חייל</th>
-                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>צוות</th>
-                <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>במסדר?</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map(user => {
-                const record = attendanceRecords.find(r => r.date === todayDateStr && r.name === user.name);
-                const val = attendanceTimeOfDay === 'morning' ? record?.morning : record?.evening;
-                const pre = attendanceTimeOfDay === 'morning' ? record?.morningPreCheck : record?.eveningPreCheck;
-                const info = getStatusStyleAndText(val);
+        {/* Selected Meeting's Attendance List */}
+        {selectedMeetingId && (() => {
+          const selectedMeeting = meetings.find(m => m.id === selectedMeetingId);
+          if (!selectedMeeting) return null;
 
-                return (
-                  <tr key={user.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '0.8rem 0.5rem', fontWeight: 600 }}>{user.name}</td>
-                    <td style={{ padding: '0.8rem 0.5rem', opacity: 0.8 }}>{user.team || 'תקשוב'}</td>
-                    <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
-                      <button 
-                        onClick={() => handleToggleAttendance(user.name, attendanceTimeOfDay, val)}
-                        style={{
-                          border: 'none',
-                          borderRadius: '20px',
-                          padding: '0.35rem 0.85rem',
-                          fontWeight: 600,
-                          fontSize: '0.8rem',
-                          cursor: 'pointer',
-                          width: '110px',
-                          transition: 'all 0.2s',
-                          ...info.style
-                        }}
-                      >
-                        {info.text}
-                      </button>
-                      {val !== 'present' && pre === 'coming' && (
-                        <div style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                          💬 מגיע (אישר בווטסאפ)
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan="3" style={{ textAlign: 'center', padding: '2rem', opacity: 0.6 }}>לא נמצאו חיילים התואמים את הסינון.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+          const allSoldiers = getAllSoldiers();
+          
+          // Filter users checking in to this specific meeting
+          const filteredUsers = allSoldiers.filter(u => {
+            const matchesSearch = u.name.toLowerCase().includes(attendanceSearchQuery.toLowerCase());
+            const matchesTeam = attendanceTeamFilter === 'הכל' ? true : u.team === attendanceTeamFilter;
+            return matchesSearch && matchesTeam;
+          });
+
+          // Calculate meeting attendance statistics
+          const meetingRecords = attendanceRecords.filter(r => r.date === today && r.meetingId === selectedMeetingId);
+          const presentCount = filteredUsers.filter(u => {
+            const rec = meetingRecords.find(r => r.name === u.name);
+            const val = rec?.morning === 'present' || rec?.evening === 'present' || rec?.morning === 'sick' || rec?.evening === 'sick' || rec?.morning === 'leave' || rec?.evening === 'leave' || rec?.morning === 'duty' || rec?.evening === 'duty';
+            return val;
+          }).length;
+
+          const getStatusStyleAndText = (user) => {
+            const rec = meetingRecords.find(r => r.name === user.name);
+            const val = rec?.morning || rec?.evening;
+            
+            switch (val) {
+              case 'present':
+                return { text: '🟢 נוכח', style: { color: '#059669', background: 'rgba(16, 185, 129, 0.15)' } };
+              case 'absent':
+                return { text: '🔴 נפקד', style: { color: '#dc2626', background: 'rgba(220, 38, 38, 0.15)' } };
+              case 'sick':
+                return { text: '🤒 גימלים', style: { color: '#d97706', background: 'rgba(217, 119, 6, 0.15)' } };
+              case 'leave':
+                return { text: '🏖️ חופש', style: { color: '#2563eb', background: 'rgba(37, 99, 235, 0.15)' } };
+              case 'duty':
+                return { text: '⚔️ בתפקיד', style: { color: '#7c3aed', background: 'rgba(124, 58, 237, 0.15)' } };
+              default:
+                return { text: '⚪ טרם דיווח', style: { color: '#64748b', background: 'rgba(100, 116, 139, 0.1)' } };
+            }
+          };
+
+          return (
+            <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>
+                  📋 נוכחות עבור: {selectedMeeting.title} ({presentCount} / {filteredUsers.length})
+                </h3>
+                
+                {/* Filters */}
+                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input 
+                    className="input-field" 
+                    placeholder="חיפוש חייל..." 
+                    value={attendanceSearchQuery} 
+                    onChange={e => setAttendanceSearchQuery(e.target.value)} 
+                    style={{ maxWidth: '160px', margin: 0, padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
+                  />
+                  <select 
+                    className="input-field" 
+                    value={attendanceTeamFilter} 
+                    onChange={e => setAttendanceTeamFilter(e.target.value)}
+                    style={{ maxWidth: '130px', margin: 0, padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
+                  >
+                    <option value="הכל">כל הצוותים</option>
+                    {AVAILABLE_TEAMS.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+                      <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>שם חייל</th>
+                      <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>צוות</th>
+                      <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>סטטוס</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map(user => {
+                      const info = getStatusStyleAndText(user);
+                      const rec = meetingRecords.find(r => r.name === user.name);
+                      const val = rec?.morning || rec?.evening || null;
+                      
+                      return (
+                        <tr key={user.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '0.8rem 0.5rem', fontWeight: 600 }}>{user.name}</td>
+                          <td style={{ padding: '0.8rem 0.5rem', opacity: 0.8 }}>{user.team || 'תקשוב'}</td>
+                          <td style={{ padding: '0.8rem 0.5rem', textAlign: 'center' }}>
+                            <button 
+                              onClick={() => {
+                                handleToggleAttendance(user.name, selectedMeetingId === 'meeting_morning' ? 'morning' : 'evening', val, selectedMeetingId);
+                              }}
+                              style={{
+                                border: 'none',
+                                borderRadius: '20px',
+                                padding: '0.35rem 0.85rem',
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
+                                cursor: 'pointer',
+                                width: '110px',
+                                transition: 'all 0.2s',
+                                ...info.style
+                              }}
+                            >
+                              {info.text}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredUsers.length === 0 && (
+                      <tr>
+                        <td colSpan="3" style={{ textAlign: 'center', padding: '2rem', opacity: 0.6 }}>לא נמצאו חיילים.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   };
@@ -4065,8 +4007,7 @@ const App = () => {
         </nav>
       )}
 
-      {userName === 'תמר ביליה' && activeTab === 'attendance' && <button className="add-task-fab" onClick={() => setIsMeetingFormOpen(true)}>+</button>}
-      {renderMeetingFormModal()}
+
 
       {!isAdmin && showWelcomeBack && isAuthorized && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
