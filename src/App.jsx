@@ -1407,8 +1407,8 @@ const App = () => {
       const diffMins = diffMs / 1000 / 60;
       
       // Scanning/checking is allowed starting 10 minutes before (diffMins <= 10)
-      // and ending 5 minutes after (diffMins >= -5)
-      if (diffMins <= 10 && diffMins >= -5) {
+      // and ending exactly at the start time (diffMins >= 0)
+      if (diffMins <= 10 && diffMins >= 0) {
         return meeting;
       }
     }
@@ -1447,8 +1447,8 @@ const App = () => {
       const diffMins = diffMs / 1000 / 60;
       
       // Scanning is allowed starting 10 minutes before (diffMins <= 10)
-      // and ending 5 minutes after (diffMins >= -5)
-      if (diffMins <= 10 && diffMins >= -5) {
+      // and ending exactly at the start time (diffMins >= 0)
+      if (diffMins <= 10 && diffMins >= 0) {
         return meeting;
       }
     }
@@ -3512,6 +3512,15 @@ const App = () => {
               case 'duty':
                 return { text: '⚔️ בתפקיד', style: { color: '#7c3aed', background: 'rgba(124, 58, 237, 0.15)' } };
               default:
+                // Check if the meeting has already started/passed
+                const [mHours, mMinutes] = selectedMeeting.time.split(':').map(Number);
+                const meetingDate = new Date();
+                meetingDate.setHours(mHours, mMinutes, 0, 0);
+                const now = new Date();
+                
+                if (now >= meetingDate) {
+                  return { text: '🔴 לא נרשם', style: { color: '#dc2626', background: 'rgba(220, 38, 38, 0.15)', fontWeight: 800 } };
+                }
                 return { text: '⚪ טרם דיווח', style: { color: '#64748b', background: 'rgba(100, 116, 139, 0.1)' } };
             }
           };
