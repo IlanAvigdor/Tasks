@@ -1915,7 +1915,7 @@ const App = () => {
       console.error("Duties collection query error:", error);
     });
 
-    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); meetingUnsubscribe(); dutiesUnsubscribe(); };
+    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); dutiesUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
 
   useEffect(() => {
