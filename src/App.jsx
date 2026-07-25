@@ -2748,7 +2748,7 @@ const App = () => {
         type: 'meeting',
         title: newMeeting.title,
         time: newMeeting.time,
-        isRecurring: newMeeting.isRecurring,
+        isRecurring: false,
         date: today,
         scheduledBy: userName,
         createdAt: new Date(),
@@ -2792,14 +2792,7 @@ const App = () => {
               />
             </div>
             
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontWeight: 600, marginTop: '0.4rem' }}>
-              <input 
-                type="checkbox" 
-                checked={newMeeting.isRecurring} 
-                onChange={e => setNewMeeting({ ...newMeeting, isRecurring: e.target.checked })} 
-              />
-              <span>מסדר קבוע (יומי) 🔁</span>
-            </label>
+
             
             <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem' }}>
               <button type="submit" className="btn btn-save" style={{ flex: 1, margin: 0 }}>שמור</button>
@@ -3653,22 +3646,7 @@ const App = () => {
                   />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '0.2rem' }} onClick={e => e.stopPropagation()}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={meeting.isRecurring || false} 
-                      onChange={async (e) => {
-                        try {
-                          await updateDoc(doc(db, "task_bundles", meeting.id), { isRecurring: e.target.checked });
-                        } catch (err) {
-                          alert("שגיאה בעדכון סוג המסדר: " + err.message);
-                        }
-                      }}
-                    />
-                    <span>מסדר קבוע 🔁</span>
-                  </label>
-                </div>
+
                 
                 <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.2rem' }}>
                   לחצי כאן כדי לצפות ברשימת הנוכחים
