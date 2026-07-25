@@ -2915,28 +2915,30 @@ const App = () => {
             <button className="btn btn-cancel" onClick={handleNextMonth} style={{ width: 'auto', margin: 0, padding: '0.4rem 0.8rem' }}>חודש הבא ▶</button>
           </div>
 
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '3px' }}>
-            <button 
-              onClick={() => setDutiesTab('calendar')}
-              style={{
-                background: dutiesTab === 'calendar' ? 'var(--accent-primary)' : 'none',
-                color: dutiesTab === 'calendar' ? '#fff' : 'rgba(255,255,255,0.7)',
-                border: 'none', borderRadius: '8px', padding: '0.4rem 1rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-              }}
-            >
-              📅 לוח שנה חודשי
-            </button>
-            <button 
-              onClick={() => setDutiesTab('stats')}
-              style={{
-                background: dutiesTab === 'stats' ? 'var(--accent-primary)' : 'none',
-                color: dutiesTab === 'stats' ? '#fff' : 'rgba(255,255,255,0.7)',
-                border: 'none', borderRadius: '8px', padding: '0.4rem 1rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-              }}
-            >
-              📊 מדד עומס תורנויות
-            </button>
-          </div>
+          {!isTamar && (
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '3px' }}>
+              <button 
+                onClick={() => setDutiesTab('calendar')}
+                style={{
+                  background: dutiesTab === 'calendar' ? 'var(--accent-primary)' : 'none',
+                  color: dutiesTab === 'calendar' ? '#fff' : 'rgba(255,255,255,0.7)',
+                  border: 'none', borderRadius: '8px', padding: '0.4rem 1rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+                }}
+              >
+                📅 לוח שנה חודשי
+              </button>
+              <button 
+                onClick={() => setDutiesTab('stats')}
+                style={{
+                  background: dutiesTab === 'stats' ? 'var(--accent-primary)' : 'none',
+                  color: dutiesTab === 'stats' ? '#fff' : 'rgba(255,255,255,0.7)',
+                  border: 'none', borderRadius: '8px', padding: '0.4rem 1rem', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+                }}
+              >
+                📊 מדד עומס תורנויות
+              </button>
+            </div>
+          )}
         </div>
 
         {dutiesTab === 'calendar' ? (
@@ -2949,18 +2951,20 @@ const App = () => {
             </p>
 
             <div style={{ minWidth: '600px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.4rem', marginBottom: '0.4rem', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem', opacity: 0.8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isTamar ? 'repeat(5, 1fr)' : 'repeat(7, 1fr)', gap: '0.4rem', marginBottom: '0.4rem', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem', opacity: 0.8 }}>
                 <div>ראשון</div>
                 <div>שני</div>
                 <div>שלישי</div>
                 <div>רביעי</div>
                 <div>חמישי</div>
-                <div>שישי</div>
-                <div style={{ color: '#f87171' }}>שבת</div>
+                {!isTamar && <div>שישי</div>}
+                {!isTamar && <div style={{ color: '#f87171' }}>שבת</div>}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.4rem' }}>
-                {calendarDays.map((cell, idx) => {
+              <div style={{ display: 'grid', gridTemplateColumns: isTamar ? 'repeat(5, 1fr)' : 'repeat(7, 1fr)', gap: '0.4rem' }}>
+                {calendarDays
+                  .filter((cell, idx) => !isTamar || (idx % 7 !== 5 && idx % 7 !== 6))
+                  .map((cell, idx) => {
                   const dateStr = cell.dateStr;
                   const dayData = getDayDuties(dateStr);
                   const isToday = dateStr === getTodayDateStr();
@@ -2969,11 +2973,8 @@ const App = () => {
                   const visibleClosers = (() => {
                     const list = [];
                     if (isTamar) {
-                      if (dayData.closed_shabbat) list.push(dayData.closed_shabbat);
-                      AVAILABLE_TEAMS.forEach(team => {
-                        const val = dayData[`closed_shabbat_${team}`];
-                        if (val && !list.includes(val)) list.push(val);
-                      });
+                      // Tamar does not track shabbat closers
+                      return [];
                     } else {
                       const teamVal = dayData[`closed_shabbat_${sergeantTeam}`];
                       if (teamVal) {
@@ -3228,7 +3229,7 @@ const App = () => {
               </div>
             </div>
           </div>
-        ) : (
+        ) : !isTamar ? (
           <div className="glass-card" style={{ padding: '1.2rem' }}>
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 700 }}>
               📈 טבלת חלוקת עומס תורנויות - {isTamar ? 'כלל הגדוד' : `צוות ${sergeantTeam}`}
@@ -3272,7 +3273,7 @@ const App = () => {
               </tbody>
             </table>
           </div>
-        )}
+        ) : null}
 
         {selectedCalendarDay && (() => {
           const dayVal = selectedCalendarDay.split('-').reverse().join('.');
