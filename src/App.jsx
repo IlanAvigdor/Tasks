@@ -1394,6 +1394,27 @@ const App = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const getLocalActiveOpenMeeting = () => {
+    const today = getTodayDateStr();
+    const now = new Date();
+    const activeMeetings = customBundles.filter(b => b.type === 'meeting' && b.status === 'active' && (b.isRecurring || b.date === today));
+    
+    for (const meeting of activeMeetings) {
+      const [mHours, mMinutes] = meeting.time.split(':').map(Number);
+      const meetingDate = new Date();
+      meetingDate.setHours(mHours, mMinutes, 0, 0);
+      
+      const diffMs = meetingDate - now;
+      const diffMins = diffMs / 1000 / 60;
+      
+      // Scanning/checking is allowed starting 10 minutes before the meeting
+      if (diffMins <= 10) {
+        return meeting;
+      }
+    }
+    return null;
+  };
+
   const getActiveOpenMeeting = async () => {
     const today = getTodayDateStr();
     const now = new Date();
@@ -2411,7 +2432,46 @@ const App = () => {
   };
 
   const renderMeetingReminderBanner = () => {
-    return null;
+    if (!isAuthorized || isAdmin) return null;
+    
+    const openMeeting = getLocalActiveOpenMeeting();
+    if (!openMeeting) return null;
+    
+    // Check if they already checked in to this specific meeting today
+    const today = getTodayDateStr();
+    const myRecord = attendanceRecords.find(r => r.date === today && r.name === userName);
+    const alreadyCheckedIn = myRecord?.meetingId === openMeeting.id && (myRecord?.morning === 'present' || myRecord?.evening === 'present');
+    
+    if (alreadyCheckedIn) return null;
+    
+    return (
+      <div className="glass-card" style={{
+        background: 'rgba(245, 158, 11, 0.15)',
+        border: '1px solid #f59e0b',
+        color: '#f59e0b',
+        padding: '1rem',
+        borderRadius: '12px',
+        marginBottom: '1rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.8rem',
+        fontWeight: 'bold'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>📢</span>
+          <span>מסדר פעיל כעת: <strong>{openMeeting.title}</strong> בשעה <strong>{openMeeting.time}</strong></span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button 
+            className="btn" 
+            style={{ margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', width: 'auto' }}
+            onClick={() => handleSelfCheckin(userName, 'present')}
+          >
+            🟢 דווח נוכחות (אני בבסיס)
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const renderMeetingPopupModal = () => {
