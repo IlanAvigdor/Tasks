@@ -689,8 +689,8 @@ async function runPeriodicCheck() {
   }
 }
 
-// Check every 60 seconds
-setInterval(runPeriodicCheck, 60000);
+// Check every 5 seconds
+setInterval(runPeriodicCheck, 5000);
 
 // Clean up sent notifications cache daily at midnight local time
 setInterval(() => {
