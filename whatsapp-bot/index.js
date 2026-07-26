@@ -151,13 +151,29 @@ function getTamarJid() {
 }
 
 // Find target WhatsApp Group Chat JID
-function getGroupJid() {
+async function getGroupJid() {
   if (GROUP_ID) {
     return GROUP_ID.endsWith('@g.us') ? GROUP_ID : `${GROUP_ID}@g.us`;
   }
   const normGroupName = normalizeName(GROUP_NAME);
   if (groupMap.has(normGroupName)) {
     return groupMap.get(normGroupName);
+  }
+  if (sock) {
+    try {
+      console.log(`[GROUP LOOKUP] Fetching participating groups to find "${GROUP_NAME}"...`);
+      const groups = await sock.groupFetchAllParticipating();
+      for (const jid of Object.keys(groups)) {
+        const name = groups[jid].subject;
+        if (normalizeName(name) === normGroupName) {
+          groupMap.set(normGroupName, jid);
+          console.log(`[GROUP LOOKUP] Found group JID dynamically: ${jid}`);
+          return jid;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch participating groups dynamically:', err.message);
+    }
   }
   return null;
 }
@@ -447,7 +463,7 @@ async function runPeriodicCheck() {
       if (morningMeeting) {
         const morningKey = `${tomorrowStr}_${morningMeeting.id}_group_reminder`;
         if (!sentNotifications.has(morningKey)) {
-          const groupJid = getGroupJid();
+          const groupJid = await getGroupJid();
           if (groupJid) {
             const msg = `מחר מסדר דגל בשעה ${morningMeeting.time}`;
             await sock.sendMessage(groupJid, { text: msg });
@@ -462,7 +478,7 @@ async function runPeriodicCheck() {
     if (todayDayOfWeek === 0 && currentHours === 12 && currentMins === 0) {
       const scheduleKey = `${today}_weekly_schedule`;
       if (!sentNotifications.has(scheduleKey)) {
-        const groupJid = getGroupJid();
+        const groupJid = await getGroupJid();
         if (groupJid) {
           const msg = `*לוז שבועי*☺️\n\n` +
             `*יום ראשון*\n` +
@@ -545,7 +561,7 @@ async function runPeriodicCheck() {
           }
         } else {
           // Send standard reminder to Group
-          const groupJid = getGroupJid();
+          const groupJid = await getGroupJid();
           if (groupJid) {
             let msg = '';
             if (meeting.reminderTemplate) {
