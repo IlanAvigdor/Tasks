@@ -198,7 +198,8 @@ db.collection('whitelist').onSnapshot(snapshot => {
   activeWhitelist = [];
   snapshot.forEach(doc => {
     const data = doc.data();
-    if (data.role === 'soldier') {
+    const role = data.role || 'soldier';
+    if (role === 'soldier') {
       activeWhitelist.push({
         id: doc.id,
         ...data
@@ -373,7 +374,7 @@ async function connectToWhatsApp() {
           const period = now.getHours() < 13 ? 'morning' : 'evening';
           const periodHeb = period === 'morning' ? 'בוקר' : 'ערב';
 
-          let presentCount = 0;
+          let presentList = [];
           let missingList = [];
 
           activeWhitelist.forEach(soldier => {
@@ -381,7 +382,10 @@ async function connectToWhatsApp() {
             const status = record ? record[period] : null;
 
             if (status === 'present') {
-              presentCount++;
+              presentList.push({
+                name: soldier.name,
+                team: soldier.team || 'תקשוב'
+              });
             } else {
               missingList.push({
                 name: soldier.name,
@@ -391,7 +395,14 @@ async function connectToWhatsApp() {
             }
           });
 
-          // Group missing by team for better presentation
+          // Group present by team
+          const groupedPresent = {};
+          presentList.forEach(p => {
+            if (!groupedPresent[p.team]) groupedPresent[p.team] = [];
+            groupedPresent[p.team].push(p);
+          });
+
+          // Group missing by team
           const groupedMissing = {};
           missingList.forEach(m => {
             if (!groupedMissing[m.team]) groupedMissing[m.team] = [];
@@ -399,8 +410,21 @@ async function connectToWhatsApp() {
           });
 
           let replyMsg = `📋 *סטטוס נוכחות - מסדר ${periodHeb} (${today.split('-').reverse().join('.')})*\n\n`;
-          replyMsg += `דיווחו נוכחות: ${presentCount} מתוך ${activeWhitelist.length} חיילים.\n\n`;
+          replyMsg += `דיווחו נוכחות: ${presentList.length} מתוך ${activeWhitelist.length} חיילים.\n\n`;
 
+          // 1. Present List
+          if (presentList.length > 0) {
+            replyMsg += `🟢 *דיווחו נוכחות (נוכחים):*`;
+            Object.keys(groupedPresent).forEach(team => {
+              replyMsg += `\n\n*צוות ${team}:*`;
+              groupedPresent[team].forEach(soldier => {
+                replyMsg += `\n- ${soldier.name}`;
+              });
+            });
+            replyMsg += `\n\n`;
+          }
+
+          // 2. Missing List
           if (missingList.length > 0) {
             replyMsg += `⚠️ *רשימת חוסרים/לא דיווחו:*`;
             Object.keys(groupedMissing).forEach(team => {
