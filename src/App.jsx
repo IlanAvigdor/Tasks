@@ -898,7 +898,7 @@ const TaskBankModal = ({ isOpen, onClose, activeTeam, onDeployTasks, onSaveCusto
   const [modalTab, setModalTab] = useState('bundles'); // 'bundles' | 'bank' | 'create'
   const bankTasks = TASK_BANK_TEMPLATES[activeTeam] || TASK_BANK_TEMPLATES['לוגיסטיקה'] || [];
   const defaultBundles = DEFAULT_BUNDLES[activeTeam] || DEFAULT_BUNDLES['לוגיסטיקה'] || [];
-  const teamCustomBundles = customBundles.filter(b => !b.team || b.team === activeTeam);
+  const teamCustomBundles = customBundles.filter(b => b.type !== 'meeting' && (!b.team || b.team === activeTeam));
   const allBundles = [...defaultBundles, ...teamCustomBundles];
 
   const [selectedBankIndexes, setSelectedBankIndexes] = useState([]);
@@ -995,25 +995,29 @@ const TaskBankModal = ({ isOpen, onClose, activeTeam, onDeployTasks, onSaveCusto
                 <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '4px' }}>{bundle.name}</div>
                 {bundle.description && <div style={{ fontSize: '0.85rem', opacity: 0.75, marginBottom: '8px' }}>{bundle.description}</div>}
                 
-                <div style={{ fontSize: '0.8rem', opacity: 0.8, marginBottom: '10px' }}>
-                  <strong>משימות בערכה ({bundle.tasks.length}):</strong>
-                  <ul style={{ margin: '4px 0 0 0', paddingRight: '1.2rem' }}>
-                    {bundle.tasks.map((t, i) => (
-                      <li key={i}>{t.title}</li>
-                    ))}
-                  </ul>
-                </div>
+                 {bundle.tasks && (
+                  <>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.8, marginBottom: '10px' }}>
+                      <strong>משימות בערכה ({bundle.tasks.length}):</strong>
+                      <ul style={{ margin: '4px 0 0 0', paddingRight: '1.2rem' }}>
+                        {bundle.tasks.map((t, i) => (
+                          <li key={i}>{t.title}</li>
+                        ))}
+                      </ul>
+                    </div>
 
-                <button 
-                  className="btn btn-save" 
-                  style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
-                  onClick={() => {
-                    onDeployTasks(bundle.tasks);
-                    onClose();
-                  }}
-                >
-                  🚀 הפעל ערכה במרחב ({bundle.tasks.length} משימות)
-                </button>
+                    <button 
+                      className="btn btn-save" 
+                      style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
+                      onClick={() => {
+                        onDeployTasks(bundle.tasks);
+                        onClose();
+                      }}
+                    >
+                      🚀 הפעל ערכה במרחב ({bundle.tasks.length} משימות)
+                    </button>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -1201,6 +1205,7 @@ const App = () => {
   const [registrationName, setRegistrationName] = useState('');
   const [registrationTeam, setRegistrationTeam] = useState('');
   const [activeTab, setActiveTab] = useState('tasks');
+  const [botLogs, setBotLogs] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', description: '', assignee: '' });
   const [activeId, setActiveId] = useState(null);
@@ -1398,7 +1403,15 @@ const App = () => {
   const getLocalActiveOpenMeeting = () => {
     const today = getTodayDateStr();
     const now = new Date();
-    const activeMeetings = customBundles.filter(b => b.type === 'meeting' && b.status === 'active' && (b.isRecurring || b.date === today));
+    const todayDayOfWeek = now.getDay();
+    const activeMeetings = customBundles.filter(b => 
+      b.type === 'meeting' && 
+      b.status === 'active' && 
+      (
+        b.date === today || 
+        (b.isRecurring && (b.recurringDay === undefined || b.recurringDay === null || b.recurringDay === '' || Number(b.recurringDay) === todayDayOfWeek))
+      )
+    );
     
     for (const meeting of activeMeetings) {
       const [mHours, mMinutes] = meeting.time.split(':').map(Number);
@@ -1429,9 +1442,12 @@ const App = () => {
         where("status", "==", "active")
       );
       const snap = await getDocs(q);
+      const todayDayOfWeek = now.getDay();
       snap.forEach(d => {
         const data = d.data();
-        if (data.isRecurring || data.date === today) {
+        const isActiveToday = data.date === today || 
+          (data.isRecurring && (data.recurringDay === undefined || data.recurringDay === null || data.recurringDay === '' || Number(data.recurringDay) === todayDayOfWeek));
+        if (isActiveToday) {
           activeMeetings.push({ id: d.id, ...data });
         }
       });
@@ -1775,6 +1791,13 @@ const App = () => {
     }
   }, [isAuthorized]);
 
+  // Redirect Tamar to bot settings on login
+  useEffect(() => {
+    if (userName === 'תמר ביליה') {
+      setActiveTab('bot-settings');
+    }
+  }, [userName]);
+
   // Auto-reset or Auto-delete meetings 5 minutes after their start time
   useEffect(() => {
     if (!isAuthorized || userName !== 'תמר ביליה') return;
@@ -1850,11 +1873,12 @@ const App = () => {
       return;
     }
 
-    // Initialize Tamar's default morning and evening meetings if missing
+    // Initialize Tamar's default meetings if missing
     const initDefaultMeetings = async () => {
       try {
         const morningId = 'meeting_morning';
         const eveningId = 'meeting_evening';
+        const departureId = 'meeting_departure';
         
         const morningDoc = await getDoc(doc(db, "task_bundles", morningId));
         if (!morningDoc.exists()) {
@@ -1877,6 +1901,21 @@ const App = () => {
             title: 'מסדר ערב',
             time: '20:00',
             isRecurring: true,
+            status: 'active',
+            scheduledBy: 'תמר ביליה',
+            createdAt: new Date(),
+            date: ''
+          });
+        }
+
+        const departureDoc = await getDoc(doc(db, "task_bundles", departureId));
+        if (!departureDoc.exists()) {
+          await setDoc(doc(db, "task_bundles", departureId), {
+            type: 'meeting',
+            title: 'תדריך יציאה',
+            time: '16:00',
+            isRecurring: true,
+            recurringDay: 4, // Thursday (Sunday is 0, Thursday is 4)
             status: 'active',
             scheduledBy: 'תמר ביליה',
             createdAt: new Date(),
@@ -2024,7 +2063,21 @@ const App = () => {
       console.error("Duties collection query error:", error);
     });
 
-    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); dutiesUnsubscribe(); };
+    const logsUnsubscribe = onSnapshot(
+      query(collection(db, "bot_logs"), orderBy("timestamp", "desc")),
+      (snapshot) => {
+        const list = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setBotLogs(list);
+      },
+      (error) => {
+        console.error("Bot logs subscription error:", error);
+      }
+    );
+
+    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); dutiesUnsubscribe(); logsUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
 
   useEffect(() => {
@@ -3480,6 +3533,101 @@ const App = () => {
     );
   };
 
+  const renderBotSettingsDashboard = () => {
+    // Show connection status based on the latest log or current state
+    const latestConnectionLog = botLogs.find(l => l.type === 'connection');
+    const isBotConnected = latestConnectionLog ? latestConnectionLog.message.includes('בהצלחה') : false;
+
+    // Format timestamps nicely
+    const formatLogTime = (ts) => {
+      if (!ts) return '';
+      let d = new Date();
+      if (typeof ts.toDate === 'function') d = ts.toDate();
+      else if (ts instanceof Date) d = ts;
+      else d = new Date(ts);
+      
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      return `${hours}:${minutes}:${seconds}`;
+    };
+
+    return (
+      <div className="bot-settings-dashboard" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+        
+        {/* Status Card */}
+        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h2 style={{ margin: '0 0 0.3rem 0', fontSize: '1.3rem', fontWeight: 800 }}>🤖 בוט וואטסאפ (תמר) - פאנל פעילות</h2>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.8 }}>כאן תוכלי לעקוב בזמן אמת אחר הפעילות השוטפת של הבוט, שליחת התזכורות ודוחות הנוכחות.</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: isBotConnected ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', padding: '0.5rem 1rem', borderRadius: '20px', border: isBotConnected ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(239,68,68,0.3)' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: isBotConnected ? '#10b981' : '#ef4444', display: 'inline-block' }}></span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: isBotConnected ? '#10b981' : '#f87171' }}>
+              {isBotConnected ? 'מחובר ופעיל' : 'מנותק / לא פעיל'}
+            </span>
+          </div>
+        </div>
+
+        {/* Activity Logs Card */}
+        <div className="glass-card" style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '350px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>📋 יומן פעילות (היום):</h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', overflowY: 'auto', maxHeight: '450px', paddingRight: '4px' }}>
+            {botLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.6, fontSize: '0.9rem' }}>
+                אין פעילות מוקלטת להיום.
+              </div>
+            ) : (
+              botLogs.map((log) => {
+                let icon = '📝';
+                let iconColor = 'rgba(255,255,255,0.6)';
+                let bg = 'rgba(255,255,255,0.02)';
+                
+                if (log.type === 'connection') {
+                  icon = log.message.includes('בהצלחה') ? '🔌' : '🔌';
+                  iconColor = log.message.includes('בהצלחה') ? '#34d399' : '#f87171';
+                  bg = log.message.includes('בהצלחה') ? 'rgba(52,211,153,0.04)' : 'rgba(248,113,113,0.04)';
+                } else if (log.type === 'reminder') {
+                  icon = '🔔';
+                  iconColor = '#60a5fa';
+                  bg = 'rgba(96,165,250,0.04)';
+                } else if (log.type === 'report') {
+                  icon = '📋';
+                  iconColor = '#fbbf24';
+                  bg = 'rgba(251,191,36,0.04)';
+                } else if (log.type === 'command') {
+                  icon = '💬';
+                  iconColor = '#a78bfa';
+                  bg = 'rgba(167,139,250,0.04)';
+                }
+
+                return (
+                  <div key={log.id} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    background: bg,
+                    border: '1px solid rgba(255,255,255,0.03)'
+                  }}>
+                    <span style={{ fontSize: '1.2rem', color: iconColor }}>{icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.9rem', color: '#fff', lineHeight: '1.4' }}>{log.message}</div>
+                      <div style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '2px' }}>{formatLogTime(log.timestamp)}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+      </div>
+    );
+  };
+
   const renderAttendanceDashboard = () => {
     const today = getTodayDateStr();
     const meetings = customBundles.filter(b => b.type === 'meeting');
@@ -3522,8 +3670,13 @@ const App = () => {
             meetingDate.setHours(mHours, mMinutes, 0, 0);
             const now = new Date();
             const diffMins = (meetingDate - now) / 1000 / 60;
-            const isOpen = diffMins <= 10 && diffMins >= 0;
-            const isTimeUp = diffMins < 0 && diffMins >= -5;
+            
+            const todayDayOfWeek = now.getDay();
+            const isActiveToday = meeting.date === today || 
+              (meeting.isRecurring && (meeting.recurringDay === undefined || meeting.recurringDay === null || meeting.recurringDay === '' || Number(meeting.recurringDay) === todayDayOfWeek));
+
+            const isOpen = isActiveToday && diffMins <= 10 && diffMins >= 0;
+            const isTimeUp = isActiveToday && diffMins < 0 && diffMins >= -5;
 
             return (
               <div 
@@ -3544,6 +3697,7 @@ const App = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, fontSize: '1.15rem' }}>
                     {meeting.id === 'meeting_morning' ? '🌅' : meeting.id === 'meeting_evening' ? '🌙' : '⏰'} {meeting.title}
+                    {meeting.recurringDay !== undefined && meeting.recurringDay !== null && meeting.recurringDay !== '' ? ` (יום ${['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'][meeting.recurringDay]})` : ''}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ 
@@ -3607,9 +3761,8 @@ const App = () => {
                   />
                 </div>
 
-
                 
-                <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '0.4rem' }}>
                   לחצי כאן כדי לצפות ברשימת הנוכחים
                 </div>
               </div>
@@ -3886,7 +4039,9 @@ const App = () => {
       <main className="container" style={activeTab === 'duties' ? { maxWidth: '1000px', width: '100%' } : undefined}>
         {renderMeetingReminderBanner()}
         {renderAttendanceBanner()}
-        {activeTab === 'tasks' ? (
+        {activeTab === 'bot-settings' && userName === 'תמר ביליה' ? (
+          renderBotSettingsDashboard()
+        ) : activeTab === 'tasks' ? (
           <div className="swipe-viewport" style={{overflow:'hidden', width: '100%'}}>
             <DndContext 
               sensors={sensors} 
@@ -4143,8 +4298,8 @@ const App = () => {
         <nav className="bottom-nav">
           {userName === 'תמר ביליה' ? (
             <>
-              <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
-                <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
+              <div className={`nav-tab ${activeTab === 'bot-settings' ? 'active' : ''}`} onClick={() => setActiveTab('bot-settings')}>
+                <i style={{fontSize:'1.3rem'}}>🤖</i> <span>הגדרות בוט</span>
               </div>
               <div className={`nav-tab ${activeTab === 'attendance' ? 'active' : ''}`} onClick={() => {
                 setAttendanceTimeOfDay(new Date().getHours() < 12 ? 'morning' : 'evening');

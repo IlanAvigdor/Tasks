@@ -1,5 +1,6 @@
 require('dotenv').config();
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const admin = require('firebase-admin');
 const path = require('path');
@@ -28,15 +29,15 @@ const db = admin.firestore();
 // ==========================================
 // 2. State & Configuration
 // ==========================================
-let meetingConfig = null;
 let activeWhitelist = [];
+let activeMeetings = [];
 let contactMap = new Map(); // Name -> JID
-let activeDialogs = new Map(); // JID -> { state, name, team, period }
-let sentAlertsToday = {
-  date: '',
-  warning10Min: false,
-  started: false
-};
+let groupMap = new Map();   // Group Name -> JID
+let sock = null;
+
+// Track sent alerts today to prevent duplicates
+// Keys: YYYY-MM-DD_meetingId_reminder, YYYY-MM-DD_meetingId_summary
+const sentNotifications = new Set();
 
 const GROUP_NAME = process.env.WHATSAPP_GROUP_NAME || 'גדוד 402';
 const GROUP_ID = process.env.WHATSAPP_GROUP_ID || null;
@@ -45,9 +46,28 @@ const GROUP_ID = process.env.WHATSAPP_GROUP_ID || null;
 // 3. Helper Functions
 // ==========================================
 
+// Add activity log to Firestore
+async function logActivity(type, message) {
+  try {
+    const today = getTodayDateStr();
+    await db.collection('bot_logs').add({
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      date: today,
+      type,
+      message
+    });
+    console.log(`[BOT LOG] [${type}] ${message}`);
+  } catch (err) {
+    console.error('Error writing activity log to Firestore:', err);
+  }
+}
+
 // Get today's date in YYYY-MM-DD format (local time)
 function getTodayDateStr() {
-  const d = new Date();
+  return getTodayDateStrForDate(new Date());
+}
+
+function getTodayDateStrForDate(d) {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -61,32 +81,6 @@ function normalizeName(name) {
     .trim()
     .replace(/["']/g, '') // Remove quotes (e.g. טנ"א)
     .replace(/\s+/g, ' '); // Normalize spaces
-}
-
-// Map WhatsApp contacts to whitelist names
-async function mapContacts(client) {
-  try {
-    console.log('Fetching WhatsApp contacts to map names...');
-    const contacts = await client.getContacts();
-    contactMap.clear();
-
-    contacts.forEach(contact => {
-      // Check all possible name fields in WhatsApp contact
-      const possibleNames = [
-        contact.name,
-        contact.pushname,
-        contact.shortName
-      ].filter(Boolean).map(normalizeName);
-
-      possibleNames.forEach(name => {
-        contactMap.set(name, contact.id._serialized);
-      });
-    });
-
-    console.log(`Mapped ${contactMap.size} unique contact names to JIDs.`);
-  } catch (err) {
-    console.error('Error mapping contacts:', err);
-  }
 }
 
 // Get JID for a soldier name
@@ -106,7 +100,7 @@ function getJidForSoldier(soldierName) {
     const contactWords = contactName.split(' ').filter(w => w.length > 1);
     if (contactWords.length === 0) continue;
 
-    // Check if first name matches exactly (e.g., "אוראל" === "אוראל")
+    // Check if first name matches exactly
     if (soldierWords[0] === contactWords[0]) {
       // If both have last names, they must also match
       if (soldierWords.length > 1 && contactWords.length > 1) {
@@ -114,7 +108,7 @@ function getJidForSoldier(soldierName) {
           return jid;
         }
       } else {
-        // If one of them has no last name, we can match on first name as fallback
+        // Fallback to first name match
         return jid;
       }
     }
@@ -122,23 +116,38 @@ function getJidForSoldier(soldierName) {
   return null;
 }
 
+// Get JID for Tamar
+function getTamarJid() {
+  if (process.env.TAMAR_PHONE) {
+    let phone = process.env.TAMAR_PHONE.trim();
+    if (!phone.endsWith('@s.whatsapp.net')) {
+      phone = `${phone}@s.whatsapp.net`;
+    }
+    return phone;
+  }
+  return getJidForSoldier('תמר ביליה');
+}
 
-// Find target WhatsApp Group Chat
-async function findGroupChat(client) {
-  try {
-    if (GROUP_ID) {
-      return await client.getChatById(GROUP_ID);
-    }
-    const chats = await client.getChats();
-    const groupChat = chats.find(chat => chat.isGroup && chat.name === GROUP_NAME);
-    if (groupChat) {
-      return groupChat;
-    }
-    console.warn(`Could not find group chat with name: "${GROUP_NAME}"`);
-    return null;
-  } catch (err) {
-    console.error('Error finding group chat:', err);
-    return null;
+// Find target WhatsApp Group Chat JID
+function getGroupJid() {
+  if (GROUP_ID) {
+    return GROUP_ID.endsWith('@g.us') ? GROUP_ID : `${GROUP_ID}@g.us`;
+  }
+  const normGroupName = normalizeName(GROUP_NAME);
+  if (groupMap.has(normGroupName)) {
+    return groupMap.get(normGroupName);
+  }
+  return null;
+}
+
+// Get Hebrew status label
+function getStatusLabel(status) {
+  switch (status) {
+    case 'absent': return '❌ חסר/ה';
+    case 'sick': return '🏥 חולה (חופשת מחלה/גימלים)';
+    case 'leave': return '✈️ חופש';
+    case 'duty': return '⚔️ בתפקיד/תורנות';
+    default: return '🔴 לא דיווח/ה נוכחות';
   }
 }
 
@@ -163,131 +172,416 @@ db.collection('whitelist').onSnapshot(snapshot => {
   console.error('Whitelist snapshot listener error:', err);
 });
 
-// Listen to scheduled meetings config
-db.collection('task_bundles').doc('meeting').onSnapshot(docSnap => {
-  if (docSnap.exists) {
-    meetingConfig = docSnap.data();
-    console.log(`Meeting Config Updated: scheduled at ${meetingConfig.time} on ${meetingConfig.date}`);
-  } else {
-    meetingConfig = null;
-    console.log('No meeting currently scheduled.');
+// Listen to scheduled meetings config (all meetings)
+db.collection('task_bundles')
+  .where('type', '==', 'meeting')
+  .onSnapshot(snapshot => {
+    activeMeetings = [];
+    snapshot.forEach(doc => {
+      activeMeetings.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    console.log(`Loaded ${activeMeetings.length} meetings from Firestore.`);
+  }, err => {
+    console.error('Meetings snapshot listener error:', err);
+  });
+
+// ==========================================
+// 5. WhatsApp Client Connection (Baileys)
+// ==========================================
+async function connectToWhatsApp() {
+  const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, 'baileys_auth_info'));
+
+  let version = [2, 3000, 1015901307]; // Fallback version if API fails
+  try {
+    const latestVersion = await fetchLatestBaileysVersion();
+    version = latestVersion.version;
+    console.log(`Fetched latest WhatsApp version: ${version.join('.')}`);
+  } catch (err) {
+    console.warn('Failed to fetch latest WhatsApp version from server, using fallback:', err.message);
   }
-}, err => {
-  console.error('Meeting config snapshot listener error:', err);
-});
 
-// ==========================================
-// 5. WhatsApp Client Initialization
-// ==========================================
-const client = new Client({
-  authStrategy: new LocalAuth({
-    dataPath: path.join(__dirname, '.wwebjs_auth')
-  }),
-  puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
-});
+  sock = makeWASocket({
+    auth: state,
+    version,
+    logger: pino({ level: 'warn' }),
+    browser: ['Antigravity Tasks Bot', 'Chrome', '1.0.0']
+  });
 
-client.on('qr', (qr) => {
-  console.log('Scan the QR code below with your WhatsApp camera to authenticate:');
-  qrcode.generate(qr, { small: true });
-});
+  sock.ev.on('creds.update', saveCreds);
 
-client.on('ready', async () => {
-  console.log('✅ WhatsApp Bot is ready and logged in!');
-  await mapContacts(client);
-  
-  // Re-map contacts periodically (every 1 hour)
-  setInterval(() => mapContacts(client), 3600000);
-});
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect, qr } = update;
+    if (qr) {
+      console.log('Scan the QR code below with your WhatsApp camera to authenticate:');
+      qrcode.generate(qr, { small: true });
+    }
+    
+    if (connection === 'close') {
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      console.log(`WhatsApp connection closed. Status: ${statusCode}. Error:`, lastDisconnect?.error?.message || lastDisconnect?.error, `Reconnecting... ${shouldReconnect}`);
+      logActivity('connection', `🔌 החיבור לוואטסאפ נסגר (סטטוס: ${statusCode || 'לא ידוע'})`);
+      if (shouldReconnect) {
+        // Wait a few seconds before reconnecting to prevent hot loops
+        setTimeout(connectToWhatsApp, 5000);
+      }
+    } else if (connection === 'open') {
+      console.log('✅ WhatsApp Bot is ready and logged in (Baileys)!');
+      logActivity('connection', '🔌 הבוט התחבר בהצלחה לוואטסאפ');
+    }
+  });
 
-
-
-// ==========================================
-// 7. General Message & Dialog Handlers
-// ==========================================
-client.on('message', async (msg) => {
-  const jid = msg.from;
-  const text = msg.body.trim();
-
-  // B. General command triggers
-  if (text === '!נוכחות' || text === '!סטטוס') {
-    const today = getTodayDateStr();
-    try {
-      const attendanceSnap = await db.collection('attendance')
-        .where('date', '==', today)
-        .get();
-
-      let presentCount = 0;
-      attendanceSnap.forEach(doc => {
-        const data = doc.data();
-        if (data.morning === 'present' || data.evening === 'present') {
-          presentCount++;
+  // Handle incoming contact and chat synchronization
+  sock.ev.on('messaging-history.set', ({ contacts, chats }) => {
+    if (contacts) {
+      contacts.forEach(contact => {
+        const jid = contact.id;
+        const name = contact.name || contact.notify || contact.verifiedName;
+        if (name && jid) contactMap.set(normalizeName(name), jid);
+      });
+    }
+    if (chats) {
+      chats.forEach(chat => {
+        const jid = chat.id;
+        if (jid.endsWith('@g.us')) {
+          const name = chat.name;
+          if (name) groupMap.set(normalizeName(name), jid);
+        } else {
+          const name = chat.name || chat.notify;
+          if (name) contactMap.set(normalizeName(name), jid);
         }
       });
-
-      await msg.reply(`מצב נוכחות להיום (${today.split('-').reverse().join('.')}):\nדווחו נוכחות: ${presentCount} מתוך ${activeWhitelist.length} חיילים.`);
-    } catch (err) {
-      console.error('Error fetching attendance status:', err);
-      await msg.reply('שגיאה בקבלת נתוני נוכחות.');
     }
-  }
-});
+    console.log(`Synced history: Mapped ${contactMap.size} contact names & ${groupMap.size} group chats.`);
+  });
 
-// ==========================================
-// 8. Tasks Real-time Notifications Listener
-// ==========================================
-db.collection('tasks').onSnapshot(snapshot => {
-  snapshot.docChanges().forEach(async change => {
-    if (change.type === 'added' || change.type === 'modified') {
-      const taskData = change.doc.data();
-      const taskId = change.doc.id;
-      
-      // If task is verified, no need to notify
-      if (taskData.isVerified) return;
+  sock.ev.on('contacts.upsert', (contacts) => {
+    contacts.forEach(contact => {
+      const jid = contact.id;
+      const name = contact.name || contact.notify || contact.verifiedName;
+      if (name && jid) contactMap.set(normalizeName(name), jid);
+    });
+  });
 
-      const assignees = taskData.assignees || [];
-      const notified = taskData.notifiedAssignees || [];
+  sock.ev.on('contacts.update', (updates) => {
+    updates.forEach(update => {
+      const jid = update.id;
+      const name = update.name || update.verifiedName;
+      if (name && jid) contactMap.set(normalizeName(name), jid);
+    });
+  });
 
-      // Find assignees who have not been notified yet
-      const toNotify = assignees.filter(name => !notified.includes(name));
+  sock.ev.on('chats.upsert', (chats) => {
+    chats.forEach(chat => {
+      const jid = chat.id;
+      if (jid.endsWith('@g.us') && chat.name) {
+        groupMap.set(normalizeName(chat.name), jid);
+      }
+    });
+  });
 
-      if (toNotify.length > 0) {
-        for (const name of toNotify) {
-          const jid = getJidForSoldier(name);
-          if (jid) {
-            const siteUrl = process.env.SITE_URL || 'https://tasks-b9e9e.web.app';
-            const timeHeb = taskData.timeOfDay === 'morning' ? 'בוקר' : taskData.timeOfDay === 'noon' ? 'צהריים' : taskData.timeOfDay === 'evening' ? 'ערב' : '';
-            const timeStr = timeHeb ? ` [משימת ${timeHeb}]` : '';
-            
-            const msg = `🔔 *שלום ${name}, שוייכה אליך משימה חדשה בצוות ${taskData.team}!*${timeStr}\n\n*${taskData.title}*\n${taskData.description ? `_תיאור: ${taskData.description}_\n` : ''}\nלפרטים נוספים ועדכון סטטוס, כנס לאתר: ${siteUrl}`;
-            
-            try {
-              await client.sendMessage(jid, msg);
-              console.log(`Successfully sent task notification to ${name} (${jid})`);
-            } catch (err) {
-              console.error(`Failed to send WhatsApp task notification to ${name}:`, err.message);
-            }
+  sock.ev.on('chats.update', (updates) => {
+    updates.forEach(update => {
+      const jid = update.id;
+      if (jid.endsWith('@g.us') && update.name) {
+        groupMap.set(normalizeName(update.name), jid);
+      }
+    });
+  });
+
+  // ==========================================
+  // 6. Message & Command Handlers
+  // ==========================================
+  sock.ev.on('messages.upsert', async (m) => {
+    const msg = m.messages[0];
+    if (!msg.message || msg.key.fromMe) return;
+
+    const from = msg.key.remoteJid;
+    const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
+
+    if (text === '!נוכחות' || text === '!סטטוס' || text === '!חוסרים') {
+      const senderName = msg.key.participant || msg.key.remoteJid;
+      let cleanSender = senderName.split('@')[0];
+      for (const [name, jid] of contactMap.entries()) {
+        if (jid === senderName) {
+          cleanSender = name;
+          break;
+        }
+      }
+      logActivity('command', `💬 פקודת ${text} הופעלה על ידי ${cleanSender}`);
+      const today = getTodayDateStr();
+      try {
+        const attendanceSnap = await db.collection('attendance')
+          .where('date', '==', today)
+          .get();
+
+        const attendanceMap = new Map();
+        attendanceSnap.forEach(doc => {
+          attendanceMap.set(doc.data().name, doc.data());
+        });
+
+        // Determine if we should report morning or evening or general status
+        // Default to morning if requested before 13:00, otherwise evening
+        const now = new Date();
+        const period = now.getHours() < 13 ? 'morning' : 'evening';
+        const periodHeb = period === 'morning' ? 'בוקר' : 'ערב';
+
+        let presentCount = 0;
+        let missingList = [];
+
+        activeWhitelist.forEach(soldier => {
+          const record = attendanceMap.get(soldier.name);
+          const status = record ? record[period] : null;
+
+          if (status === 'present') {
+            presentCount++;
           } else {
-            console.warn(`JID not found for soldier: ${name}`);
+            missingList.push({
+              name: soldier.name,
+              team: soldier.team || 'תקשוב',
+              statusLabel: getStatusLabel(status)
+            });
           }
+        });
+
+        // Group missing by team for better presentation
+        const groupedMissing = {};
+        missingList.forEach(m => {
+          if (!groupedMissing[m.team]) groupedMissing[m.team] = [];
+          groupedMissing[m.team].push(m);
+        });
+
+        let replyMsg = `📋 *סטטוס נוכחות - מסדר ${periodHeb} (${today.split('-').reverse().join('.')})*\n\n`;
+        replyMsg += `דיווחו נוכחות: ${presentCount} מתוך ${activeWhitelist.length} חיילים.\n\n`;
+
+        if (missingList.length > 0) {
+          replyMsg += `⚠️ *רשימת חוסרים/לא דיווחו:*`;
+          Object.keys(groupedMissing).forEach(team => {
+            replyMsg += `\n\n*צוות ${team}:*`;
+            groupedMissing[team].forEach(soldier => {
+              replyMsg += `\n- ${soldier.name} (${soldier.statusLabel})`;
+            });
+          });
+        } else {
+          replyMsg += `✅ כל החיילים דיווחו נוכחות!`;
         }
 
-        // Save notification state in Firestore to prevent duplicate messages
-        try {
-          await db.collection('tasks').doc(taskId).update({
-            notifiedAssignees: admin.firestore.FieldValue.arrayUnion(...toNotify)
-          });
-        } catch (err) {
-          console.error(`Failed to update notifiedAssignees for task ${taskId}:`, err.message);
-        }
+        await sock.sendMessage(from, { text: replyMsg });
+      } catch (err) {
+        console.error('Error fetching attendance status for command:', err);
+        await sock.sendMessage(from, { text: '❌ שגיאה בקבלת נתוני נוכחות ממאגר הנתונים.' });
       }
     }
   });
-}, err => {
-  console.error('Tasks snapshot listener error:', err);
-});
+}
 
-// Start the client
-client.initialize();
+// Helper: check if a meeting is active today
+function isMeetingActiveToday(meeting, todayStr, dayOfWeek) {
+  if (!meeting || meeting.status !== 'active') return false;
+  if (meeting.date === todayStr) return true;
+  if (meeting.isRecurring) {
+    if (meeting.recurringDay !== undefined && meeting.recurringDay !== null && meeting.recurringDay !== '') {
+      return Number(meeting.recurringDay) === dayOfWeek;
+    }
+    return true; // daily recurring
+  }
+  return false;
+}
 
+// ==========================================
+// 7. Automated Reminders & Report Checks
+// ==========================================
+async function runPeriodicCheck() {
+  if (!sock) return;
+
+  try {
+    const today = getTodayDateStr();
+    const now = new Date();
+    const currentHours = now.getHours();
+    const currentMins = now.getMinutes();
+    const todayDayOfWeek = now.getDay(); // 0-6
+
+    // 1. Group Reminder for Tomorrow's Morning Roll Call (sent at 22:30 today)
+    if (currentHours === 22 && currentMins === 30) {
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const tomorrowStr = getTodayDateStrForDate(tomorrow);
+      const tomorrowDayOfWeek = tomorrow.getDay();
+      
+      const tomorrowMeetings = activeMeetings.filter(m => isMeetingActiveToday(m, tomorrowStr, tomorrowDayOfWeek));
+      const morningMeeting = tomorrowMeetings.find(m => m.id === 'meeting_morning');
+      
+      if (morningMeeting) {
+        const morningKey = `${tomorrowStr}_${morningMeeting.id}_group_reminder`;
+        if (!sentNotifications.has(morningKey)) {
+          const groupJid = getGroupJid();
+          if (groupJid) {
+            const msg = `מחר מסדר דגל בשעה ${morningMeeting.time}`;
+            await sock.sendMessage(groupJid, { text: msg });
+            sentNotifications.add(morningKey);
+            await logActivity('reminder', `🔔 נשלחה תזכורת לקבוצה למסדר הבוקר של מחר: ${morningMeeting.time}`);
+          }
+        }
+      }
+    }
+
+    // Filter active meetings for today
+    const meetingsToday = activeMeetings.filter(m => isMeetingActiveToday(m, today, todayDayOfWeek));
+
+    for (const meeting of meetingsToday) {
+      const [mHours, mMinutes] = meeting.time.split(':').map(Number);
+      
+      // Calculate difference in minutes between meeting scheduled time and current time
+      const meetingTimeMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), mHours, mMinutes).getTime();
+      const diffMins = Math.round((meetingTimeMs - now.getTime()) / 1000 / 60);
+
+      // A. 10 minutes before meeting (between 8 and 10 minutes before, to handle interval skew)
+      const reminderKey = `${today}_${meeting.id}_reminder`;
+      if (diffMins <= 10 && diffMins >= 8 && !sentNotifications.has(reminderKey)) {
+        if (meeting.id === 'meeting_morning') {
+          // Send duties to Tamar privately
+          const tamarJid = getTamarJid();
+          if (tamarJid) {
+            const dutiesSnap = await db.collection('duties').doc(today).get();
+            let toiletTeam = 'טרם שובץ';
+            let showerTeam = 'טרם שובץ';
+            
+            if (dutiesSnap.exists) {
+              const dutiesData = dutiesSnap.data();
+              toiletTeam = dutiesData.toilets || 'טרם שובץ';
+              showerTeam = dutiesData.showers || 'טרם שובץ';
+            }
+            
+            const dutiesMsg = `📋 *תורנויות להיום (${today}):*\n` +
+              `🚽 שירותים: צוות *${toiletTeam}*\n` +
+              `🧼 מקלחות: צוות *${showerTeam}*`;
+            
+            await sock.sendMessage(tamarJid, { text: dutiesMsg });
+            sentNotifications.add(reminderKey);
+            await logActivity('report', `📋 נשלחו תורנויות היום לתמר לקראת מסדר הבוקר`);
+          } else {
+            console.warn(`Could not resolve Tamar's JID to send duties reminder.`);
+          }
+        } else {
+          // Send standard reminder to Group
+          const groupJid = getGroupJid();
+          if (groupJid) {
+            let msg = '';
+            if (meeting.reminderTemplate) {
+              // Get today's duties for placeholders
+              const dutiesSnap = await db.collection('duties').doc(today).get();
+              let toiletTeam = 'טרם שובץ';
+              let showerTeam = 'טרם שובץ';
+              if (dutiesSnap.exists) {
+                const dutiesData = dutiesSnap.data();
+                toiletTeam = dutiesData.toilets || 'טרם שובץ';
+                showerTeam = dutiesData.showers || 'טרם שובץ';
+              }
+              msg = meeting.reminderTemplate
+                .replace(/{title}/g, meeting.title)
+                .replace(/{time}/g, meeting.time)
+                .replace(/{toilets}/g, toiletTeam)
+                .replace(/{showers}/g, showerTeam);
+            } else if (meeting.id === 'meeting_evening') {
+              msg = `מזכירה מסדר ערב ב${meeting.time}`;
+            } else {
+              msg = `מזכירה ${meeting.title} ב${meeting.time}`;
+            }
+            
+            await sock.sendMessage(groupJid, { text: msg });
+            sentNotifications.add(reminderKey);
+            console.log(`Sent meeting group reminder for: ${meeting.title}`);
+            await logActivity('reminder', `🔔 נשלחה תזכורת לקבוצה למסדר: ${meeting.title}`);
+          } else {
+            console.warn(`Could not find group JID for reminder, group name: "${GROUP_NAME}"`);
+          }
+        }
+      }
+
+      // B. Tamar Report: 5 minutes after meeting (between -5 and -7 minutes)
+      const summaryKey = `${today}_${meeting.id}_summary`;
+      if (diffMins <= -5 && diffMins >= -7 && !sentNotifications.has(summaryKey)) {
+        const tamarJid = getTamarJid();
+        if (tamarJid) {
+          const attendanceSnap = await db.collection('attendance')
+            .where('date', '==', today)
+            .get();
+
+          const attendanceMap = new Map();
+          attendanceSnap.forEach(doc => {
+            attendanceMap.set(doc.data().name, doc.data());
+          });
+
+          // Determine period
+          const period = (meeting.id === 'meeting_evening' || meeting.title.includes('ערב') || mHours >= 12) ? 'evening' : 'morning';
+
+          let presentCount = 0;
+          let missingList = [];
+
+          activeWhitelist.forEach(soldier => {
+            const record = attendanceMap.get(soldier.name);
+            const status = record ? record[period] : null;
+
+            if (status === 'present') {
+              presentCount++;
+            } else {
+              missingList.push({
+                name: soldier.name,
+                team: soldier.team || 'תקשוב',
+                statusLabel: getStatusLabel(status)
+              });
+            }
+          });
+
+          const groupedMissing = {};
+          missingList.forEach(m => {
+            if (!groupedMissing[m.team]) groupedMissing[m.team] = [];
+            groupedMissing[m.team].push(m);
+          });
+
+          let summaryMsg = `📋 *דו"ח חוסרים - ${meeting.title} (${meeting.time})*\n\n`;
+          summaryMsg += `דיווחו נוכחות: ${presentCount} מתוך ${activeWhitelist.length} חיילים.\n\n`;
+
+          if (missingList.length > 0) {
+            summaryMsg += `⚠️ *לא הגיעו / לא דיווחו:*`;
+            Object.keys(groupedMissing).forEach(team => {
+              summaryMsg += `\n\n*צוות ${team}:*`;
+              groupedMissing[team].forEach(soldier => {
+                summaryMsg += `\n- ${soldier.name} (${soldier.statusLabel})`;
+              });
+            });
+          } else {
+            summaryMsg += `✅ כל החיילים דיווחו נוכחות!`;
+          }
+
+          await sock.sendMessage(tamarJid, { text: summaryMsg });
+          sentNotifications.add(summaryKey);
+          console.log(`Sent missing soldiers summary to Tamar for: ${meeting.title}`);
+          await logActivity('report', `📋 נשלח דוח חוסרים לתמר למסדר: ${meeting.title}`);
+        } else {
+          console.warn(`Could not resolve Tamar's JID to send report.`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error in runPeriodicCheck:', err);
+  }
+}
+
+// Check every 60 seconds
+setInterval(runPeriodicCheck, 60000);
+
+// Clean up sent notifications cache daily at midnight local time
+setInterval(() => {
+  const now = new Date();
+  if (now.getHours() === 0 && now.getMinutes() === 0) {
+    sentNotifications.clear();
+    console.log('Cleared sent notifications cache for the new day.');
+  }
+}, 60000);
+
+
+// Start the connection
+connectToWhatsApp();
