@@ -296,84 +296,92 @@ async function connectToWhatsApp() {
   // 6. Message & Command Handlers
   // ==========================================
   sock.ev.on('messages.upsert', async (m) => {
-    const msg = m.messages[0];
-    if (!msg.message || msg.key.fromMe) return;
+    try {
+      const msg = m.messages[0];
+      if (!msg || !msg.message) return;
 
-    const from = msg.key.remoteJid;
-    const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
+      const from = msg.key.remoteJid;
+      const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
 
-    if (text === '!נוכחות' || text === '!סטטוס' || text === '!חוסרים') {
-      const senderName = msg.key.participant || msg.key.remoteJid;
-      let cleanSender = senderName.split('@')[0];
-      for (const [name, jid] of contactMap.entries()) {
-        if (jid === senderName) {
-          cleanSender = name;
-          break;
-        }
-      }
-      logActivity('command', `💬 פקודת ${text} הופעלה על ידי ${cleanSender}`);
-      const today = getTodayDateStr();
-      try {
-        const attendanceSnap = await db.collection('attendance')
-          .where('date', '==', today)
-          .get();
+      // Ignore self-sent messages unless they are commands (for testing)
+      if (msg.key.fromMe && !text.startsWith('!')) return;
 
-        const attendanceMap = new Map();
-        attendanceSnap.forEach(doc => {
-          attendanceMap.set(doc.data().name, doc.data());
-        });
-
-        // Determine if we should report morning or evening or general status
-        // Default to morning if requested before 13:00, otherwise evening
-        const now = new Date();
-        const period = now.getHours() < 13 ? 'morning' : 'evening';
-        const periodHeb = period === 'morning' ? 'בוקר' : 'ערב';
-
-        let presentCount = 0;
-        let missingList = [];
-
-        activeWhitelist.forEach(soldier => {
-          const record = attendanceMap.get(soldier.name);
-          const status = record ? record[period] : null;
-
-          if (status === 'present') {
-            presentCount++;
-          } else {
-            missingList.push({
-              name: soldier.name,
-              team: soldier.team || 'תקשוב',
-              statusLabel: getStatusLabel(status)
-            });
+      if (text === '!נוכחות' || text === '!סטטוס' || text === '!חוסרים') {
+        const senderName = msg.key.participant || msg.key.remoteJid;
+        let cleanSender = senderName.split('@')[0];
+        for (const [name, jid] of contactMap.entries()) {
+          if (jid === senderName) {
+            cleanSender = name;
+            break;
           }
-        });
-
-        // Group missing by team for better presentation
-        const groupedMissing = {};
-        missingList.forEach(m => {
-          if (!groupedMissing[m.team]) groupedMissing[m.team] = [];
-          groupedMissing[m.team].push(m);
-        });
-
-        let replyMsg = `📋 *סטטוס נוכחות - מסדר ${periodHeb} (${today.split('-').reverse().join('.')})*\n\n`;
-        replyMsg += `דיווחו נוכחות: ${presentCount} מתוך ${activeWhitelist.length} חיילים.\n\n`;
-
-        if (missingList.length > 0) {
-          replyMsg += `⚠️ *רשימת חוסרים/לא דיווחו:*`;
-          Object.keys(groupedMissing).forEach(team => {
-            replyMsg += `\n\n*צוות ${team}:*`;
-            groupedMissing[team].forEach(soldier => {
-              replyMsg += `\n- ${soldier.name} (${soldier.statusLabel})`;
-            });
-          });
-        } else {
-          replyMsg += `✅ כל החיילים דיווחו נוכחות!`;
         }
+        await logActivity('command', `💬 פקודת ${text} הופעלה על ידי ${cleanSender}`);
+        const today = getTodayDateStr();
+        
+        try {
+          const attendanceSnap = await db.collection('attendance')
+            .where('date', '==', today)
+            .get();
 
-        await sock.sendMessage(from, { text: replyMsg });
-      } catch (err) {
-        console.error('Error fetching attendance status for command:', err);
-        await sock.sendMessage(from, { text: '❌ שגיאה בקבלת נתוני נוכחות ממאגר הנתונים.' });
+          const attendanceMap = new Map();
+          attendanceSnap.forEach(doc => {
+            attendanceMap.set(doc.data().name, doc.data());
+          });
+
+          // Determine if we should report morning or evening or general status
+          // Default to morning if requested before 13:00, otherwise evening
+          const now = new Date();
+          const period = now.getHours() < 13 ? 'morning' : 'evening';
+          const periodHeb = period === 'morning' ? 'בוקר' : 'ערב';
+
+          let presentCount = 0;
+          let missingList = [];
+
+          activeWhitelist.forEach(soldier => {
+            const record = attendanceMap.get(soldier.name);
+            const status = record ? record[period] : null;
+
+            if (status === 'present') {
+              presentCount++;
+            } else {
+              missingList.push({
+                name: soldier.name,
+                team: soldier.team || 'תקשוב',
+                statusLabel: getStatusLabel(status)
+              });
+            }
+          });
+
+          // Group missing by team for better presentation
+          const groupedMissing = {};
+          missingList.forEach(m => {
+            if (!groupedMissing[m.team]) groupedMissing[m.team] = [];
+            groupedMissing[m.team].push(m);
+          });
+
+          let replyMsg = `📋 *סטטוס נוכחות - מסדר ${periodHeb} (${today.split('-').reverse().join('.')})*\n\n`;
+          replyMsg += `דיווחו נוכחות: ${presentCount} מתוך ${activeWhitelist.length} חיילים.\n\n`;
+
+          if (missingList.length > 0) {
+            replyMsg += `⚠️ *רשימת חוסרים/לא דיווחו:*`;
+            Object.keys(groupedMissing).forEach(team => {
+              replyMsg += `\n\n*צוות ${team}:*`;
+              groupedMissing[team].forEach(soldier => {
+                replyMsg += `\n- ${soldier.name} (${soldier.statusLabel})`;
+              });
+            });
+          } else {
+            replyMsg += `✅ כל החיילים דיווחו נוכחות!`;
+          }
+
+          await sock.sendMessage(from, { text: replyMsg });
+        } catch (err) {
+          console.error('Error fetching attendance status for command:', err);
+          await sock.sendMessage(from, { text: '❌ שגיאה בקבלת נתוני נוכחות ממאגר הנתונים.' });
+        }
       }
+    } catch (err) {
+      console.error('CRITICAL ERROR in messages.upsert handler:', err);
     }
   });
 }
