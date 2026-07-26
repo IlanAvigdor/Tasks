@@ -487,12 +487,16 @@ async function runPeriodicCheck() {
       if (morningMeeting) {
         const morningKey = `${tomorrowStr}_${morningMeeting.id}_group_reminder`;
         if (!sentNotifications.has(morningKey)) {
+          // Add to sent list BEFORE async operations to prevent race conditions
+          sentNotifications.add(morningKey);
+          
           const groupJid = await getGroupJid();
           if (groupJid) {
             const msg = `מחר מסדר דגל בשעה ${morningMeeting.time}`;
             await sock.sendMessage(groupJid, { text: msg });
-            sentNotifications.add(morningKey);
             await logActivity('reminder', `🔔 נשלחה תזכורת לקבוצה למסדר הבוקר של מחר: ${morningMeeting.time}`);
+          } else {
+            sentNotifications.delete(morningKey); // back out if JID lookup failed
           }
         }
       }
@@ -502,6 +506,9 @@ async function runPeriodicCheck() {
     if (todayDayOfWeek === 0 && currentHours === 12 && currentMins === 0) {
       const scheduleKey = `${today}_weekly_schedule`;
       if (!sentNotifications.has(scheduleKey)) {
+        // Add to sent list BEFORE async operations
+        sentNotifications.add(scheduleKey);
+
         const groupJid = await getGroupJid();
         if (groupJid) {
           const msg = `*לוז שבועי*☺️\n\n` +
@@ -539,9 +546,10 @@ async function runPeriodicCheck() {
             `10:30 יציאה לבית בהסעות`;
           
           await sock.sendMessage(groupJid, { text: msg });
-          sentNotifications.add(scheduleKey);
           console.log(`Sent weekly schedule reminder to group.`);
           await logActivity('reminder', `📅 נשלח לו"ז שבועי אוטומטי לקבוצת החיילים`);
+        } else {
+          sentNotifications.delete(scheduleKey); // back out if JID lookup failed
         }
       }
     }
@@ -563,6 +571,9 @@ async function runPeriodicCheck() {
           // Send duties to Tamar privately
           const tamarJid = getTamarJid();
           if (tamarJid) {
+            // Add immediately to prevent duplicate sends
+            sentNotifications.add(reminderKey);
+            
             const dutiesSnap = await db.collection('duties').doc(today).get();
             let toiletTeam = 'טרם שובץ';
             let showerTeam = 'טרם שובץ';
@@ -578,7 +589,6 @@ async function runPeriodicCheck() {
               `🧼 מקלחות: צוות *${showerTeam}*`;
             
             await sock.sendMessage(tamarJid, { text: dutiesMsg });
-            sentNotifications.add(reminderKey);
             await logActivity('report', `📋 נשלחו תורנויות היום לתמר לקראת מסדר הבוקר`);
           } else {
             console.warn(`Could not resolve Tamar's JID to send duties reminder.`);
@@ -587,6 +597,9 @@ async function runPeriodicCheck() {
           // Send standard reminder to Group
           const groupJid = await getGroupJid();
           if (groupJid) {
+            // Add immediately to prevent duplicate sends
+            sentNotifications.add(reminderKey);
+            
             let msg = '';
             if (meeting.reminderTemplate) {
               // Get today's duties for placeholders
@@ -610,7 +623,6 @@ async function runPeriodicCheck() {
             }
             
             await sock.sendMessage(groupJid, { text: msg });
-            sentNotifications.add(reminderKey);
             console.log(`Sent meeting group reminder for: ${meeting.title}`);
             await logActivity('reminder', `🔔 נשלחה תזכורת לקבוצה למסדר: ${meeting.title}`);
           } else {
@@ -624,6 +636,9 @@ async function runPeriodicCheck() {
       if (diffMins <= -5 && diffMins >= -7 && !sentNotifications.has(summaryKey)) {
         const tamarJid = getTamarJid();
         if (tamarJid) {
+          // Add immediately to prevent duplicate sends
+          sentNotifications.add(summaryKey);
+
           const attendanceSnap = await db.collection('attendance')
             .where('date', '==', today)
             .get();
@@ -676,7 +691,6 @@ async function runPeriodicCheck() {
           }
 
           await sock.sendMessage(tamarJid, { text: summaryMsg });
-          sentNotifications.add(summaryKey);
           console.log(`Sent missing soldiers summary to Tamar for: ${meeting.title}`);
           await logActivity('report', `📋 נשלח דוח חוסרים לתמר למסדר: ${meeting.title}`);
         } else {
