@@ -3610,12 +3610,12 @@ const App = () => {
                     padding: '0.75rem 1rem',
                     borderRadius: '8px',
                     background: bg,
-                    border: '1px solid rgba(255,255,255,0.03)'
+                    border: '1px solid rgba(0,0,0,0.06)'
                   }}>
                     <span style={{ fontSize: '1.2rem', color: iconColor }}>{icon}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.9rem', color: '#fff', lineHeight: '1.4' }}>{log.message}</div>
-                      <div style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '2px' }}>{formatLogTime(log.timestamp)}</div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-1, #1e293b)', fontWeight: '500', lineHeight: '1.4' }}>{log.message}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-2, #64748b)', marginTop: '2px' }}>{formatLogTime(log.timestamp)}</div>
                     </div>
                   </div>
                 );
