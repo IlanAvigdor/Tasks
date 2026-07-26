@@ -74,6 +74,28 @@ function getTodayDateStrForDate(d) {
   return `${year}-${month}-${day}`;
 }
 
+// Helper to extract text from various WhatsApp message structures
+function getMessageText(message) {
+  if (!message) return '';
+  if (message.ephemeralMessage?.message) {
+    return getMessageText(message.ephemeralMessage.message);
+  }
+  if (message.viewOnceMessage?.message) {
+    return getMessageText(message.viewOnceMessage.message);
+  }
+  if (message.viewOnceMessageV2?.message) {
+    return getMessageText(message.viewOnceMessageV2.message);
+  }
+  if (message.documentWithCaptionMessage?.message) {
+    return getMessageText(message.documentWithCaptionMessage.message);
+  }
+  return message.conversation || 
+         message.extendedTextMessage?.text || 
+         message.imageMessage?.caption || 
+         message.videoMessage?.caption || 
+         '';
+}
+
 // Clean and normalize Hebrew names for better matching
 function normalizeName(name) {
   if (!name) return '';
@@ -301,7 +323,8 @@ async function connectToWhatsApp() {
       if (!msg || !msg.message) return;
 
       const from = msg.key.remoteJid;
-      const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim();
+      const text = getMessageText(msg.message).trim();
+      console.log(`[MSG RECEIVE] from: ${from}, text: "${text}", fromMe: ${msg.key.fromMe}`);
 
       // Ignore self-sent messages unless they are commands (for testing)
       if (msg.key.fromMe && !text.startsWith('!')) return;
