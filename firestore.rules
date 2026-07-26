@@ -46,5 +46,11 @@ service cloud.firestore {
     match /duties/{docId} {
       allow read, write: if isAuthenticated();
     }
+
+    // 8. Bot Logs rules
+    match /bot_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admin SDK (bot) can write
+    }
   }
 }
