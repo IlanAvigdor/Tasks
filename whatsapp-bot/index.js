@@ -427,6 +427,54 @@ async function runPeriodicCheck() {
       }
     }
 
+    // 2. Weekly Schedule (sent on Sundays at 12:00)
+    if (todayDayOfWeek === 0 && currentHours === 12 && currentMins === 0) {
+      const scheduleKey = `${today}_weekly_schedule`;
+      if (!sentNotifications.has(scheduleKey)) {
+        const groupJid = getGroupJid();
+        if (groupJid) {
+          const msg = `*לוז שבועי*☺️\n\n` +
+            `*יום ראשון*\n` +
+            `16:00 ח חזרה מהבית \n` +
+            `19:30 ח בין המגורים מסדר ערב\n` +
+            `1:00 *החרגה בגגש*   \n\n` +
+            `*יום שני*🧡\n` +
+            `8:30  מסדר דגל🇮🇱\n` +
+            `9:00 מסדר נקיון במגורים \n` +
+            `9:15 הגעה למחלקות\n` +
+            `12:30 ארוחת צהריים\n` +
+            `18:30 ארוחת ערב\n` +
+            `19:30 ח סגירת פלסם \n\n` +
+            `*יום שלישי*❤️\n` +
+            `8:00 מסדר דגל 🇮🇱\n` +
+            `8:30 בדיקת מסדר בחדרים *עם שטיפה*\n` +
+            `9:00 פיזור למחלקות\n` +
+            `12:30 ארוחת צהרים\n` +
+            `18:30 ארוחת ערב \n` +
+            `19:30 ח סגירת פלסם\n` +
+            `00:00 גגש\n\n\n` +
+            `*יום רביעי*🖤\n` +
+            `8:00 מסדר דגל🇮🇱\n` +
+            `8:30 בדיקת מסדר בחדרים *עם שטיפה*\n` +
+            `9:00 פיזור למחלקות\n` +
+            `12:30 ארוחת צהריים \n` +
+            `18:30 ארוחת ערב\n` +
+            `19:30 ח סגירת פלסמ \n\n\n` +
+            `*יום חמישי*\n` +
+            `8:00 מסדר דגל 🇮🇱 \n` +
+            `8:30 בדיקת מסדר בחדרים *עם שטיפה*\n` +
+            `9:00 פיזור למחלקות \n` +
+            `10:00 תדרצ \n` +
+            `10:30 יציאה לבית בהסעות`;
+          
+          await sock.sendMessage(groupJid, { text: msg });
+          sentNotifications.add(scheduleKey);
+          console.log(`Sent weekly schedule reminder to group.`);
+          await logActivity('reminder', `📅 נשלח לו"ז שבועי אוטומטי לקבוצת החיילים`);
+        }
+      }
+    }
+
     // Filter active meetings for today
     const meetingsToday = activeMeetings.filter(m => isMeetingActiveToday(m, today, todayDayOfWeek));
 
