@@ -229,25 +229,26 @@ export default function KitchenSketchboard({ tasks, onBack }) {
             }}
           >
             {isEditMode ? (
-              <div className="no-drag" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', width: '100%', padding: '0 10px', pointerEvents: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', width: '100%', height: '100%', padding: '6px 8px', justifyContent: 'center', cursor: 'move', userSelect: 'none' }}>
+                <div style={{ fontSize: '11px', opacity: 0.6, letterSpacing: '2px', pointerEvents: 'none' }}>⋮⋮ הזז</div>
                 <input 
                   type="text" 
                   className="no-drag"
                   value={room.name} 
                   onChange={(e) => updateRoomName(room.id, e.target.value)}
-                  style={{ background: 'rgba(0,0,0,0.5)', color: 'white', border: '1px solid #4b5563', textAlign: 'center', borderRadius: '4px', padding: '6px', width: '100%', fontSize: '0.9rem', touchAction: 'auto' }}
+                  style={{ background: 'rgba(0,0,0,0.5)', color: 'white', border: '1px solid #4b5563', textAlign: 'center', borderRadius: '4px', padding: '4px 6px', width: '100%', fontSize: '0.85rem', cursor: 'text' }}
+                  onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
                 />
                 <button 
                   type="button"
                   className="no-drag"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeRoom(room.id); }} 
+                  onClick={(e) => { e.stopPropagation(); removeRoom(room.id); }} 
+                  onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); removeRoom(room.id); }}
-                  style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', opacity: 0.9, touchAction: 'manipulation' }}
+                  style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', opacity: 0.9 }}
                 >
                   ✖
                 </button>
