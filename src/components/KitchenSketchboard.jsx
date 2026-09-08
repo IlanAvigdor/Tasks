@@ -7,6 +7,7 @@ export default function KitchenSketchboard({ tasks, onBack }) {
   const [rooms, setRooms] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedRoom, setSelectedRoom] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "kitchen_layouts", "current_layout"), (docSnap) => {
@@ -73,7 +74,7 @@ export default function KitchenSketchboard({ tasks, onBack }) {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>טוען סקאטצבורד...</div>;
 
   return (
-    <div className="sketchboard-container">
+    <div className="sketchboard-container" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', overscrollBehavior: 'none' }}>
       <div className="sketchboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {onBack && (
@@ -96,7 +97,7 @@ export default function KitchenSketchboard({ tasks, onBack }) {
         </div>
       </div>
       
-      <div className="sketchboard-canvas">
+      <div className="sketchboard-canvas" style={{ flex: 1, position: 'relative', overflow: 'hidden', overscrollBehavior: 'none', touchAction: 'none' }}>
         {rooms.map(room => (
           <Rnd
             key={room.id}
@@ -110,7 +111,7 @@ export default function KitchenSketchboard({ tasks, onBack }) {
             enableResizing={isEditMode ? true : false}
             bounds="parent"
             style={{
-              pointerEvents: isEditMode ? 'auto' : 'none',
+              pointerEvents: 'auto',
               border: isEditMode ? '2px dashed #9ca3af' : '2px solid rgba(255,255,255,0.2)',
               background: isEditMode ? 'rgba(255,255,255,0.05)' : getRoomBackground(room.name),
               display: 'flex',
@@ -139,13 +140,50 @@ export default function KitchenSketchboard({ tasks, onBack }) {
                 </button>
               </div>
             ) : (
-              <span style={{ fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)', fontSize: '1.1rem', textAlign: 'center', padding: '0 8px' }}>
-                {room.name}
-              </span>
+              <>
+                <span style={{ fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)', fontSize: '1.1rem', textAlign: 'center', padding: '0 8px' }}>
+                  {room.name}
+                </span>
+                <div 
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'pointer', zIndex: 5 }} 
+                  onClick={() => setSelectedRoom(room)} 
+                />
+              </>
             )}
           </Rnd>
         ))}
       </div>
+
+      {selectedRoom && (
+        <div className="compact-form-overlay" onClick={() => setSelectedRoom(null)} style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-card" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '400px', padding: '1.5rem', maxHeight: '80vh', overflowY: 'auto', position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>משימות - {selectedRoom.name}</h3>
+              <button onClick={() => setSelectedRoom(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
+            </div>
+            {(() => {
+              const roomTasks = tasks.filter(t => t.roomName === selectedRoom.name);
+              if (roomTasks.length === 0) return <p style={{ opacity: 0.7, textAlign: 'center', marginTop: '2rem' }}>אין משימות לחדר זה.</p>;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  {roomTasks.map(t => (
+                    <div key={t.id} style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', borderRight: (t.isDone || t.isVerified) ? '4px solid #10b981' : '4px solid #ef4444' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '1.05rem' }}>{t.title}</div>
+                      {t.description && <div style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '8px' }}>{t.description}</div>}
+                      <div style={{ fontSize: '0.9rem', color: '#9ca3af', marginBottom: '4px' }}>
+                        אחראי: <span style={{ color: t.workerName ? '#fff' : '#fbbf24', fontWeight: t.workerName ? 'bold' : 'normal' }}>{t.workerName || 'לא שובץ'}</span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: (t.isVerified) ? '#10b981' : t.isDone ? '#3b82f6' : '#ef4444' }}>
+                        סטטוס: {(t.isVerified) ? 'מאושר' : t.isDone ? 'בוצע (ממתין לאישור)' : 'לא בוצע'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4351,7 +4351,7 @@ const App = () => {
         </div>
       )}
 
-      <main className="container" style={activeTab === 'duties' ? { maxWidth: '1000px', width: '100%' } : activeTab === 'kitchen_sketchboard' ? { padding: 0, margin: 0, maxWidth: '100%', height: '100vh', display: 'flex', flexDirection: 'column' } : undefined}>
+      <main className="container" style={activeTab === 'duties' ? { maxWidth: '1000px', width: '100%' } : activeTab === 'kitchen_sketchboard' ? { padding: 0, margin: 0, maxWidth: '100%', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', overscrollBehavior: 'none' } : undefined}>
         {renderMeetingReminderBanner()}
         {renderAttendanceBanner()}
         {activeTab === 'bot-settings' && userName === 'תמר ביליה' ? (
