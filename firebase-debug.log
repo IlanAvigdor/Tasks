@@ -1,0 +1,70 @@
+[debug] [2026-09-08T12:48:22.290Z] ----------------------------------------------------------------------
+[debug] [2026-09-08T12:48:22.302Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Chen\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --project tasks-b9e9e
+[debug] [2026-09-08T12:48:22.303Z] CLI Version:   15.29.0
+[debug] [2026-09-08T12:48:22.304Z] Platform:      win32
+[debug] [2026-09-08T12:48:22.304Z] Node Version:  v24.18.0
+[debug] [2026-09-08T12:48:22.305Z] Detected Agent: antigravity
+[debug] [2026-09-08T12:48:22.305Z] Time:          Tue Sep 08 2026 15:48:22 GMT+0300 (Israel Daylight Time)
+[debug] [2026-09-08T12:48:22.306Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-08T12:48:22.371Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-09-08T12:49:08.237Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-08T12:49:08.238Z] > authorizing via signed-in user (ilanavigdor@gmail.com)
+[debug] [2026-09-08T12:49:08.238Z] [iam] checking project tasks-b9e9e for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-09-08T12:49:08.243Z] Checked if tokens are valid: false, expires at: 1785055728159
+[debug] [2026-09-08T12:49:08.243Z] Checked if tokens are valid: false, expires at: 1785055728159
+[debug] [2026-09-08T12:49:08.244Z] > refreshing access token with scopes: []
+[debug] [2026-09-08T12:49:08.248Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-09-08T12:49:08.248Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-08T12:49:08.849Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-09-08T12:49:08.850Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-08T12:49:09.037Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions [none]
+[debug] [2026-09-08T12:49:09.039Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions  x-goog-user-project=tasks-b9e9e
+[debug] [2026-09-08T12:49:09.039Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-09-08T12:49:09.051Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-09-08T12:49:09.051Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-09-08T12:49:10.268Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions 200
+[debug] [2026-09-08T12:49:10.269Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'tasks-b9e9e'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-09-08T12:49:10.279Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:10.280Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:10.280Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/tasks-b9e9e/databases/(default) [none]
+[debug] [2026-09-08T12:49:10.932Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/tasks-b9e9e/databases/(default) 200
+[debug] [2026-09-08T12:49:10.933Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/tasks-b9e9e/databases/(default) {"name":"projects/tasks-b9e9e/databases/(default)","uid":"3c39a187-c03f-4c8e-a975-498caaadbbcd","createTime":"2026-04-27T20:12:09.068877Z","updateTime":"2026-04-27T20:12:09.068877Z","locationId":"me-west1","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-09-08T11:49:10.817105Z","appEngineIntegrationMode":"DISABLED","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","enhancedTextSearchQueryMode":"ENHANCED_QUERY_MODE_ENABLED","etag":"IOqlhsqC35YDMPjHw+PtjpQD"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-09-08T12:49:10.936Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:10.936Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:10.937Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test [none]
+[debug] [2026-09-08T12:49:10.937Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test [omitted]
+[debug] [2026-09-08T12:49:11.817Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test 200
+[debug] [2026-09-08T12:49:11.817Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test {}
+[info] +  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-09-08T12:49:11.821Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:11.821Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:11.822Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases pageSize=10&pageToken=
+[debug] [2026-09-08T12:49:12.616Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases 200
+[debug] [2026-09-08T12:49:12.616Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases {"releases":[{"name":"projects/tasks-b9e9e/releases/cloud.firestore","rulesetName":"projects/tasks-b9e9e/rulesets/6f05a829-2742-4569-94ae-a380f51189ed","createTime":"2026-04-27T20:12:11.969199Z","updateTime":"2026-07-26T07:55:09.540367Z"}]}
+[debug] [2026-09-08T12:49:12.618Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:12.618Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:12.618Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/rulesets/6f05a829-2742-4569-94ae-a380f51189ed [none]
+[debug] [2026-09-08T12:49:13.033Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/rulesets/6f05a829-2742-4569-94ae-a380f51189ed 200
+[debug] [2026-09-08T12:49:13.033Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/rulesets/6f05a829-2742-4569-94ae-a380f51189ed [omitted]
+[info] i  firestore: uploading rules firestore.rules... 
+[debug] [2026-09-08T12:49:13.037Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:13.037Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:13.037Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/rulesets [none]
+[debug] [2026-09-08T12:49:13.037Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/rulesets [omitted]
+[debug] [2026-09-08T12:49:13.907Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/rulesets 200
+[debug] [2026-09-08T12:49:13.908Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/rulesets {"name":"projects/tasks-b9e9e/rulesets/b6aef6ca-2726-45b6-9fab-6c0c3da50dc4","source":{"files":[{"content":"rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Helper: Check if user is logged in\n    function isAuthenticated() {\n      return request.auth != null;\n    }\n\n    // 1. Whitelist rules\n    match /whitelist/{name} {\n      allow read: if true;\n      allow create, update, delete: if isAuthenticated();\n    }\n\n    match /whitelist_uids/{uid} {\n      allow read, write: if isAuthenticated();\n    }\n\n    // 2. Tasks rules\n    match /tasks/{taskId} {\n      allow read, write: if isAuthenticated();\n    }\n\n    // 3. Workers rules\n    match /workers/{workerId} {\n      allow read, write: if isAuthenticated();\n    }\n\n    // 4. Task Bundles rules\n    match /task_bundles/{bundleId} {\n      allow read, write: if isAuthenticated();\n    }\n\n    // 5. Attendance rules\n    match /attendance/{docId} {\n      allow read, write: if isAuthenticated();\n    }\n\n    // 6. Settings rules\n    match /settings/{docId} {\n      allow read, write: if isAuthenticated();\n    }\n\n    // 7. Duties rules\n    match /duties/{docId} {\n      allow read, write: if isAuthenticated();\n    }\n\n    // 8. Bot Logs rules\n    match /bot_logs/{logId} {\n      allow read: if isAuthenticated();\n      allow write: if false; // Only admin SDK (bot) can write\n    }\n\n    // 9. Deliveries and Chat rules\n    match /deliveries/{deliveryId} {\n      allow read, write: if isAuthenticated();\n      \n      match /messages/{messageId} {\n        allow read, write: if isAuthenticated();\n      }\n    }\n\n    // 10. Kitchen Duties rules\n    match /kitchen_duties/{dutyId} {\n      allow read, write: if isAuthenticated();\n    }\n\n    // 11. Kitchen Layouts rules\n    match /kitchen_layouts/{layoutId} {\n      allow read, write: if isAuthenticated();\n    }\n  }\n}\n","name":"firestore.rules"}]},"createTime":"2026-09-08T12:49:13.853519Z","metadata":{"services":["cloud.firestore"]}}
+[debug] [2026-09-08T12:49:13.908Z] [rules] created ruleset projects/tasks-b9e9e/rulesets/b6aef6ca-2726-45b6-9fab-6c0c3da50dc4
+[debug] [2026-09-08T12:49:13.909Z] [rules] releasing cloud.firestore with ruleset projects/tasks-b9e9e/rulesets/b6aef6ca-2726-45b6-9fab-6c0c3da50dc4
+[debug] [2026-09-08T12:49:13.910Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:13.910Z] Checked if tokens are valid: true, expires at: 1788875347850
+[debug] [2026-09-08T12:49:13.911Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases/cloud.firestore [none]
+[debug] [2026-09-08T12:49:13.911Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases/cloud.firestore {"release":{"name":"projects/tasks-b9e9e/releases/cloud.firestore","rulesetName":"projects/tasks-b9e9e/rulesets/b6aef6ca-2726-45b6-9fab-6c0c3da50dc4"}}
+[debug] [2026-09-08T12:49:15.028Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases/cloud.firestore 200

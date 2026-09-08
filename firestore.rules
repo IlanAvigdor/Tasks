@@ -52,5 +52,24 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if false; // Only admin SDK (bot) can write
     }
+
+    // 9. Deliveries and Chat rules
+    match /deliveries/{deliveryId} {
+      allow read, write: if isAuthenticated();
+      
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // 10. Kitchen Duties rules
+    match /kitchen_duties/{dutyId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 11. Kitchen Layouts rules
+    match /kitchen_layouts/{layoutId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }

@@ -1,0 +1,151 @@
+import React, { useState, useEffect } from 'react';
+import { Rnd } from 'react-rnd';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
+
+export default function KitchenSketchboard({ tasks, onBack }) {
+  const [rooms, setRooms] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "kitchen_layouts", "current_layout"), (docSnap) => {
+      if (docSnap.exists()) {
+        setRooms(docSnap.data().rooms || []);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching sketchboard layout:", error);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      await setDoc(doc(db, "kitchen_layouts", "current_layout"), { rooms });
+      setIsEditMode(false);
+    } catch (e) {
+      console.error("Error saving layout", e);
+    }
+  };
+
+  const addRoom = () => {
+    const newRoom = {
+      id: Date.now().toString(),
+      name: 'חדר חדש',
+      x: 50,
+      y: 50,
+      width: 150,
+      height: 100
+    };
+    setRooms([...rooms, newRoom]);
+  };
+
+  const updateRoomName = (id, newName) => {
+    setRooms(rooms.map(r => r.id === id ? { ...r, name: newName } : r));
+  };
+
+  const updateRoomPosition = (id, x, y) => {
+    setRooms(rooms.map(r => r.id === id ? { ...r, x, y } : r));
+  };
+
+  const updateRoomSize = (id, width, height, x, y) => {
+    setRooms(rooms.map(r => r.id === id ? { ...r, width, height, x, y } : r));
+  };
+
+  const removeRoom = (id) => {
+    setRooms(rooms.filter(r => r.id !== id));
+  };
+
+  const getRoomBackground = (roomName) => {
+    const roomTasks = tasks.filter(t => t.roomName === roomName);
+    if (roomTasks.length === 0) return 'rgba(255, 255, 255, 0.1)'; 
+    const doneCount = roomTasks.filter(t => t.isDone || t.isVerified).length;
+    const percentage = Math.round((doneCount / roomTasks.length) * 100);
+    
+    if (percentage === 0) return 'rgba(239, 68, 68, 0.4)';
+    if (percentage === 100) return 'rgba(16, 185, 129, 0.4)';
+
+    return `linear-gradient(to top, rgba(16, 185, 129, 0.4) ${percentage}%, rgba(239, 68, 68, 0.4) ${percentage}%)`;
+  };
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>טוען סקאטצבורד...</div>;
+
+  return (
+    <div className="sketchboard-container">
+      <div className="sketchboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {onBack && (
+            <button className="btn" onClick={onBack} style={{ padding: '0.4rem 0.8rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', fontSize: '0.9rem', margin: 0 }}>
+              🔙 משימות
+            </button>
+          )}
+          <h2 style={{ margin: 0 }}>סקאטצבורד מטבח</h2>
+        </div>
+        <div className="sketchboard-actions">
+          {isEditMode ? (
+            <>
+              <button className="btn" onClick={addRoom}>➕ הוסף חדר</button>
+              <button className="btn" style={{ background: '#3b82f6', color: '#fff' }} onClick={handleSave}>💾 שמור פריסה</button>
+              <button className="btn" onClick={() => { setIsEditMode(false); setLoading(true); getDoc(doc(db, "kitchen_layouts", "current_layout")).then(d => { if(d.exists()) setRooms(d.data().rooms||[]); setLoading(false); }); }}>ביטול</button>
+            </>
+          ) : (
+            <button className="btn" onClick={() => setIsEditMode(true)}>✏️ ערוך פריסה</button>
+          )}
+        </div>
+      </div>
+      
+      <div className="sketchboard-canvas">
+        {rooms.map(room => (
+          <Rnd
+            key={room.id}
+            size={{ width: room.width, height: room.height }}
+            position={{ x: room.x, y: room.y }}
+            onDragStop={(e, d) => updateRoomPosition(room.id, d.x, d.y)}
+            onResizeStop={(e, direction, ref, delta, position) => {
+              updateRoomSize(room.id, ref.style.width, ref.style.height, position.x, position.y);
+            }}
+            disableDragging={isEditMode ? false : true}
+            enableResizing={isEditMode ? true : false}
+            bounds="parent"
+            style={{
+              pointerEvents: isEditMode ? 'auto' : 'none',
+              border: isEditMode ? '2px dashed #9ca3af' : '2px solid rgba(255,255,255,0.2)',
+              background: isEditMode ? 'rgba(255,255,255,0.05)' : getRoomBackground(room.name),
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              transition: 'background 0.3s',
+              zIndex: isEditMode ? 10 : 1
+            }}
+          >
+            {isEditMode ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', width: '100%', padding: '0 10px' }}>
+                <input 
+                  type="text" 
+                  value={room.name} 
+                  onChange={(e) => updateRoomName(room.id, e.target.value)}
+                  style={{ background: 'rgba(0,0,0,0.5)', color: 'white', border: '1px solid #4b5563', textAlign: 'center', borderRadius: '4px', padding: '4px', width: '100%', fontSize: '0.9rem' }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                />
+                <button 
+                  onClick={(e) => { e.stopPropagation(); removeRoom(room.id); }} 
+                  style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', opacity: 0.8 }}
+                >
+                  ✖
+                </button>
+              </div>
+            ) : (
+              <span style={{ fontWeight: 'bold', textShadow: '0 1px 3px rgba(0,0,0,0.8)', fontSize: '1.1rem', textAlign: 'center', padding: '0 8px' }}>
+                {room.name}
+              </span>
+            )}
+          </Rnd>
+        ))}
+      </div>
+    </div>
+  );
+}
