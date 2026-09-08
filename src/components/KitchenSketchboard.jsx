@@ -85,7 +85,7 @@ export default function KitchenSketchboard({ tasks, onBack }) {
         width: '100vw',
         height: '100dvh',
         zIndex: 9000,
-        background: '#0f172a',
+        background: 'transparent',
         display: 'flex', 
         flexDirection: 'column', 
         overflow: 'hidden', 
@@ -104,7 +104,7 @@ export default function KitchenSketchboard({ tasks, onBack }) {
           overflow: 'hidden', 
           overscrollBehavior: 'none', 
           touchAction: 'none',
-          background: 'rgba(0, 0, 0, 0.2)'
+          background: 'rgba(0, 0, 0, 0.1)'
         }}
       >
         {/* Top Right Floating Back Button */}
