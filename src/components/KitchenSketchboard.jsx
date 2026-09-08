@@ -71,33 +71,137 @@ export default function KitchenSketchboard({ tasks, onBack }) {
     return `linear-gradient(to top, rgba(16, 185, 129, 0.4) ${percentage}%, rgba(239, 68, 68, 0.4) ${percentage}%)`;
   };
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>טוען סקאטצבורד...</div>;
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center', color: '#fff' }}>טוען סקאטצבורד...</div>;
 
   return (
-    <div className="sketchboard-container" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', overscrollBehavior: 'none' }}>
-      <div className="sketchboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {onBack && (
-            <button className="btn" onClick={onBack} style={{ padding: '0.4rem 0.8rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', fontSize: '0.9rem', margin: 0 }}>
-              🔙 משימות
-            </button>
-          )}
-          <h2 style={{ margin: 0 }}>סקאטצבורד מטבח</h2>
+    <div 
+      className="sketchboard-container" 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
+        zIndex: 9000,
+        background: '#0f172a',
+        display: 'flex', 
+        flexDirection: 'column', 
+        overflow: 'hidden', 
+        overscrollBehavior: 'none',
+        touchAction: 'none',
+        margin: 0,
+        padding: 0
+      }}
+    >
+      <div 
+        className="sketchboard-canvas" 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          position: 'relative', 
+          overflow: 'hidden', 
+          overscrollBehavior: 'none', 
+          touchAction: 'none',
+          background: 'rgba(0, 0, 0, 0.2)'
+        }}
+      >
+        {/* Top Right Floating Back Button */}
+        {onBack && (
+          <button 
+            className="btn" 
+            onClick={onBack} 
+            style={{ 
+              position: 'absolute', 
+              top: '12px', 
+              right: '12px', 
+              zIndex: 100, 
+              padding: '0.4rem 0.9rem', 
+              background: 'rgba(15, 23, 42, 0.85)', 
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.25)', 
+              color: '#fff',
+              fontSize: '0.9rem', 
+              fontWeight: 'bold',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+              margin: 0,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            🔙 משימות
+          </button>
+        )}
+
+        {/* Top Center Title Pill */}
+        <div 
+          style={{ 
+            position: 'absolute', 
+            top: '12px', 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            zIndex: 90, 
+            padding: '0.3rem 0.8rem', 
+            background: 'rgba(15, 23, 42, 0.6)', 
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.15)', 
+            color: 'rgba(255,255,255,0.9)',
+            fontSize: '0.85rem', 
+            fontWeight: 600,
+            borderRadius: '20px',
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          🗺️ סקאטצבורד מטבח
         </div>
-        <div className="sketchboard-actions">
+
+        {/* Bottom Left Floating Actions */}
+        <div 
+          className="sketchboard-actions"
+          style={{ 
+            position: 'absolute', 
+            bottom: '12px', 
+            left: '12px', 
+            zIndex: 100, 
+            display: 'flex', 
+            gap: '0.5rem', 
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}
+        >
           {isEditMode ? (
             <>
-              <button className="btn" onClick={addRoom}>➕ הוסף חדר</button>
-              <button className="btn" style={{ background: '#3b82f6', color: '#fff' }} onClick={handleSave}>💾 שמור פריסה</button>
-              <button className="btn" onClick={() => { setIsEditMode(false); setLoading(true); getDoc(doc(db, "kitchen_layouts", "current_layout")).then(d => { if(d.exists()) setRooms(d.data().rooms||[]); setLoading(false); }); }}>ביטול</button>
+              <button className="btn" style={{ background: '#10b981', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', margin: 0 }} onClick={addRoom}>➕ הוסף חדר</button>
+              <button className="btn" style={{ background: '#3b82f6', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', margin: 0 }} onClick={handleSave}>💾 שמור פריסה</button>
+              <button className="btn" style={{ background: 'rgba(239, 68, 68, 0.85)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', margin: 0 }} onClick={() => { setIsEditMode(false); setLoading(true); getDoc(doc(db, "kitchen_layouts", "current_layout")).then(d => { if(d.exists()) setRooms(d.data().rooms||[]); setLoading(false); }); }}>ביטול</button>
             </>
           ) : (
-            <button className="btn" onClick={() => setIsEditMode(true)}>✏️ ערוך פריסה</button>
+            <button 
+              className="btn" 
+              onClick={() => setIsEditMode(true)}
+              style={{ 
+                background: 'rgba(15, 23, 42, 0.85)', 
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.25)', 
+                color: '#fff', 
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                borderRadius: '8px',
+                padding: '0.4rem 0.9rem',
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                margin: 0,
+                cursor: 'pointer'
+              }}
+            >
+              ✏️ ערוך פריסה
+            </button>
           )}
         </div>
-      </div>
-      
-      <div className="sketchboard-canvas" style={{ flex: 1, position: 'relative', overflow: 'hidden', overscrollBehavior: 'none', touchAction: 'none' }}>
         {rooms.map(room => (
           <Rnd
             key={room.id}
