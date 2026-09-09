@@ -1925,12 +1925,22 @@ const App = () => {
     hasRedirectedRef.current = true;
     if (userName === 'תמר ביליה') {
       setActiveTab('bot-settings');
-    } else if (userName.includes('זוהר')) {
+    } else if (userName.includes('זוהר') && !isSuperAdmin) {
       setActiveTab('kitchen_manager');
     } else {
+      // All others (including super admins) go to tasks
       setActiveTab('tasks');
+      // For super_admin, also fix selectedTeam and clear bad localStorage
+      if (isSuperAdmin) {
+        setSelectedTeam('הכל');
+        // Clear stale kitchen-related localStorage for super admins
+        if (localStorage.getItem('workerTeam') === 'מטבח') {
+          localStorage.setItem('workerTeam', 'לוגיסטיקה');
+          setWorkerTeam('לוגיסטיקה');
+        }
+      }
     }
-  }, [isAuthorized, userName]);
+  }, [isAuthorized, userName, isSuperAdmin]);
 
   // Guard: super_admin should never be stuck on kitchen-only tabs, and fix their team
   useEffect(() => {
@@ -5085,7 +5095,34 @@ const App = () => {
 
   return (
     <div className="app-shell">
-      
+      {/* Always-visible logout button - top left corner */}
+      {isAuthorized && userName && (
+        <button
+          onClick={handleLogout}
+          style={{
+            position: 'fixed',
+            top: '0.6rem',
+            left: '0.6rem',
+            zIndex: 9999,
+            background: 'rgba(239, 68, 68, 0.85)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '10px',
+            padding: '0.45rem 0.85rem',
+            fontWeight: 800,
+            fontSize: '0.85rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            boxShadow: '0 2px 10px rgba(239,68,68,0.4)',
+            backdropFilter: 'blur(4px)',
+          }}
+          title="התנתק / החלף משתמש"
+        >
+          🚪 עזוב
+        </button>
+      )}
       {/* Multi-Team Header & Role Bar */}
       <header className="app-header">
         <div className="header-top-row">
@@ -5293,7 +5330,7 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (activeTab === 'kitchen_manager' && isKitchenCommander) ? (
+        ) : (activeTab === 'kitchen_manager' && isKitchenCommander && !isSuperAdmin) ? (
           renderKitchenManagerDashboard()
         ) : (activeTab === 'kitchen_sketchboard' && (isKitchenCommander || isSuperAdmin)) ? (
           <KitchenSketchboard tasks={tasks} onBack={() => setActiveTab('tasks')} />
