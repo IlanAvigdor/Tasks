@@ -1452,6 +1452,7 @@ const App = () => {
     setIsAuthorized(false);
     setAuthError('');
     setActiveTab('tasks');
+    hasRedirectedRef.current = false;
   };
 
   const handleAddWorker = async (e) => {
@@ -1911,9 +1912,11 @@ const App = () => {
     }
   }, [isAuthorized]);
 
-  // Redirect users to their specific landing tab on login
+  // Redirect users to their specific landing tab on login - only once per login session
+  const hasRedirectedRef = useRef(false);
   useEffect(() => {
-    if (!userName) return;
+    if (!isAuthorized || !userName || hasRedirectedRef.current) return;
+    hasRedirectedRef.current = true;
     if (userName === 'תמר ביליה') {
       setActiveTab('bot-settings');
     } else if (userName.includes('זוהר')) {
@@ -1921,7 +1924,7 @@ const App = () => {
     } else {
       setActiveTab('tasks');
     }
-  }, [userName, isAuthorized]);
+  }, [isAuthorized, userName]);
 
   // Auto-reset or Auto-delete meetings 5 minutes after their start time
   useEffect(() => {
@@ -5309,7 +5312,7 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (activeTab === 'kitchen_manager' && isKitchenCommander) ? (
+        ) : (activeTab === 'kitchen_manager' && (isKitchenCommander || (isSuperAdmin && activeWorkspaceTeam === 'מטבח'))) ? (
           renderKitchenManagerDashboard()
         ) : (activeTab === 'kitchen_sketchboard' && (isKitchenCommander || isSuperAdmin)) ? (
           <KitchenSketchboard tasks={tasks} onBack={() => setActiveTab('tasks')} />
@@ -5481,7 +5484,7 @@ const App = () => {
                   <i style={{fontSize:'1.3rem'}}>🪖</i> <span>חיילים ושיבוץ</span>
                 </div>
               )}
-              {(isKitchenCommander || isSuperAdmin || (userName && userName.includes('זוהר')) || workerTeam === 'מטבח') && (
+              {(isKitchenCommander || (userName && userName.includes('זוהר')) || workerTeam === 'מטבח') && (
                 <>
                   <div className={`nav-tab ${activeTab === 'kitchen_manager' ? 'active' : ''}`} onClick={() => setActiveTab('kitchen_manager')}>
                     <i style={{fontSize:'1.3rem'}}>👨‍🍳</i> <span>ניהול משמרת</span>
