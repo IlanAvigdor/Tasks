@@ -1255,7 +1255,13 @@ const App = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [showNav, setShowNav] = useState(true);
   const [userRole, setUserRole] = useState(localStorage.getItem('workerRole') || 'soldier');
-  const [selectedTeam, setSelectedTeam] = useState(localStorage.getItem('workerTeam') || 'מטבח');
+  const [selectedTeam, setSelectedTeam] = useState(() => {
+    const storedName = localStorage.getItem('workerName');
+    const isSuperUser = (storedName === 'אילן אביגדור' || storedName === 'לירי אביגדור');
+    // Super admins always start with 'הכל' view
+    if (isSuperUser) return 'הכל';
+    return localStorage.getItem('workerTeam') || 'מטבח';
+  });
   const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
   const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
 
@@ -1925,6 +1931,19 @@ const App = () => {
       setActiveTab('tasks');
     }
   }, [isAuthorized, userName]);
+
+  // Guard: super_admin should never be stuck on kitchen-only tabs, and fix their team
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    // Fix selectedTeam if it was wrongly set to מטבח
+    if (selectedTeam === 'מטבח' && workerTeam !== 'מטבח') {
+      setSelectedTeam('הכל');
+    }
+    // Redirect off kitchen-only tabs
+    if (activeTab === 'kitchen_manager' || activeTab === 'kitchen_sketchboard') {
+      setActiveTab('tasks');
+    }
+  }, [isSuperAdmin, activeTab, selectedTeam, workerTeam]);
 
   // Auto-reset or Auto-delete meetings 5 minutes after their start time
   useEffect(() => {
@@ -3262,51 +3281,13 @@ const App = () => {
             <span style={{ fontSize: '1.2rem' }}>👨‍🍳</span>
             <span>אתה נמצא במסך: <strong>ניהול משמרת מטבח (אחמ"ש)</strong> | מחובר כ: <strong>{userName}</strong></span>
           </div>
-          <button 
-            onClick={handleLogout} 
-            style={{ 
-              background: '#ef4444', 
-              color: '#fff', 
-              border: 'none', 
-              padding: '0.45rem 1rem', 
-              borderRadius: '10px', 
-              cursor: 'pointer', 
-              fontWeight: 800, 
-              fontSize: '0.9rem',
-              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.35)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            🚪 התנתק / עזוב
-          </button>
         </div>
 
         {/* Header Bar with Essential Buttons */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.8rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>👨‍🍳 ניהול משמרת מטבח</h2>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <button 
-              className="btn" 
-              onClick={handleLogout}
-              style={{ 
-                background: 'rgba(239, 68, 68, 0.2)', 
-                color: '#ef4444', 
-                border: '1px solid #ef4444', 
-                borderRadius: '12px', 
-                padding: '0.55rem 1.1rem', 
-                fontSize: '0.9rem', 
-                fontWeight: 700, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '6px',
-                cursor: 'pointer',
-                margin: 0
-              }}
-            >
-              🚪 התנתק
-            </button>
+
             <button 
               className="btn" 
               onClick={() => setIsKitchenDutyQrModalOpen(true)}
@@ -5312,7 +5293,7 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (activeTab === 'kitchen_manager' && (isKitchenCommander || (isSuperAdmin && activeWorkspaceTeam === 'מטבח'))) ? (
+        ) : (activeTab === 'kitchen_manager' && isKitchenCommander) ? (
           renderKitchenManagerDashboard()
         ) : (activeTab === 'kitchen_sketchboard' && (isKitchenCommander || isSuperAdmin)) ? (
           <KitchenSketchboard tasks={tasks} onBack={() => setActiveTab('tasks')} />
