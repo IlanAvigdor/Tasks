@@ -37,7 +37,7 @@ import {
 import {CSS} from '@dnd-kit/utilities';
 import KitchenSketchboard from './components/KitchenSketchboard';
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.07';
+const APP_VERSION = '1.08';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'רכב וניוד', 'רפואה', 'טנ"א (חימוש)', 'מטבח', 'שלישות', 'מפקדה'];
 const PLATOON_SERGEANTS = ["מעיין ישראלי", "מעיין נקאש", "דביר אגסי", "דמקה אייזנאו", "דמקה אזנאו"];
@@ -3067,7 +3067,7 @@ const App = () => {
   if (authLoading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען אבטחה...</div>;
 
   // Fully block unauthorized users from seeing the main layout
-  if (!isAuthorized && !isAdmin) {
+  if (!isAuthorized) {
     if (userName && workerTeam) {
       return (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
