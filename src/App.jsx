@@ -237,6 +237,45 @@ const DEFAULT_BUNDLES = {
   ]
 };
 
+const DEFAULT_KITCHEN_ROLES = {
+  'תורן חדר אוכל': [
+    { title: 'עריכת שולחנות וסכו"ם', description: 'סידור מפיות, סכו"ם וצלחות לארוחת בוקר', timeOfDay: 'morning', roomName: 'חדר אוכל' },
+    { title: 'מילוי עגלת מים ושתייה', description: 'וידוא מים קרים ושתייה זמינים בחדר אוכל', timeOfDay: 'morning', roomName: 'חדר אוכל' },
+    { title: 'פינוי מגשים וניקוי שולחנות צהריים', description: 'ניקוי משטחים וסניטציה בחדר אוכל', timeOfDay: 'noon', roomName: 'חדר אוכל' },
+    { title: 'שטיפת רצפת חדר אוכל צהריים', description: 'שטיפה וגריפת מים', timeOfDay: 'noon', roomName: 'חדר אוכל' },
+    { title: 'ערב: ניקוי שולחנות ופינוי פחים', description: 'ריקון פחי חדר אוכל וניקוי כללי', timeOfDay: 'evening', roomName: 'חדר אוכל' },
+    { title: 'ערב: שטיפה וסגירת חדר אוכל', description: 'שטיפת רצפה וכיבוי אורות/מזגנים', timeOfDay: 'evening', roomName: 'חדר אוכל' }
+  ],
+  'תורן שטיפה בשרית': [
+    { title: 'הכנת מכלים וסבון לעמדת שטיפה בשרית', timeOfDay: 'morning', description: 'מילוי מים חמים וסבון בכיורים', roomName: 'שטיפה בשרית' },
+    { title: 'שטיפת כלי הגשה ובישול בוקר', timeOfDay: 'morning', description: 'שטיפה וחיטוי כלי בוקר', roomName: 'שטיפה בשרית' },
+    { title: 'שטיפת גסטרונומים וסירים מבישול צהריים', timeOfDay: 'noon', description: 'שטיפה יסודית של סירי ענק וכלים בשריים', roomName: 'שטיפה בשרית' },
+    { title: 'סדר וייבוש כלים בשריים', timeOfDay: 'noon', description: 'החזרת הכלים למדפים היעודיים', roomName: 'שטיפה בשרית' },
+    { title: 'שטיפת עמדת שטיפה בשרית בסוף יום', timeOfDay: 'evening', description: 'חיטוי כיורים, משטחים ורצפת עמדת שטיפה', roomName: 'שטיפה בשרית' }
+  ],
+  'תורן בישול': [
+    { title: 'חיתוך ירקות והכנת מצרכים לבוקר', timeOfDay: 'morning', description: 'סיוע בהכנת סלטים וגבינות', roomName: 'מטבח בשרי' },
+    { title: 'סיוע לטבח בהכנות ואפייה', timeOfDay: 'morning', description: 'הכנת תבניות ומוצרים לתנורים', roomName: 'מטבח בשרי' },
+    { title: 'עזרה בבישול ארוחת צהריים', timeOfDay: 'noon', description: 'סיוע ליד הגריל והסירים', roomName: 'מטבח בשרי' },
+    { title: 'חלוקת אוכל בפס הגשה צהריים', timeOfDay: 'noon', description: 'עמידה בפס והגשת מנות', roomName: 'חדר אוכל' },
+    { title: 'סיוע בהכנת ארוחת ערב וסגירת פס', timeOfDay: 'evening', description: 'ניקוי משטחי עבודה במטבח', roomName: 'מטבח בשרי' }
+  ],
+  'תורן פרווה': [
+    { title: 'הכנת סלטים ופינת לחם בוקר', timeOfDay: 'morning', description: 'חיתוך ירקות וסידור לחמים', roomName: 'מטבח פרווה' },
+    { title: 'ארגון מקררי פרווה וסלטים', timeOfDay: 'morning', description: 'וידוא קירור ותאריכים', roomName: 'מטבח פרווה' },
+    { title: 'שטיפת כלי פרווה וסלטיות', timeOfDay: 'noon', description: 'שטיפת קעריות וכלים מעמדת פרווה', roomName: 'מטבח פרווה' },
+    { title: 'הכנת מנות פרווה וסלטים לערב', timeOfDay: 'evening', description: 'ריענון סלטים ורטבים', roomName: 'מטבח פרווה' },
+    { title: 'ניקוי וסגירת עמדת פרווה', timeOfDay: 'evening', description: 'חיטוי משטחי פרווה ומקררים', roomName: 'מטבח פרווה' }
+  ],
+  'תורן הנפצות': [
+    { title: 'קבלת אספקה ופריקת משאיות', timeOfDay: 'morning', description: 'סידור מצרכים במחסן וקירור', roomName: 'מחסן מזון' },
+    { title: 'ריקון פחים היקפיים וקרטוניות', timeOfDay: 'morning', description: 'פינוי אשפה לצפרדע' },
+    { title: 'שטיפת מסדרונות מטבח ופתחי שירות', timeOfDay: 'noon', description: 'קרצוף וגריפה' },
+    { title: 'פינוי פסולת אורגנית ופחים', timeOfDay: 'noon', description: 'החלפת שקיות וחיטוי פחים' },
+    { title: 'שטיפה כללית וסגירת מטבח', timeOfDay: 'evening', description: 'סגירת דלתות, כיבוי אורות ושטיפה סופית' }
+  ]
+};
+
 const getTaskStatusClass = (task) => {
   if (task.isVerified) return 'status-verified';
   if (task.isDone) return 'status-done';
@@ -606,6 +645,11 @@ const SortableTask = ({ task, isAdmin, isSelected, onToggleSelect, onVerify, onD
                 />
               ) : (
                 <>
+                  {task.kitchenRole && (
+                    <div style={{ fontSize: '0.7rem', color: '#fff', background: '#10b981', padding: '2px 6px', borderRadius: '4px', marginBottom: '4px', marginLeft: '4px', display: 'inline-block' }}>
+                      🏷️ {task.kitchenRole}
+                    </div>
+                  )}
                   {task.roomName && (
                     <div style={{ fontSize: '0.7rem', color: '#fff', background: '#3b82f6', padding: '2px 6px', borderRadius: '4px', marginBottom: '4px', display: 'inline-block' }}>
                       📍 חדר: {task.roomName}
@@ -1242,8 +1286,11 @@ const App = () => {
   const [hideAssigned, setHideAssigned] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [newWorkerName, setNewWorkerName] = useState('');
-  const [newWorkerTeam, setNewWorkerTeam] = useState('מטבח');
   const [kitchenRooms, setKitchenRooms] = useState([]);
+  const [kitchenRoleTemplates, setKitchenRoleTemplates] = useState(DEFAULT_KITCHEN_ROLES);
+  const [isRoleEditorOpen, setIsRoleEditorOpen] = useState(false);
+  const [isKitchenDutyQrModalOpen, setIsKitchenDutyQrModalOpen] = useState(false);
+  const [selectedRoleForEdit, setSelectedRoleForEdit] = useState('תורן חדר אוכל');
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "kitchen_layouts", "current_layout"), (docSnap) => {
@@ -1370,6 +1417,15 @@ const App = () => {
 
     return list;
   }, [registeredWorkers, isCommander, isSuperAdmin, activeWorkspaceTeam]);
+
+  const getPublicAppUrl = () => {
+    if (typeof window === 'undefined') return 'https://ilanavigdor.github.io/Tasks/';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocal) {
+      return 'https://ilanavigdor.github.io/Tasks/';
+    }
+    return window.location.origin + window.location.pathname;
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('workerName');
@@ -2134,7 +2190,17 @@ const App = () => {
       console.error("Kitchen duties subscription error:", error);
     });
 
-    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); dutiesUnsubscribe(); logsUnsubscribe(); kitchenDutiesUnsubscribe(); };
+    const roleTemplatesUnsubscribe = onSnapshot(doc(db, "kitchen_settings", "role_templates"), (docSnap) => {
+      if (docSnap.exists() && docSnap.data()?.templates) {
+        setKitchenRoleTemplates(docSnap.data().templates);
+      } else {
+        setKitchenRoleTemplates(DEFAULT_KITCHEN_ROLES);
+      }
+    }, (error) => {
+      console.error("Role templates subscription error:", error);
+    });
+
+    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); dutiesUnsubscribe(); logsUnsubscribe(); kitchenDutiesUnsubscribe(); roleTemplatesUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
 
   useEffect(() => {
@@ -2183,7 +2249,69 @@ const App = () => {
     }
   };
 
-  const handleApproveKitchenDuty = async (dutyId, cookName) => {
+  const handleSaveRoleTemplates = async (updatedTemplates) => {
+    try {
+      await setDoc(doc(db, "kitchen_settings", "role_templates"), {
+        templates: updatedTemplates,
+        updatedAt: new Date()
+      });
+      setKitchenRoleTemplates(updatedTemplates);
+      alert("תבניות התפקידים נשמרו בהצלחה!");
+    } catch (e) {
+      console.error("Error saving role templates:", e);
+      alert("שגיאה בשמירת התבניות: " + e.message);
+    }
+  };
+
+  const handleAssignRoleToDutyWorker = async (workerName, roleName, cookName = null) => {
+    if (!workerName || !roleName) return;
+    try {
+      const batch = writeBatch(db);
+      
+      const workerDoc = registeredWorkers.find(w => w.name === workerName && w.team === 'מטבח');
+      if (workerDoc) {
+        batch.update(doc(db, "workers", workerDoc.id), {
+          kitchenRole: roleName,
+          assignedToCook: cookName || workerDoc.assignedToCook || null
+        });
+      }
+
+      const dutyDoc = kitchenDuties.find(d => d.name === workerName && d.date === getTodayDateStr());
+      if (dutyDoc) {
+        batch.update(doc(db, "kitchen_duties", dutyDoc.id), {
+          kitchenRole: roleName,
+          assignedToCook: cookName || dutyDoc.assignedToCook || null
+        });
+      }
+
+      const roleTasks = kitchenRoleTemplates[roleName] || DEFAULT_KITCHEN_ROLES[roleName] || [];
+      roleTasks.forEach((t, idx) => {
+        const docRef = doc(collection(db, "tasks"));
+        batch.set(docRef, {
+          title: t.title,
+          description: t.description || '',
+          assignees: [workerName],
+          team: 'מטבח',
+          kitchenRole: roleName,
+          roomName: t.roomName || '',
+          timeOfDay: t.timeOfDay || 'morning',
+          isDone: false,
+          isInProgress: false,
+          isVerified: false,
+          order: tasks.length + idx,
+          createdAt: new Date()
+        });
+      });
+
+      await batch.commit();
+      alert(`🔓 תפקיד "${roleName}" שויך ל-${workerName} ו-${roleTasks.length} משימות לאורך היום נפתחו בהצלחה!`);
+    } catch (e) {
+      console.error("Error assigning role to duty worker:", e);
+      alert("שגיאה בשיוך התפקיד: " + e.message);
+    }
+  };
+
+  const handleApproveKitchenDuty = async (dutyId, cookName, roleName = '') => {
     const duty = kitchenDuties.find(d => d.id === dutyId);
     if (!duty) return;
     
@@ -2192,7 +2320,8 @@ const App = () => {
       
       batch.update(doc(db, "kitchen_duties", dutyId), {
         status: 'approved',
-        assignedToCook: cookName
+        assignedToCook: cookName,
+        kitchenRole: roleName
       });
       
       const workerRef = doc(collection(db, "workers"));
@@ -2200,6 +2329,7 @@ const App = () => {
         name: duty.name,
         team: 'מטבח',
         assignedToCook: cookName,
+        kitchenRole: roleName,
         isKitchenDuty: true,
         date: getTodayDateStr(),
         createdAt: new Date()
@@ -2216,9 +2346,30 @@ const App = () => {
         date: getTodayDateStr(),
         createdAt: new Date()
       }, { merge: true });
+
+      if (roleName && (kitchenRoleTemplates[roleName] || DEFAULT_KITCHEN_ROLES[roleName])) {
+        const roleTasks = kitchenRoleTemplates[roleName] || DEFAULT_KITCHEN_ROLES[roleName];
+        roleTasks.forEach((t, idx) => {
+          const docRef = doc(collection(db, "tasks"));
+          batch.set(docRef, {
+            title: t.title,
+            description: t.description || '',
+            assignees: [duty.name],
+            team: 'מטבח',
+            kitchenRole: roleName,
+            roomName: t.roomName || '',
+            timeOfDay: t.timeOfDay || 'morning',
+            isDone: false,
+            isInProgress: false,
+            isVerified: false,
+            order: tasks.length + idx,
+            createdAt: new Date()
+          });
+        });
+      }
       
       await batch.commit();
-      alert(`תורן ${duty.name} אושר ושויך לטבח ${cookName}`);
+      alert(`תורן ${duty.name} אושר ושויך לטבח ${cookName}${roleName ? ` בתפקיד ${roleName}` : ''}`);
     } catch (e) {
       console.error("Error approving duty:", e);
       alert("שגיאה באישור התורן: " + e.message);
@@ -2697,128 +2848,241 @@ const App = () => {
 
     const pendingDuties = kitchenDuties.filter(d => d.status === 'pending');
     const approvedDuties = workersByTeam['מטבח']?.filter(w => w.isKitchenDuty) || [];
+    
+    // Combine all active kitchen duty soldiers
+    const allKitchenDuties = [
+      ...pendingDuties.map(d => ({ ...d, isPending: true })),
+      ...approvedDuties.map(w => ({ ...w, isPending: false }))
+    ];
+
+    const roleOptions = Object.keys(kitchenRoleTemplates);
 
     return (
       <div className="kitchen-manager-dashboard" style={{ padding: '1rem', width: '100%', direction: 'rtl' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.4rem' }}>👨‍🍳 ניהול משמרת מטבח</h2>
-          <button 
-            className="btn btn-cancel" 
-            onClick={handleEndKitchenDay}
-            style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
-          >
-            🏁 סגירת יום תורנויות
-          </button>
+        {/* Header Bar with Essential Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>👨‍🍳 ניהול משמרת מטבח</h2>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button 
+              className="btn" 
+              onClick={() => setIsKitchenDutyQrModalOpen(true)}
+              style={{ 
+                background: '#10b981', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: '12px', 
+                padding: '0.55rem 1.1rem', 
+                fontSize: '0.9rem', 
+                fontWeight: 700, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                margin: 0
+              }}
+            >
+              📱 QR לרישום תורנים
+            </button>
+            <button 
+              className="btn" 
+              onClick={() => setIsRoleEditorOpen(true)}
+              style={{ 
+                background: '#2563eb', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: '12px', 
+                padding: '0.55rem 1.1rem', 
+                fontSize: '0.9rem', 
+                fontWeight: 700, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                margin: 0
+              }}
+            >
+              ⚙️ הגדרת תפקידים ייעודיים (אחמ"ש)
+            </button>
+            <button 
+              className="btn" 
+              onClick={handleEndKitchenDay}
+              style={{ 
+                background: 'rgba(239, 68, 68, 0.2)', 
+                color: '#ef4444', 
+                border: '1px solid rgba(239, 68, 68, 0.4)', 
+                borderRadius: '12px', 
+                padding: '0.55rem 1.1rem', 
+                fontSize: '0.9rem', 
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                margin: 0
+              }}
+            >
+              🏁 סגירת יום תורנויות
+            </button>
+          </div>
         </div>
 
+        {/* Worker Role Assignment Slide/Cards */}
         <div className="glass-card" style={{ padding: '1.2rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ margin: '0 0 1rem 0' }}>📋 בקשות תורנות ממתינות לאישור ({pendingDuties.length})</h3>
-          {pendingDuties.length === 0 ? (
-            <p style={{ opacity: 0.6, margin: 0 }}>אין בקשות ממתינות כרגע.</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>📋</span> שיוך תפקידים לתורנים ({allKitchenDuties.length})
+            </h3>
+            <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>החלק/בחר תפקיד בלחיצה</span>
+          </div>
+
+          {allKitchenDuties.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', opacity: 0.6 }}>
+              <p style={{ margin: 0, fontSize: '1.05rem' }}>אין תורנים פעילים במשמרת כרגע.</p>
+              <span style={{ fontSize: '0.85rem' }}>תורנים שנרשמו יופיעו כאן לשיוך תפקידים.</span>
+            </div>
           ) : (
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              {pendingDuties.map(duty => (
-                <div key={duty.id} style={{ 
-                  background: 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  padding: '1rem', 
-                  borderRadius: '8px', 
-                  display: 'flex', 
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  gap: '1rem'
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{duty.name}</div>
-                    <div style={{ fontSize: '0.85rem', opacity: 0.7 }}>צוות מקור: {duty.originalTeam}</div>
+            <div 
+              style={{ 
+                display: 'flex', 
+                gap: '1rem', 
+                overflowX: 'auto', 
+                paddingBottom: '0.8rem',
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
+              {allKitchenDuties.map(worker => {
+                const currentRole = worker.kitchenRole || '';
+                const currentCook = worker.assignedToCook || '';
+
+                return (
+                  <div 
+                    key={worker.id} 
+                    style={{ 
+                      flex: '0 0 320px', 
+                      scrollSnapAlign: 'start', 
+                      background: 'rgba(0,0,0,0.3)', 
+                      border: currentRole ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255,255,255,0.1)', 
+                      borderRadius: '14px', 
+                      padding: '1.1rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.9rem',
+                      boxShadow: currentRole ? '0 4px 14px rgba(16, 185, 129, 0.15)' : 'none'
+                    }}
+                  >
+                    {/* Worker Info Row */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>🪖</span> {worker.name}
+                        </div>
+                        {worker.originalTeam && (
+                          <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>צוות מקור: {worker.originalTeam}</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {worker.isPending ? (
+                          <span style={{ fontSize: '0.75rem', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                            ⏳ ממתין
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                            🟢 מאושר
+                          </span>
+                        )}
+                        <button 
+                          onClick={() => {
+                            if (worker.isPending) {
+                              handleRejectKitchenDuty(worker.id);
+                            } else {
+                              deleteWorker(worker.id);
+                            }
+                          }}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.7, cursor: 'pointer', fontSize: '1rem', padding: '2px' }}
+                          title="הסר תורן"
+                        >
+                          ✖
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Cook Assignment Dropdown */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>🍳 אחראי:</span>
+                      <select 
+                        className="input-field" 
+                        style={{ margin: 0, flex: 1, padding: '0.3rem 0.6rem', fontSize: '0.85rem' }}
+                        value={currentCook}
+                        onChange={(e) => {
+                          const newCook = e.target.value;
+                          if (worker.isPending) {
+                            handleApproveKitchenDuty(worker.id, newCook, currentRole);
+                          } else {
+                            handleAssignRoleToDutyWorker(worker.name, currentRole || roleOptions[0], newCook);
+                          }
+                        }}
+                      >
+                        <option value="">בחר טבח...</option>
+                        {cooks.map(cook => (
+                          <option key={cook} value={cook}>{cook}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Dedicated Role Selection Chips (Slide Bar) */}
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 600, opacity: 0.85, marginBottom: '6px' }}>
+                        🏷️ בחר תפקיד ייעודי (יפתח משימות):
+                      </div>
+                      <div 
+                        style={{ 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: '6px' 
+                        }}
+                      >
+                        {roleOptions.map(rName => {
+                          const isSelected = currentRole === rName;
+                          return (
+                            <button
+                              key={rName}
+                              type="button"
+                              onClick={() => {
+                                if (worker.isPending) {
+                                  handleApproveKitchenDuty(worker.id, currentCook || cooks[0] || 'ללא', rName);
+                                } else {
+                                  handleAssignRoleToDutyWorker(worker.name, rName, currentCook);
+                                }
+                              }}
+                              style={{
+                                padding: '0.5rem 0.8rem',
+                                borderRadius: '8px',
+                                border: isSelected ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                                background: isSelected ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.05)',
+                                color: isSelected ? '#10b981' : '#fff',
+                                fontWeight: isSelected ? 800 : 500,
+                                fontSize: '0.85rem',
+                                textAlign: 'right',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <span>{rName}</span>
+                              {isSelected && <span>✓ מוגדר</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <select 
-                      className="input-field"
-                      style={{ margin: 0, width: '150px' }}
-                      id={`cook-select-${duty.id}`}
-                    >
-                      <option value="">שייך לטבח...</option>
-                      {cooks.map(cook => (
-                        <option key={cook} value={cook}>{cook}</option>
-                      ))}
-                    </select>
-                    <button 
-                      className="btn btn-save" 
-                      style={{ margin: 0 }}
-                      onClick={() => {
-                        const selectEl = document.getElementById(`cook-select-${duty.id}`);
-                        if (!selectEl.value) {
-                          alert("נא לבחור טבח שאליו ישויך התורן.");
-                          return;
-                        }
-                        handleApproveKitchenDuty(duty.id, selectEl.value);
-                      }}
-                    >
-                      ✅ אישור
-                    </button>
-                    <button 
-                      className="btn btn-cancel" 
-                      style={{ margin: 0 }}
-                      onClick={() => handleRejectKitchenDuty(duty.id)}
-                    >
-                      ❌ דחייה
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
-        </div>
-
-        <div className="glass-card" style={{ padding: '1.2rem' }}>
-          <h3 style={{ margin: '0 0 1rem 0' }}>🧑‍🍳 טבחים ותורנים משוייכים</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-            {cooks.map(cook => {
-              const assignedDuties = approvedDuties.filter(w => w.assignedToCook === cook);
-              return (
-                <div key={cook} style={{ 
-                  background: 'rgba(0,0,0,0.2)', 
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  padding: '1rem', 
-                  borderRadius: '12px' 
-                }}>
-                  <h4 style={{ margin: '0 0 0.8rem 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🍳</span> {cook} 
-                    <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 'normal' }}>({assignedDuties.length} תורנים)</span>
-                  </h4>
-                  {assignedDuties.length === 0 ? (
-                    <div style={{ fontSize: '0.85rem', opacity: 0.5 }}>אין תורנים משוייכים.</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {assignedDuties.map(d => (
-                        <div key={d.id} style={{ 
-                          background: 'rgba(255,255,255,0.05)', 
-                          padding: '0.5rem 0.8rem', 
-                          borderRadius: '6px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          fontSize: '0.9rem'
-                        }}>
-                          <span>{d.name}</span>
-                          <button 
-                            className="btn btn-cancel"
-                            style={{ margin: 0, padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
-                            onClick={() => deleteWorker(d.id)}
-                            title="הסר תורן"
-                          >
-                            הסר
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
 
       </div>
@@ -3068,6 +3332,118 @@ const App = () => {
       console.error("Error saving meeting: ", err);
       alert("שגיאה בשמירת המסדר: " + err.message);
     }
+  };
+
+  const renderKitchenRoleEditorModal = () => {
+    if (!isRoleEditorOpen) return null;
+    const roleNames = Object.keys(kitchenRoleTemplates);
+    const currentRoleTasks = kitchenRoleTemplates[selectedRoleForEdit] || [];
+
+    return (
+      <div className="compact-form-overlay" onClick={() => setIsRoleEditorOpen(false)} style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass-card" onClick={e => e.stopPropagation()} style={{ width: '92%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', position: 'relative', direction: 'rtl' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.3rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🛠️</span> הגדרת משימות לכל תפקיד ייעודי (אחמ"ש)
+            </h3>
+            <button onClick={() => setIsRoleEditorOpen(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
+          </div>
+
+          {/* Role Selection Tabs */}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.2rem' }}>
+            {roleNames.map(rName => (
+              <button 
+                key={rName} 
+                className={`btn ${selectedRoleForEdit === rName ? 'btn-save' : ''}`}
+                onClick={() => setSelectedRoleForEdit(rName)}
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: selectedRoleForEdit === rName ? undefined : 'rgba(255,255,255,0.08)' }}
+              >
+                🏷️ {rName} ({kitchenRoleTemplates[rName]?.length || 0})
+              </button>
+            ))}
+          </div>
+
+          {/* Task List for Selected Role */}
+          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '10px', marginBottom: '1.2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h4 style={{ margin: 0, fontSize: '1.05rem' }}>משימות מוגדרות עבור: <span style={{ color: '#10b981' }}>{selectedRoleForEdit}</span></h4>
+              <button 
+                className="btn btn-save" 
+                style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+                onClick={() => {
+                  const title = prompt("שם המשימה החדשה:");
+                  if (!title) return;
+                  const desc = prompt("תיאור המשימה (אופציונלי):") || '';
+                  const tod = prompt("זמן ביום (morning / noon / evening):", "morning") || 'morning';
+                  const room = prompt("חדר בסקאטצבורד (אופציונלי):", "") || '';
+
+                  const updated = {
+                    ...kitchenRoleTemplates,
+                    [selectedRoleForEdit]: [
+                      ...(kitchenRoleTemplates[selectedRoleForEdit] || []),
+                      { title, description: desc, timeOfDay: tod, roomName: room }
+                    ]
+                  };
+                  handleSaveRoleTemplates(updated);
+                }}
+              >
+                ➕ הוסף משימה לתפקיד
+              </button>
+            </div>
+
+            {['morning', 'noon', 'evening'].map(tod => {
+              const todLabel = tod === 'morning' ? '🌅 בוקר' : tod === 'noon' ? '☀️ צהריים' : '🌙 ערב';
+              const todTasks = currentRoleTasks.filter(t => t.timeOfDay === tod || (!t.timeOfDay && tod === 'morning'));
+              return (
+                <div key={tod} style={{ marginBottom: '1rem' }}>
+                  <h5 style={{ margin: '0 0 0.5rem 0', opacity: 0.8, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', fontSize: '0.9rem' }}>{todLabel} ({todTasks.length})</h5>
+                  {todTasks.length === 0 ? (
+                    <div style={{ fontSize: '0.8rem', opacity: 0.5, padding: '4px 0' }}>אין משימות מוגדרות לזמן זה.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {todTasks.map((t, idx) => (
+                        <div key={idx} style={{ background: 'rgba(255,255,255,0.05)', padding: '0.6rem 0.8rem', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{t.title}</div>
+                            {t.description && <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{t.description}</div>}
+                            {t.roomName && <span style={{ fontSize: '0.75rem', color: '#3b82f6' }}>📍 {t.roomName}</span>}
+                          </div>
+                          <button 
+                            className="btn btn-cancel" 
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                            onClick={() => {
+                              const updatedRoleTasks = currentRoleTasks.filter((_, i) => i !== currentRoleTasks.indexOf(t));
+                              const updated = {
+                                ...kitchenRoleTemplates,
+                                [selectedRoleForEdit]: updatedRoleTasks
+                              };
+                              handleSaveRoleTemplates(updated);
+                            }}
+                          >
+                            מחק
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem' }}>
+            <button 
+              className="btn btn-cancel" 
+              onClick={() => handleSaveRoleTemplates(DEFAULT_KITCHEN_ROLES)}
+              title="איפוס ל-5 תפקידי ברירת המחדל"
+            >
+              🔄 איפוס לברירת מחדל
+            </button>
+            <button className="btn btn-save" onClick={() => setIsRoleEditorOpen(false)}>סגור</button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const renderMeetingFormModal = () => {
@@ -4598,9 +4974,11 @@ const App = () => {
               <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
                 <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
               </div>
-              <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
-                <i style={{fontSize:'1.3rem'}}>🪖</i> <span>חיילים ושיבוץ</span>
-              </div>
+              {activeWorkspaceTeam !== 'מטבח' && (
+                <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
+                  <i style={{fontSize:'1.3rem'}}>🪖</i> <span>חיילים ושיבוץ</span>
+                </div>
+              )}
               {isKitchenCommander && (
                 <>
                   <div className={`nav-tab ${activeTab === 'kitchen_manager' ? 'active' : ''}`} onClick={() => setActiveTab('kitchen_manager')}>
@@ -4620,6 +4998,7 @@ const App = () => {
 
       {userName === 'תמר ביליה' && activeTab === 'attendance' && <button className="add-task-fab" onClick={() => setIsMeetingFormOpen(true)}>+</button>}
       {renderMeetingFormModal()}
+      {renderKitchenRoleEditorModal()}
 
       {!isAdmin && showWelcomeBack && isAuthorized && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'var(--bg-1)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}}>
@@ -4638,6 +5017,48 @@ const App = () => {
         </div>
       )}
       
+      {isKitchenDutyQrModalOpen && (
+        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={() => setIsKitchenDutyQrModalOpen(false)}>
+           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1.8rem', position: 'relative'}} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>📱 סרוק לרישום תורן מטבח</h3>
+                <button onClick={() => setIsKitchenDutyQrModalOpen(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
+              </div>
+              <p style={{ opacity: 0.85, fontSize: '0.9rem', margin: '0' }}>התורנים סורקים את הברקוד בנייד וממלאים את שמם להרשמה למשמרת:</p>
+              
+              <div style={{ background: 'white', padding: '1rem', borderRadius: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.2)' }}>
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(getPublicAppUrl() + '?action=kitchen_duty')}`} 
+                  alt="Kitchen Duty QR Code" 
+                  style={{ width: '200px', height: '200px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                <button 
+                  className="btn btn-save" 
+                  onClick={() => {
+                    const dutyUrl = getPublicAppUrl() + '?action=kitchen_duty';
+                    navigator.clipboard.writeText(dutyUrl).then(() => {
+                      alert("קישור הרשמת התורנים הועתק ללוח!");
+                    });
+                  }}
+                  style={{ width: '100%', margin: 0 }}
+                >
+                  📋 העתק קישור ישיר להרשמה
+                </button>
+                <button 
+                  className="btn btn-cancel" 
+                  onClick={() => setIsKitchenDutyQrModalOpen(false)}
+                  style={{ width: '100%', margin: 0 }}
+                >
+                  סגור
+                </button>
+              </div>
+           </div>
+        </div>
+      )}
+
       {isKitchenDutyModalOpen && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center'}}>
            <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', gap: '1rem'}}>
@@ -4676,7 +5097,7 @@ const App = () => {
               
               <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + window.location.pathname + '?action=checkin')}`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getPublicAppUrl() + '?action=checkin')}`} 
                   alt="QR Code" 
                   style={{ width: '200px', height: '200px' }}
                 />
@@ -4686,7 +5107,7 @@ const App = () => {
                 <button 
                   className="btn btn-save" 
                   onClick={() => {
-                    const checkinUrl = window.location.origin + window.location.pathname + '?action=checkin';
+                    const checkinUrl = getPublicAppUrl() + '?action=checkin';
                     navigator.clipboard.writeText(checkinUrl).then(() => {
                       alert("הקישור הועתק ללוח!");
                     });
@@ -4699,7 +5120,7 @@ const App = () => {
                   className="btn btn-save" 
                   onClick={() => {
                     const printWindow = window.open('', '_blank');
-                    const checkinUrl = window.location.origin + window.location.pathname + '?action=checkin';
+                    const checkinUrl = getPublicAppUrl() + '?action=checkin';
                     printWindow.document.write(`
                       <html lang="he" dir="rtl">
                       <head>
