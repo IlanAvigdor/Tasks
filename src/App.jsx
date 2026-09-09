@@ -37,7 +37,7 @@ import {
 import {CSS} from '@dnd-kit/utilities';
 import KitchenSketchboard from './components/KitchenSketchboard';
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.04';
+const APP_VERSION = '1.05';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'רכב וניוד', 'רפואה', 'טנ"א (חימוש)', 'מטבח', 'שלישות', 'מפקדה'];
 const PLATOON_SERGEANTS = ["מעיין ישראלי", "מעיין נקאש", "דביר אגסי", "דמקה אייזנאו", "דמקה אזנאו"];
@@ -1318,12 +1318,12 @@ const App = () => {
   }, [isAuthorized, userName, userRole]);
 
   const isCommander = useMemo(() => {
-    return isAuthorized && userRole === 'commander';
-  }, [isAuthorized, userRole]);
+    return isAuthorized && (userRole === 'commander' || isSuperAdmin || (userName && userName.includes('זוהר')));
+  }, [isAuthorized, userRole, isSuperAdmin, userName]);
 
   const isKitchenCommander = useMemo(() => {
-    return isAuthorized && workerTeam === 'מטבח' && userRole === 'commander';
-  }, [isAuthorized, workerTeam, userRole]);
+    return isAuthorized && !isSuperAdmin && ((userName && userName.includes('זוהר')) || (userRole === 'commander' && workerTeam === 'מטבח'));
+  }, [isAuthorized, isSuperAdmin, userRole, userName, workerTeam]);
 
   const isCook = useMemo(() => {
     const isDutySoldier = registeredWorkers.some(w => w.name === userName && w.isKitchenDuty) || 
@@ -1660,6 +1660,7 @@ const App = () => {
     const cleanLower = clean.toLowerCase();
     if (cleanLower === 'לירי' || cleanLower === 'liri') return 'לירי אביגדור';
     if (cleanLower === 'אילן' || cleanLower === 'ilan') return 'אילן אביגדור';
+    if (cleanLower === 'זוהר' || cleanLower === 'zohar') return 'זוהר בורשטיין';
 
     const match = Object.keys(KNOWN_TEAM_ROLES).find(k => 
       k.toLowerCase() === cleanLower || 
@@ -1688,9 +1689,8 @@ const App = () => {
 
         userData = userDocSnap.exists() ? userDocSnap.data() : {};
 
-        // Strict single-device lock enforcement (exempt super admins & localhost testing)
-        const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-        if (!isSuper && !isLocalhost && userData.isActivated && userData.uid && userData.uid !== uid) {
+        // Strict single-device lock enforcement for all users except Super Admins
+        if (!isSuper && userData.isActivated && userData.uid && userData.uid !== uid) {
           localStorage.removeItem('workerName');
           localStorage.removeItem('workerRole');
           localStorage.removeItem('workerTeam');
@@ -1907,12 +1907,16 @@ const App = () => {
     }
   }, [isAuthorized]);
 
-  // Redirect Tamar to bot settings on login
+  // Redirect users to their specific landing tab on login
   useEffect(() => {
     if (userName === 'תמר ביליה') {
       setActiveTab('bot-settings');
+    } else if (userName && userName.includes('זוהר')) {
+      setActiveTab('kitchen_manager');
+    } else if (isSuperAdmin && (userName === 'לירי אביגדור' || userName === 'אילן אביגדור')) {
+      setActiveTab('tasks');
     }
-  }, [userName]);
+  }, [userName, isSuperAdmin]);
 
   // Auto-reset or Auto-delete meetings 5 minutes after their start time
   useEffect(() => {
@@ -3129,7 +3133,7 @@ const App = () => {
                     
                     const success = await verifyUserWhitelist(resolved, currentFirebaseUser.uid);
                     if (success) {
-                      const teamToUse = registrationTeam || localStorage.getItem('workerTeam') || 'מטבח';
+                      const teamToUse = registrationTeam || localStorage.getItem('workerTeam') || 'לוגיסטיקה';
                       localStorage.setItem('workerName', resolved);
                       localStorage.setItem('workerTeam', teamToUse);
                       setUserName(resolved);
@@ -3243,11 +3247,58 @@ const App = () => {
     const roleOptions = Object.keys(kitchenRoleTemplates);
 
     return (
-      <div className="kitchen-manager-dashboard" style={{ padding: '1rem', width: '100%', direction: 'rtl' }}>
+      <div className="kitchen-manager-dashboard" style={{ padding: '1rem 1rem 90px 1rem', width: '100%', direction: 'rtl' }}>
+        {/* Screen Status & Logout Banner */}
+        <div style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.35)', color: '#93c5fd', padding: '0.7rem 1.1rem', borderRadius: '14px', marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', fontSize: '0.92rem', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.2rem' }}>👨‍🍳</span>
+            <span>אתה נמצא במסך: <strong>ניהול משמרת מטבח (אחמ"ש)</strong> | מחובר כ: <strong>{userName}</strong></span>
+          </div>
+          <button 
+            onClick={handleLogout} 
+            style={{ 
+              background: '#ef4444', 
+              color: '#fff', 
+              border: 'none', 
+              padding: '0.45rem 1rem', 
+              borderRadius: '10px', 
+              cursor: 'pointer', 
+              fontWeight: 800, 
+              fontSize: '0.9rem',
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            🚪 התנתק / עזוב
+          </button>
+        </div>
+
         {/* Header Bar with Essential Buttons */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.8rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>👨‍🍳 ניהול משמרת מטבח (אחמ"ש)</h2>
+          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>👨‍🍳 ניהול משמרת מטבח</h2>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button 
+              className="btn" 
+              onClick={handleLogout}
+              style={{ 
+                background: 'rgba(239, 68, 68, 0.2)', 
+                color: '#ef4444', 
+                border: '1px solid #ef4444', 
+                borderRadius: '12px', 
+                padding: '0.55rem 1.1rem', 
+                fontSize: '0.9rem', 
+                fontWeight: 700, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                cursor: 'pointer',
+                margin: 0
+              }}
+            >
+              🚪 התנתק
+            </button>
             <button 
               className="btn" 
               onClick={() => setIsKitchenDutyQrModalOpen(true)}
@@ -5047,7 +5098,6 @@ const App = () => {
     <div className="app-shell">
       
       {/* Multi-Team Header & Role Bar */}
-      {activeTab !== 'kitchen_sketchboard' && (
       <header className="app-header">
         <div className="header-top-row">
           <div className="site-brand">
@@ -5135,7 +5185,6 @@ const App = () => {
           </div>
         )}
       </header>
-      )}
       
       {activeWorkspaceTeam === 'מטבח' && activeTab !== 'kitchen_sketchboard' && (
         <nav className="time-nav">
@@ -5255,9 +5304,9 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (activeTab === 'kitchen_manager' && isKitchenCommander) ? (
+        ) : (activeTab === 'kitchen_manager' && (isKitchenCommander || isSuperAdmin)) ? (
           renderKitchenManagerDashboard()
-        ) : (activeTab === 'kitchen_sketchboard' && isKitchenCommander) ? (
+        ) : (activeTab === 'kitchen_sketchboard' && (isKitchenCommander || isSuperAdmin)) ? (
           <KitchenSketchboard tasks={tasks} onBack={() => setActiveTab('tasks')} />
         ) : (activeTab === 'attendance' && userName === 'תמר ביליה') ? (
           renderAttendanceDashboard()
@@ -5385,7 +5434,7 @@ const App = () => {
         </div>
       )}
 
-      {(isAdmin || isDutyOrganizer) && activeTab !== 'kitchen_sketchboard' && (
+      {isAuthorized && (
         <nav className="bottom-nav">
           {userName === 'תמר ביליה' ? (
             <>
@@ -5401,6 +5450,9 @@ const App = () => {
               <div className={`nav-tab ${activeTab === 'duties' ? 'active' : ''}`} onClick={() => setActiveTab('duties')}>
                 <i style={{fontSize:'1.3rem'}}>📆</i> <span>לוח תורנויות</span>
               </div>
+              <div className="nav-tab" onClick={handleLogout} style={{ color: '#ef4444' }}>
+                <i style={{fontSize:'1.3rem'}}>🚪</i> <span>התנתק</span>
+              </div>
             </>
           ) : PLATOON_SERGEANTS.includes(userName) ? (
             <>
@@ -5410,18 +5462,21 @@ const App = () => {
               <div className={`nav-tab ${activeTab === 'duties' ? 'active' : ''}`} onClick={() => setActiveTab('duties')}>
                 <i style={{fontSize:'1.3rem'}}>📆</i> <span>לוח תורנויות</span>
               </div>
+              <div className="nav-tab" onClick={handleLogout} style={{ color: '#ef4444' }}>
+                <i style={{fontSize:'1.3rem'}}>🚪</i> <span>התנתק</span>
+              </div>
             </>
           ) : (
             <>
               <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
                 <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
               </div>
-              {activeWorkspaceTeam !== 'מטבח' && (
+              {(isAdmin || isCommander || isSuperAdmin) && activeWorkspaceTeam !== 'מטבח' && (
                 <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
                   <i style={{fontSize:'1.3rem'}}>🪖</i> <span>חיילים ושיבוץ</span>
                 </div>
               )}
-              {isKitchenCommander && (
+              {(isKitchenCommander || isSuperAdmin || (userName && userName.includes('זוהר')) || workerTeam === 'מטבח') && (
                 <>
                   <div className={`nav-tab ${activeTab === 'kitchen_manager' ? 'active' : ''}`} onClick={() => setActiveTab('kitchen_manager')}>
                     <i style={{fontSize:'1.3rem'}}>👨‍🍳</i> <span>ניהול משמרת</span>
@@ -5431,6 +5486,9 @@ const App = () => {
                   </div>
                 </>
               )}
+              <div className="nav-tab" onClick={handleLogout} style={{ color: '#ef4444' }}>
+                <i style={{fontSize:'1.3rem'}}>🚪</i> <span>התנתק</span>
+              </div>
             </>
           )}
         </nav>
