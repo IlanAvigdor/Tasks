@@ -37,7 +37,7 @@ import {
 import {CSS} from '@dnd-kit/utilities';
 import KitchenSketchboard from './components/KitchenSketchboard';
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.05';
+const APP_VERSION = '1.06';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'רכב וניוד', 'רפואה', 'טנ"א (חימוש)', 'מטבח', 'שלישות', 'מפקדה'];
 const PLATOON_SERGEANTS = ["מעיין ישראלי", "מעיין נקאש", "דביר אגסי", "דמקה אייזנאו", "דמקה אזנאו"];
@@ -1451,6 +1451,7 @@ const App = () => {
     setRegistrationTeam('');
     setIsAuthorized(false);
     setAuthError('');
+    setActiveTab('tasks');
   };
 
   const handleAddWorker = async (e) => {
@@ -1702,13 +1703,16 @@ const App = () => {
           return false;
         }
 
+        const detectedRole = isSuper ? 'super_admin' : (mapped?.role || userData.role || 'soldier');
+        const detectedTeam = isSuper ? (mapped?.team || 'לוגיסטיקה') : (mapped?.team || userData.team || 'לוגיסטיקה');
+
         // Pair and bind to this device UID
         await setDoc(userDocRef, {
           name: nameResolved,
           isActivated: true,
           uid: uid || null,
-          role: mapped?.role || userData.role || (isSuper ? 'super_admin' : 'soldier'),
-          team: mapped?.team || userData.team || 'לוגיסטיקה',
+          role: detectedRole,
+          team: detectedTeam,
           activatedAt: userData.activatedAt || new Date(),
           lastActive: new Date()
         }, { merge: true });
@@ -1716,8 +1720,8 @@ const App = () => {
         if (uid) {
           await setDoc(doc(db, "whitelist_uids", uid), {
             name: nameResolved,
-            role: mapped?.role || userData.role || (isSuper ? 'super_admin' : 'soldier'),
-            team: mapped?.team || userData.team || 'לוגיסטיקה',
+            role: detectedRole,
+            team: detectedTeam,
             activatedAt: new Date()
           }, { merge: true });
         }
@@ -1725,8 +1729,8 @@ const App = () => {
         console.warn("Firestore sync skipped/failed:", firestoreError);
       }
 
-      const detectedRole = mapped?.role || userData.role || (isSuper ? 'super_admin' : 'soldier');
-      const detectedTeam = mapped?.team || userData.team || 'לוגיסטיקה';
+      const detectedRole = isSuper ? 'super_admin' : (mapped?.role || userData.role || 'soldier');
+      const detectedTeam = isSuper ? (mapped?.team || 'לוגיסטיקה') : (mapped?.team || userData.team || 'לוגיסטיקה');
 
       setUserName(nameResolved);
       setUserRole(detectedRole);
@@ -1913,7 +1917,7 @@ const App = () => {
       setActiveTab('bot-settings');
     } else if (userName && userName.includes('זוהר')) {
       setActiveTab('kitchen_manager');
-    } else if (isSuperAdmin && (userName === 'לירי אביגדור' || userName === 'אילן אביגדור')) {
+    } else if (isSuperAdmin || userName === 'לירי אביגדור' || userName === 'אילן אביגדור') {
       setActiveTab('tasks');
     }
   }, [userName, isSuperAdmin]);

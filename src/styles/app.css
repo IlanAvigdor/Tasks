@@ -364,14 +364,15 @@ body.theme-evening .inline-edit-textarea {
     left: 0;
     right: 0;
     height: 72px;
-    background: var(--card-bg);
+    background: rgba(15, 23, 42, 0.92);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
-    border-top: 1px solid var(--glass-border);
+    border-top: 1.5px solid rgba(255, 255, 255, 0.2);
     display: flex;
     align-items: center;
     z-index: 10000;
-    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
+    color: #ffffff;
 }
 
 .nav-tab {
@@ -381,20 +382,21 @@ body.theme-evening .inline-edit-textarea {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    color: var(--text-muted);
+    color: #94a3b8;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-size: 0.85rem;
     font-weight: 600;
     z-index: 2;
     height: 100%;
-    opacity: 0.6;
+    opacity: 0.75;
 }
 
 .nav-tab.active {
-    color: var(--primary);
-    font-weight: 700;
+    color: #60a5fa;
+    font-weight: 800;
     opacity: 1;
+    transform: translateY(-2px);
 }
 
 .nav-tab i {
