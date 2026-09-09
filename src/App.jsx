@@ -295,19 +295,28 @@ const getTaskStatusButton = (task, isAdmin, currentUserName) => {
     return null;
   } else {
     if (task.isVerified) return null;
-    if (!task.isInProgress && !task.isDone) {
-      const hasAccepted = task.acceptedBy?.includes(currentUserName);
-      if (hasAccepted) {
-        return <button className="status-btn btn-accepted" disabled>✓ נרשם (ממתין...)</button>;
-      }
-      return <button className="status-btn btn-pending">על זה</button>;
-    } else if (task.isInProgress) {
-      return <button className="status-btn btn-in-progress">סיימתי</button>;
-    } else if (task.isDone) {
-      return <button className="status-btn btn-done">איפוס</button>;
-    }
+    return (
+      <button 
+        className={`status-btn ${task.isDone ? 'btn-verify' : 'btn-pending'}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '0.4rem 0.8rem',
+          borderRadius: '10px',
+          fontWeight: 700,
+          fontSize: '0.9rem',
+          background: task.isDone ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.08)',
+          color: task.isDone ? '#fff' : 'var(--text-main)',
+          border: task.isDone ? 'none' : '1px solid rgba(255,255,255,0.25)',
+          cursor: 'pointer'
+        }}
+      >
+        <span style={{ fontSize: '1.15rem' }}>{task.isDone ? '☑️' : '☐'}</span>
+        <span>{task.isDone ? 'בוצע (V)' : 'סימון כבוצע'}</span>
+      </button>
+    );
   }
-  return null;
 };
 
 const TaskDragPreview = ({ task, isAdmin, isOverTrash, currentUserName }) => {
@@ -1264,7 +1273,8 @@ const App = () => {
   const [isMeetingFormOpen, setIsMeetingFormOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState({ title: '', time: '', isRecurring: false });
   const [isKitchenDutyModalOpen, setIsKitchenDutyModalOpen] = useState(false);
-  const [kitchenDutyForm, setKitchenDutyForm] = useState({ name: '', originalTeam: '' });
+  const [kitchenDutyForm, setKitchenDutyForm] = useState({ name: '', originalTeam: '', avatar: null, avatarPreview: null });
+  const [isSubmittingKitchenDuty, setIsSubmittingKitchenDuty] = useState(false);
   const [kitchenDuties, setKitchenDuties] = useState([]);
   const [isDevicesModalOpen, setIsDevicesModalOpen] = useState(false);
 
@@ -1316,8 +1326,11 @@ const App = () => {
   }, [isAuthorized, workerTeam, userRole]);
 
   const isCook = useMemo(() => {
-    return isAuthorized && workerTeam === 'מטבח' && userRole !== 'commander';
-  }, [isAuthorized, workerTeam, userRole]);
+    const isDutySoldier = registeredWorkers.some(w => w.name === userName && w.isKitchenDuty) || 
+                          kitchenDuties.some(d => d.name === userName) ||
+                          (typeof window !== 'undefined' && localStorage.getItem('isKitchenDuty') === 'true');
+    return isAuthorized && workerTeam === 'מטבח' && userRole !== 'commander' && !isDutySoldier && (userRole === 'cook' || KNOWN_TEAM_ROLES[userName]?.role === 'cook' || userName === 'גרשון מירל');
+  }, [isAuthorized, workerTeam, userRole, userName, registeredWorkers, kitchenDuties]);
 
   // Cooks can also act as limited admins for their duty soldiers
   const isAdmin = isSuperAdmin || isCommander || isCook;
@@ -2228,24 +2241,141 @@ const App = () => {
     }
   }, [whitelistUsers, registeredWorkers]);
 
-  const handleKitchenDutySubmit = async (e) => {
-    e.preventDefault();
-    if (!kitchenDutyForm.name.trim()) return;
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 250;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setKitchenDutyForm(prev => ({ ...prev, avatar: dataUrl, avatarPreview: dataUrl }));
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAutoApproveKitchenDuty = async (e) => {
+    if (e) e.preventDefault();
+    const nameClean = kitchenDutyForm.name.trim();
+    const teamClean = kitchenDutyForm.originalTeam.trim() || 'כללי';
+    if (!nameClean) return;
+
+    setIsSubmittingKitchenDuty(true);
     try {
-      await addDoc(collection(db, "kitchen_duties"), {
-        name: kitchenDutyForm.name.trim(),
-        originalTeam: kitchenDutyForm.originalTeam.trim() || 'כללי',
-        status: 'pending',
-        assignedToCook: null,
-        date: getTodayDateStr(),
+      let currentFirebaseUser = auth.currentUser;
+      if (!currentFirebaseUser) {
+        const cred = await signInAnonymously(auth);
+        currentFirebaseUser = cred.user;
+      }
+      const uid = currentFirebaseUser?.uid || null;
+      const today = getTodayDateStr();
+
+      // 1. Whitelist document - auto approves security check!
+      await setDoc(doc(db, "whitelist", nameClean), {
+        name: nameClean,
+        team: 'מטבח',
+        role: 'soldier',
+        isKitchenDuty: true,
+        originalTeam: teamClean,
+        avatar: kitchenDutyForm.avatar || null,
+        isActivated: true,
+        uid: uid,
         createdAt: new Date()
-      });
-      alert('בקשתך לתורנות הועברה בהצלחה למנהל המשמרת (אחמש). נא להמתין לאישור.');
+      }, { merge: true });
+
+      if (uid) {
+        await setDoc(doc(db, "whitelist_uids", uid), {
+          name: nameClean,
+          role: 'soldier',
+          team: 'מטבח',
+          activatedAt: new Date()
+        }, { merge: true });
+      }
+
+      // 2. Workers collection entry
+      const existingWorker = registeredWorkers.find(w => w.name === nameClean && w.team === 'מטבח');
+      if (existingWorker) {
+        await updateDoc(doc(db, "workers", existingWorker.id), {
+          originalTeam: teamClean,
+          avatar: kitchenDutyForm.avatar || existingWorker.avatar || null,
+          isKitchenDuty: true,
+          date: today
+        });
+      } else {
+        await addDoc(collection(db, "workers"), {
+          name: nameClean,
+          team: 'מטבח',
+          originalTeam: teamClean,
+          avatar: kitchenDutyForm.avatar || null,
+          isKitchenDuty: true,
+          date: today,
+          assignedToCook: null,
+          createdAt: new Date()
+        });
+      }
+
+      // 3. Kitchen Duties collection entry with status 'approved'
+      const existingDuty = kitchenDuties.find(d => d.name === nameClean && d.date === today);
+      if (existingDuty) {
+        await updateDoc(doc(db, "kitchen_duties", existingDuty.id), {
+          originalTeam: teamClean,
+          avatar: kitchenDutyForm.avatar || existingDuty.avatar || null,
+          status: 'approved'
+        });
+      } else {
+        await addDoc(collection(db, "kitchen_duties"), {
+          name: nameClean,
+          originalTeam: teamClean,
+          avatar: kitchenDutyForm.avatar || null,
+          status: 'approved',
+          assignedToCook: null,
+          kitchenRole: null,
+          date: today,
+          createdAt: new Date()
+        });
+      }
+
+      // 4. Save local state & storage
+      localStorage.setItem('workerName', nameClean);
+      localStorage.setItem('workerTeam', 'מטבח');
+      localStorage.setItem('workerRole', 'soldier');
+      localStorage.setItem('isKitchenDuty', 'true');
+      setUserName(nameClean);
+      setWorkerTeam('מטבח');
+      setUserRole('soldier');
+      setIsAuthorized(true);
       setIsKitchenDutyModalOpen(false);
-      setKitchenDutyForm({ name: '', originalTeam: '' });
-    } catch (e) {
-      console.error("Error submitting kitchen duty:", e);
-      alert("שגיאה בשליחת הבקשה: " + e.message);
+      setAuthError('');
+
+      // Clean URL query parameters so refreshing stays logged in
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+    } catch (err) {
+      console.error("Error auto approving kitchen duty:", err);
+      alert("שגיאה ברישום לתורנות: " + err.message);
+    } finally {
+      setIsSubmittingKitchenDuty(false);
     }
   };
 
@@ -2715,6 +2845,216 @@ const App = () => {
     return filtered.filter(t => t.assignees?.includes(userName) && !t.isVerified);
   };
 
+  const renderKitchenDutyWelcomeScreen = () => {
+    return (
+      <div className="registration-overlay" style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem',
+        overflowY: 'auto'
+      }}>
+        <div className="glass-card" style={{
+          width: '100%',
+          maxWidth: '440px',
+          padding: '2.2rem 1.8rem',
+          borderRadius: '24px',
+          background: 'rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.2rem',
+          direction: 'rtl'
+        }}>
+          {/* Header Icon & Title */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{
+              fontSize: '3rem',
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(239, 68, 68, 0.25))',
+              border: '2px solid rgba(245, 158, 11, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.3)'
+            }}>
+              🍳
+            </div>
+            <h2 style={{ margin: '0.4rem 0 0 0', fontSize: '1.65rem', fontWeight: 800, color: '#fef08a' }}>
+              ברוכים הבאים לתורנות מטבח!
+            </h2>
+            <p style={{ margin: 0, opacity: 0.85, fontSize: '0.92rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+              סרקת את הברקוד של האחמ"ש (זוהר). מילוי הפרטים הבאים יאשר אותך אוטומטית למערכת המשמרת.
+            </p>
+          </div>
+
+          <form onSubmit={handleAutoApproveKitchenDuty} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem', marginTop: '0.4rem' }}>
+            {/* Avatar Upload (Optional) */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
+              <label style={{ fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600 }}>תמונה אישית (אופציונלי):</label>
+              <label 
+                htmlFor="kitchenDutyAvatarInput"
+                style={{
+                  width: '85px',
+                  height: '85px',
+                  borderRadius: '50%',
+                  background: kitchenDutyForm.avatarPreview ? `url(${kitchenDutyForm.avatarPreview}) center/cover no-repeat` : 'rgba(255,255,255,0.08)',
+                  border: '2px dashed rgba(255,255,255,0.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                {!kitchenDutyForm.avatarPreview && (
+                  <>
+                    <span style={{ fontSize: '1.8rem' }}>📷</span>
+                    <span style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '2px', color: '#cbd5e1' }}>העלאת תמונה</span>
+                  </>
+                )}
+                {kitchenDutyForm.avatarPreview && (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontSize: '1.1rem'
+                  }}>
+                    ✏️
+                  </div>
+                )}
+              </label>
+              <input 
+                id="kitchenDutyAvatarInput"
+                type="file" 
+                accept="image/*" 
+                onChange={handleAvatarChange} 
+                style={{ display: 'none' }}
+              />
+            </div>
+
+            {/* Full Name */}
+            <div style={{ textAlign: 'right' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#e2e8f0', marginBottom: '0.3rem', fontWeight: 600 }}>שם מלא: <span style={{ color: '#ef4444' }}>*</span></label>
+              <input 
+                className="input-field" 
+                placeholder="הכנס שם מלא (לדוגמה: יובל כהן)" 
+                value={kitchenDutyForm.name} 
+                onChange={e => setKitchenDutyForm({ ...kitchenDutyForm, name: e.target.value })} 
+                required
+                style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', fontSize: '0.98rem' }}
+              />
+            </div>
+
+            {/* Department / Original Team */}
+            <div style={{ textAlign: 'right' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#e2e8f0', marginBottom: '0.3rem', fontWeight: 600 }}>מחלקה / צוות מקור: <span style={{ color: '#ef4444' }}>*</span></label>
+              <input 
+                className="input-field" 
+                placeholder="לדוגמה: לוגיסטיקה, מודיעין, שריון..." 
+                value={kitchenDutyForm.originalTeam} 
+                onChange={e => setKitchenDutyForm({ ...kitchenDutyForm, originalTeam: e.target.value })} 
+                required
+                style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', fontSize: '0.98rem' }}
+              />
+              {/* Quick-selection buttons for original team */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                {['לוגיסטיקה', 'מודיעין', 'תקשוב', 'חמ"ל', 'שריון', 'חימוש', 'כללי'].map(team => (
+                  <button
+                    key={team}
+                    type="button"
+                    onClick={() => setKitchenDutyForm({ ...kitchenDutyForm, originalTeam: team })}
+                    style={{
+                      padding: '0.3rem 0.65rem',
+                      borderRadius: '20px',
+                      fontSize: '0.78rem',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      background: kitchenDutyForm.originalTeam === team ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'rgba(255,255,255,0.08)',
+                      color: '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {team}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button 
+              className="btn btn-save" 
+              type="submit" 
+              disabled={isSubmittingKitchenDuty}
+              style={{ 
+                width: '100%', 
+                padding: '0.95rem', 
+                fontSize: '1.05rem', 
+                fontWeight: 700, 
+                borderRadius: '14px', 
+                marginTop: '0.4rem',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                boxShadow: '0 8px 20px rgba(16, 185, 129, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              {isSubmittingKitchenDuty ? (
+                <span>מאשר ומחבר...</span>
+              ) : (
+                <span>🚀 אישור וכניסה לתורנות</span>
+              )}
+            </button>
+
+            {/* Option to return / log in as regular user if scanned by accident */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsKitchenDutyModalOpen(false);
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                marginTop: '0.2rem'
+              }}
+            >
+              אינך תורן מטבח? התחבר למערכת הרגילה
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  const isKitchenDutyParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('action') === 'kitchen_duty';
+  const isKitchenDutyFlow = isKitchenDutyModalOpen || isKitchenDutyParam;
+
+  if (isKitchenDutyFlow && (!isAuthorized || userRole !== 'commander')) {
+    return renderKitchenDutyWelcomeScreen();
+  }
+
   if (authLoading) return <div className="container" style={{textAlign:'center', marginTop:'4rem'}}>טוען אבטחה...</div>;
 
   // Fully block unauthorized users from seeing the main layout
@@ -2839,29 +3179,74 @@ const App = () => {
     else d = new Date(ts);
     return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
   };
-
-  const renderKitchenManagerDashboard = () => {
     const cooks = Object.keys(KNOWN_TEAM_ROLES).filter(name => {
       const u = KNOWN_TEAM_ROLES[name];
       return u.team === 'מטבח' && u.role !== 'commander';
     });
 
-    const pendingDuties = kitchenDuties.filter(d => d.status === 'pending');
-    const approvedDuties = workersByTeam['מטבח']?.filter(w => w.isKitchenDuty) || [];
-    
-    // Combine all active kitchen duty soldiers
-    const allKitchenDuties = [
-      ...pendingDuties.map(d => ({ ...d, isPending: true })),
-      ...approvedDuties.map(w => ({ ...w, isPending: false }))
-    ];
+    const todayStr = getTodayDateStr();
 
+    // 1. All records in kitchenDuties collection for today or active
+    const dutiesList = kitchenDuties.filter(d => !d.date || d.date === todayStr);
+
+    // 2. All workers in registeredWorkers with team === 'מטבח' or isKitchenDuty
+    const kitchenWorkersFromDb = registeredWorkers.filter(w => w.team === 'מטבח' || w.isKitchenDuty);
+
+    // 3. Map & deduplicate by soldier name
+    const dutyMap = new Map();
+
+    dutiesList.forEach(d => {
+      if (d.name) {
+        const nameKey = d.name.trim().toLowerCase();
+        dutyMap.set(nameKey, {
+          id: d.id,
+          name: d.name.trim(),
+          originalTeam: d.originalTeam || 'כללי',
+          kitchenRole: d.kitchenRole || null,
+          assignedToCook: d.assignedToCook || null,
+          status: d.status || 'approved',
+          avatar: d.avatar || null,
+          isPending: d.status === 'pending'
+        });
+      }
+    });
+
+    kitchenWorkersFromDb.forEach(w => {
+      if (w.name) {
+        const nameKey = w.name.trim().toLowerCase();
+        const existing = dutyMap.get(nameKey);
+        if (existing) {
+          dutyMap.set(nameKey, {
+            ...existing,
+            id: existing.id || w.id,
+            avatar: existing.avatar || w.avatar || null,
+            kitchenRole: existing.kitchenRole || w.kitchenRole || null,
+            assignedToCook: existing.assignedToCook || w.assignedToCook || null,
+            originalTeam: existing.originalTeam || w.originalTeam || 'כללי'
+          });
+        } else {
+          dutyMap.set(nameKey, {
+            id: w.id,
+            name: w.name.trim(),
+            originalTeam: w.originalTeam || 'כללי',
+            kitchenRole: w.kitchenRole || null,
+            assignedToCook: w.assignedToCook || null,
+            status: 'approved',
+            avatar: w.avatar || null,
+            isPending: false
+          });
+        }
+      }
+    });
+
+    const allKitchenDuties = Array.from(dutyMap.values());
     const roleOptions = Object.keys(kitchenRoleTemplates);
 
     return (
       <div className="kitchen-manager-dashboard" style={{ padding: '1rem', width: '100%', direction: 'rtl' }}>
         {/* Header Bar with Essential Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.8rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>👨‍🍳 ניהול משמרת מטבח</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>👨‍🍳 ניהול משמרת מטבח (אחמ"ש)</h2>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
             <button 
               className="btn" 
@@ -2901,7 +3286,7 @@ const App = () => {
                 margin: 0
               }}
             >
-              ⚙️ הגדרת תפקידים ייעודיים (אחמ"ש)
+              ⚙️ הגדרת תפקידים
             </button>
             <button 
               className="btn" 
@@ -2920,174 +3305,231 @@ const App = () => {
                 margin: 0
               }}
             >
-              🏁 סגירת יום תורנויות
+              🏁 סגירת יום
             </button>
           </div>
         </div>
 
-        {/* Worker Role Assignment Slide/Cards */}
-        <div className="glass-card" style={{ padding: '1.2rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        {/* Draggable & Clickable Role Bar / Bank */}
+        <div className="glass-card" style={{ padding: '1rem 1.2rem', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#fde047', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              🏷️ תפקידים זמינים (גרור לתורן או לחץ לשיוך)
+            </h4>
+            <span style={{ fontSize: '0.78rem', opacity: 0.7 }}>💡 אפשר לגרור תפקיד ישירות על תורן</span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            {roleOptions.map(rName => (
+              <div
+                key={rName}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', rName);
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
+                style={{
+                  padding: '0.5rem 0.9rem',
+                  borderRadius: '20px',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.25))',
+                  border: '1px solid rgba(168, 85, 247, 0.4)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: 'grab',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  userSelect: 'none'
+                }}
+              >
+                <span>✨</span> {rName}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Clean Worker Grid */}
+        <div className="glass-card" style={{ padding: '1.2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
             <h3 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>📋</span> שיוך תפקידים לתורנים ({allKitchenDuties.length})
+              <span>🪖</span> תורני משמרת ({allKitchenDuties.length})
             </h3>
-            <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>החלק/בחר תפקיד בלחיצה</span>
           </div>
 
           {allKitchenDuties.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2.5rem 1rem', opacity: 0.6 }}>
-              <p style={{ margin: 0, fontSize: '1.05rem' }}>אין תורנים פעילים במשמרת כרגע.</p>
-              <span style={{ fontSize: '0.85rem' }}>תורנים שנרשמו יופיעו כאן לשיוך תפקידים.</span>
+              <p style={{ margin: 0, fontSize: '1.05rem' }}>אין תורנים רשומים במשמרת כרגע.</p>
+              <span style={{ fontSize: '0.85rem' }}>תורנים שסורקים את ה-QR יופיעו כאן באופן מיידי.</span>
             </div>
           ) : (
-            <div 
-              style={{ 
-                display: 'flex', 
-                gap: '1rem', 
-                overflowX: 'auto', 
-                paddingBottom: '0.8rem',
-                scrollSnapType: 'x mandatory',
-                WebkitOverflowScrolling: 'touch'
-              }}
-            >
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
+              gap: '1.2rem' 
+            }}>
               {allKitchenDuties.map(worker => {
                 const currentRole = worker.kitchenRole || '';
-                const currentCook = worker.assignedToCook || '';
 
                 return (
-                  <div 
-                    key={worker.id} 
-                    style={{ 
-                      flex: '0 0 320px', 
-                      scrollSnapAlign: 'start', 
-                      background: 'rgba(0,0,0,0.3)', 
-                      border: currentRole ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255,255,255,0.1)', 
-                      borderRadius: '14px', 
-                      padding: '1.1rem',
+                  <div
+                    key={worker.id}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const droppedRole = e.dataTransfer.getData('text/plain');
+                      if (droppedRole) {
+                        handleAssignRoleToDutyWorker(worker.name, droppedRole);
+                      }
+                    }}
+                    style={{
+                      background: 'rgba(0,0,0,0.25)',
+                      border: currentRole ? '1.5px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: '18px',
+                      padding: '1.2rem',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.9rem',
-                      boxShadow: currentRole ? '0 4px 14px rgba(16, 185, 129, 0.15)' : 'none'
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      gap: '0.8rem',
+                      position: 'relative',
+                      boxShadow: currentRole ? '0 6px 20px rgba(16, 185, 129, 0.15)' : 'none',
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    {/* Worker Info Row */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>🪖</span> {worker.name}
-                        </div>
-                        {worker.originalTeam && (
-                          <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>צוות מקור: {worker.originalTeam}</span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {worker.isPending ? (
-                          <span style={{ fontSize: '0.75rem', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                            ⏳ ממתין
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                            🟢 מאושר
-                          </span>
-                        )}
-                        <button 
-                          onClick={() => {
-                            if (worker.isPending) {
-                              handleRejectKitchenDuty(worker.id);
-                            } else {
-                              deleteWorker(worker.id);
-                            }
+                    {/* Delete / Remove Duty Worker Button */}
+                    <button
+                      onClick={() => {
+                        if (worker.isPending) {
+                          handleRejectKitchenDuty(worker.id);
+                        } else {
+                          deleteWorker(worker.id);
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        opacity: 0.6,
+                        cursor: 'pointer',
+                        fontSize: '1.1rem',
+                        padding: '4px'
+                      }}
+                      title="הסר תורן"
+                    >
+                      ✖
+                    </button>
+
+                    {/* Avatar (User Photo or Anonymous Face) */}
+                    <div style={{ position: 'relative' }}>
+                      {worker.avatar ? (
+                        <img 
+                          src={worker.avatar} 
+                          alt={worker.name} 
+                          style={{
+                            width: '72px',
+                            height: '72px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '3px solid rgba(255,255,255,0.2)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                           }}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', opacity: 0.7, cursor: 'pointer', fontSize: '1rem', padding: '2px' }}
-                          title="הסר תורן"
+                        />
+                      ) : (
+                        <div style={{
+                          width: '72px',
+                          height: '72px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04))',
+                          border: '2px dashed rgba(255,255,255,0.25)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '2.2rem',
+                          color: '#cbd5e1'
+                        }}>
+                          👤
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Name & Department */}
+                    <div style={{ width: '100%' }}>
+                      <div style={{ fontWeight: 800, fontSize: '1.15rem', color: '#fff', marginBottom: '2px' }}>
+                        {worker.name}
+                      </div>
+                      {worker.originalTeam && (
+                        <span style={{ fontSize: '0.78rem', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '10px', color: '#94a3b8' }}>
+                          צוות: {worker.originalTeam}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Assigned Role / Quick Dropdown & Drag Drop Target */}
+                    <div style={{ width: '100%', marginTop: '0.3rem' }}>
+                      {currentRole ? (
+                        <div style={{
+                          background: 'rgba(16, 185, 129, 0.2)',
+                          border: '1px solid #10b981',
+                          color: '#10b981',
+                          padding: '0.5rem 0.8rem',
+                          borderRadius: '12px',
+                          fontWeight: 800,
+                          fontSize: '0.9rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '6px'
+                        }}>
+                          <span>✨ {currentRole}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleAssignRoleToDutyWorker(worker.name, '')}
+                            style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: '0.9rem', opacity: 0.8 }}
+                            title="איפוס תפקיד"
+                          >
+                            ✎
+                          </button>
+                        </div>
+                      ) : (
+                        <select
+                          className="input-field"
+                          style={{
+                            margin: 0,
+                            width: '100%',
+                            padding: '0.55rem 0.8rem',
+                            fontSize: '0.88rem',
+                            textAlign: 'center',
+                            borderRadius: '12px',
+                            background: 'rgba(255,255,255,0.07)',
+                            border: '1.5px dashed rgba(255,255,255,0.25)',
+                            color: '#cbd5e1'
+                          }}
+                          value={currentRole}
+                          onChange={(e) => {
+                            const newRole = e.target.value;
+                            if (newRole) handleAssignRoleToDutyWorker(worker.name, newRole);
+                          }}
                         >
-                          ✖
-                        </button>
-                      </div>
+                          <option value="" disabled style={{ color: '#000' }}>📥 גרור או בחר תפקיד...</option>
+                          {roleOptions.map(rName => (
+                            <option key={rName} value={rName} style={{ color: '#000' }}>{rName}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
-
-                    {/* Cook Assignment Dropdown */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>🍳 אחראי:</span>
-                      <select 
-                        className="input-field" 
-                        style={{ margin: 0, flex: 1, padding: '0.3rem 0.6rem', fontSize: '0.85rem' }}
-                        value={currentCook}
-                        onChange={(e) => {
-                          const newCook = e.target.value;
-                          if (worker.isPending) {
-                            handleApproveKitchenDuty(worker.id, newCook, currentRole);
-                          } else {
-                            handleAssignRoleToDutyWorker(worker.name, currentRole || roleOptions[0], newCook);
-                          }
-                        }}
-                      >
-                        <option value="">בחר טבח...</option>
-                        {cooks.map(cook => (
-                          <option key={cook} value={cook}>{cook}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Dedicated Role Selection Chips (Slide Bar) */}
-                    <div>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 600, opacity: 0.85, marginBottom: '6px' }}>
-                        🏷️ בחר תפקיד ייעודי (יפתח משימות):
-                      </div>
-                      <div 
-                        style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          gap: '6px' 
-                        }}
-                      >
-                        {roleOptions.map(rName => {
-                          const isSelected = currentRole === rName;
-                          return (
-                            <button
-                              key={rName}
-                              type="button"
-                              onClick={() => {
-                                if (worker.isPending) {
-                                  handleApproveKitchenDuty(worker.id, currentCook || cooks[0] || 'ללא', rName);
-                                } else {
-                                  handleAssignRoleToDutyWorker(worker.name, rName, currentCook);
-                                }
-                              }}
-                              style={{
-                                padding: '0.5rem 0.8rem',
-                                borderRadius: '8px',
-                                border: isSelected ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
-                                background: isSelected ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.05)',
-                                color: isSelected ? '#10b981' : '#fff',
-                                fontWeight: isSelected ? 800 : 500,
-                                fontSize: '0.85rem',
-                                textAlign: 'right',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                              }}
-                            >
-                              <span>{rName}</span>
-                              {isSelected && <span>✓ מוגדר</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
                   </div>
                 );
               })}
             </div>
           )}
         </div>
-
       </div>
     );
-  };
+
 
   const renderAttendanceBanner = () => {
     return null;
@@ -5059,35 +5501,7 @@ const App = () => {
         </div>
       )}
 
-      {isKitchenDutyModalOpen && (
-        <div className="registration-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center'}}>
-           <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-              <h2 style={{ margin: '0.5rem 0' }}>🍽️ רישום תורנות מטבח</h2>
-              <p style={{ opacity: 0.8, fontSize: '0.95rem', margin: '0' }}>אנא הכנס את פרטיך לצורך אישור תורנות המטבח היומית.</p>
-              
-              <form onSubmit={handleKitchenDutySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                <input 
-                  className="input-field" 
-                  placeholder="שם מלא" 
-                  value={kitchenDutyForm.name} 
-                  onChange={e => setKitchenDutyForm({...kitchenDutyForm, name: e.target.value})} 
-                  required
-                />
-                <input 
-                  className="input-field" 
-                  placeholder="צוות מקור (לדוגמה: לוגיסטיקה)" 
-                  value={kitchenDutyForm.originalTeam} 
-                  onChange={e => setKitchenDutyForm({...kitchenDutyForm, originalTeam: e.target.value})} 
-                />
-                
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-save" type="submit" style={{ flex: 1 }}>שלח בקשה לאישור</button>
-                  <button className="btn btn-cancel" type="button" onClick={() => setIsKitchenDutyModalOpen(false)}>ביטול</button>
-                </div>
-              </form>
-           </div>
-        </div>
-      )}
+
 
       {isQrModalOpen && (
         <div className="registration-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={() => setIsQrModalOpen(false)}>
