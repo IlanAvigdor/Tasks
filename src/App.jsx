@@ -37,7 +37,7 @@ import {
 import {CSS} from '@dnd-kit/utilities';
 import KitchenSketchboard from './components/KitchenSketchboard';
 const ADMIN_GUID = 'admin-987654';
-const APP_VERSION = '1.06';
+const APP_VERSION = '1.07';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
 const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'רכב וניוד', 'רפואה', 'טנ"א (חימוש)', 'מטבח', 'שלישות', 'מפקדה'];
 const PLATOON_SERGEANTS = ["מעיין ישראלי", "מעיין נקאש", "דביר אגסי", "דמקה אייזנאו", "דמקה אזנאו"];
@@ -1913,14 +1913,15 @@ const App = () => {
 
   // Redirect users to their specific landing tab on login
   useEffect(() => {
+    if (!userName) return;
     if (userName === 'תמר ביליה') {
       setActiveTab('bot-settings');
-    } else if (userName && userName.includes('זוהר')) {
+    } else if (userName.includes('זוהר')) {
       setActiveTab('kitchen_manager');
-    } else if (isSuperAdmin || userName === 'לירי אביגדור' || userName === 'אילן אביגדור') {
+    } else {
       setActiveTab('tasks');
     }
-  }, [userName, isSuperAdmin]);
+  }, [userName, isAuthorized]);
 
   // Auto-reset or Auto-delete meetings 5 minutes after their start time
   useEffect(() => {
@@ -5308,7 +5309,7 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (activeTab === 'kitchen_manager' && (isKitchenCommander || isSuperAdmin)) ? (
+        ) : (activeTab === 'kitchen_manager' && isKitchenCommander) ? (
           renderKitchenManagerDashboard()
         ) : (activeTab === 'kitchen_sketchboard' && (isKitchenCommander || isSuperAdmin)) ? (
           <KitchenSketchboard tasks={tasks} onBack={() => setActiveTab('tasks')} />

@@ -71,5 +71,10 @@ service cloud.firestore {
     match /kitchen_layouts/{layoutId} {
       allow read, write: if isAuthenticated();
     }
+
+    // 12. Kitchen Settings rules
+    match /kitchen_settings/{settingId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }
