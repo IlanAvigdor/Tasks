@@ -797,9 +797,9 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onOpenAssignment }) => {
             )}
             {worker.role === 'soldier' && (
               TEAM_LEADS.includes(worker.name) ? (
-                <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', borderRadius: '4px', fontWeight: 600 }}>⚡ סמל</span>
+                <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', borderRadius: '4px', fontWeight: 600 }}>⚡ ראש צוות</span>
               ) : (
-                <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(107, 114, 128, 0.15)', color: '#4b5563', borderRadius: '4px', fontWeight: 500 }}>🪖 חייל</span>
+                <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(107, 114, 128, 0.15)', color: '#4b5563', borderRadius: '4px', fontWeight: 500 }}>🪖 עובד</span>
               )
             )}
           </span>
@@ -1303,6 +1303,7 @@ const App = () => {
   const [hideAssigned, setHideAssigned] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [newWorkerName, setNewWorkerName] = useState('');
+  const [newWorkerTeam, setNewWorkerTeam] = useState('תפעול');
   const [kitchenRooms, setKitchenRooms] = useState([]);
   const [kitchenRoleTemplates, setKitchenRoleTemplates] = useState(DEFAULT_KITCHEN_ROLES);
   const [isRoleEditorOpen, setIsRoleEditorOpen] = useState(false);
@@ -1558,10 +1559,10 @@ const App = () => {
       }, { merge: true });
 
       setNewWorkerName('');
-      alert(`החייל ${newWorkerName.trim()} נוסף בהצלחה לצוות ${targetTeam}`);
+      alert(`העובד ${newWorkerName.trim()} נוסף בהצלחה לצוות ${targetTeam}`);
     } catch (err) {
       console.error("Error adding worker:", err);
-      alert("שגיאה בהוספת חייל: " + err.message);
+      alert("שגיאה בהוספת עובד: " + err.message);
     }
   };
 
@@ -3743,7 +3744,7 @@ const App = () => {
                       }}>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{memberName}</div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'commander' ? 'מפקד' : 'חייל'}</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'commander' ? 'מפקד' : 'עובד'}</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{
@@ -3934,7 +3935,7 @@ const App = () => {
 
   const handleExportWhatsApp = () => {
     const today = getTodayDateStr().split('-').reverse().join('.');
-    let msg = `*דוח נוכחות - גדוד 402 - ${today}*\n\n`;
+    let msg = `*דוח נוכחות - הארגון - ${today}*\n\n`;
     
     const soldiersOnly = getAllSoldiers();
 
@@ -4398,7 +4399,7 @@ const App = () => {
             <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '1rem', marginTop: 0 }}>
               {isTamar 
                 ? 'לחצי על יום בלוח השנה כדי לשבץ צוותים לתורנות מקלחות ושירותים.'
-                : `שלום ${userName} (${sergeantTeam}). לחץ על יום כדי לשבץ את חיילי הצוות שלך למטבח, רס"ר ושבת.`
+                : `שלום ${userName} (${sergeantTeam}). לחץ על יום כדי לשבץ את עובדי הצוות שלך למטבח, רס"ר ושבת.`
               }
             </p>
 
@@ -4684,7 +4685,7 @@ const App = () => {
         ) : !isTamar ? (
           <div className="glass-card" style={{ padding: '1.2rem' }}>
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 700 }}>
-              📈 טבלת חלוקת עומס תורנויות - {isTamar ? 'כלל הגדוד' : `צוות ${sergeantTeam}`}
+              📈 טבלת חלוקת עומס תורנויות - {isTamar ? 'כלל הארגון' : `צוות ${sergeantTeam}`}
             </h3>
             <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '1.2rem', marginTop: 0 }}>
               העובדים מסודרים מהעומס הנמוך ביותר לגבוה ביותר. השתמש בטבלה כדי לבחור את הבא בתור למשימה.
@@ -4693,7 +4694,7 @@ const App = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
-                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700 }}>שם חייל</th>
+                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700 }}>שם עובד</th>
                   {isTamar && <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700 }}>צוות</th>}
                   <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>ימי מטבח (🍳)</th>
                   <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>ימי רס"ר (🛠️)</th>
@@ -4800,7 +4801,7 @@ const App = () => {
                             onChange={(e) => handleSaveFullDayDuty(selectedCalendarDay, 'kitchen', e.target.value)}
                             style={{ margin: 0 }}
                           >
-                            <option value="">-- בחר חייל ליום שלם --</option>
+                            <option value="">-- בחר עובד ליום שלם --</option>
                             {teamSoldiers.map(s => (
                               <option key={s.name} value={s.name}>{s.name}</option>
                             ))}
@@ -4816,7 +4817,7 @@ const App = () => {
                               onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'kitchen_morning', e.target.value)}
                               style={{ margin: 0, fontSize: '0.85rem' }}
                             >
-                              <option value="">-- בחר חייל --</option>
+                              <option value="">-- בחר עובד --</option>
                               {teamSoldiers.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
                               ))}
@@ -4830,7 +4831,7 @@ const App = () => {
                               onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'kitchen_evening', e.target.value)}
                               style={{ margin: 0, fontSize: '0.85rem' }}
                             >
-                              <option value="">-- בחר חייל --</option>
+                              <option value="">-- בחר עובד --</option>
                               {teamSoldiers.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
                               ))}
@@ -4863,7 +4864,7 @@ const App = () => {
                             onChange={(e) => handleSaveFullDayDuty(selectedCalendarDay, 'rasar', e.target.value)}
                             style={{ margin: 0 }}
                           >
-                            <option value="">-- בחר חייל ליום שלם --</option>
+                            <option value="">-- בחר עובד ליום שלם --</option>
                             {teamSoldiers.map(s => (
                               <option key={s.name} value={s.name}>{s.name}</option>
                             ))}
@@ -4879,7 +4880,7 @@ const App = () => {
                               onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'rasar_morning', e.target.value)}
                               style={{ margin: 0, fontSize: '0.85rem' }}
                             >
-                              <option value="">-- בחר חייל --</option>
+                              <option value="">-- בחר עובד --</option>
                               {teamSoldiers.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
                               ))}
@@ -4893,7 +4894,7 @@ const App = () => {
                               onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'rasar_evening', e.target.value)}
                               style={{ margin: 0, fontSize: '0.85rem' }}
                             >
-                              <option value="">-- בחר חייל --</option>
+                              <option value="">-- בחר עובד --</option>
                               {teamSoldiers.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
                               ))}
@@ -4913,7 +4914,7 @@ const App = () => {
                           onChange={(e) => handleSaveDayDuty(selectedCalendarDay, `closed_shabbat_${sergeantTeam}`, e.target.value)}
                           style={{ margin: 0 }}
                         >
-                          <option value="">-- בחר חייל לסגירה --</option>
+                          <option value="">-- בחר עובד לסגירה --</option>
                           {teamSoldiers.map(s => (
                             <option key={s.name} value={s.name}>{s.name}</option>
                           ))}
@@ -5045,7 +5046,7 @@ const App = () => {
         {/* Header with Quick QR Barcode */}
         <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h2 style={{ margin: '0 0 0.2rem 0', fontSize: '1.2rem', fontWeight: 800 }}>⏰ ניהול מסדרים גדודיים</h2>
+            <h2 style={{ margin: '0 0 0.2rem 0', fontSize: '1.2rem', fontWeight: 800 }}>⏰ ניהול מסדרים ארגוניים</h2>
             <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.8 }}>לחצי על מסדר כדי לצפות ברשימת הנוכחות שלו. המסדר נפתח אוטומטית 10 דקות לפני הזמן ונסגר 5 דקות אחריו.</p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -5258,7 +5259,7 @@ const App = () => {
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <input 
                     className="input-field" 
-                    placeholder="חיפוש חייל..." 
+                    placeholder="חיפוש עובד..." 
                     value={attendanceSearchQuery} 
                     onChange={e => setAttendanceSearchQuery(e.target.value)} 
                     style={{ maxWidth: '160px', margin: 0, padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
@@ -5281,7 +5282,7 @@ const App = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
-                      <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>שם חייל</th>
+                      <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>שם עובד</th>
                       <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700 }}>צוות</th>
                       <th style={{ padding: '0.8rem 0.5rem', fontWeight: 700, textAlign: 'center' }}>סטטוס</th>
                     </tr>
@@ -5337,41 +5338,13 @@ const App = () => {
 
   return (
     <div className="app-shell">
-      {/* Always-visible logout button - bottom left corner */}
-      {isAuthorized && userName && (
-        <button
-          onClick={handleLogout}
-          style={{
-            position: 'fixed',
-            top: 'auto',
-            bottom: '5rem',
-            left: '0.6rem',
-            zIndex: 9999,
-            background: 'rgba(239, 68, 68, 0.85)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '10px',
-            padding: '0.45rem 0.85rem',
-            fontWeight: 800,
-            fontSize: '0.85rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            boxShadow: '0 2px 10px rgba(239,68,68,0.4)',
-            backdropFilter: 'blur(4px)',
-          }}
-          title="התנתק / החלף משתמש"
-        >
-          🚪 עזוב
-        </button>
-      )}
+      
       {/* Multi-Team Header & Role Bar */}
       <header className="app-header">
         <div className="header-top-row">
           <div className="site-brand">
             <span>🛡️</span>
-            <h1>ניהול משימות - גדוד 402</h1>
+            <h1>ניהול משימות - הארגון</h1>
           </div>
           <div className="header-user-info" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
             {userName && (
@@ -5383,13 +5356,13 @@ const App = () => {
               <span className="role-badge super-admin">👑 מנהל ראשי</span>
             )}
             {isCommander && !isSuperAdmin && (
-              <span className="role-badge commander">🎖️ מפקד צוות ({workerTeam})</span>
+              <span className="role-badge commander">🎖️ מנהל צוות ({workerTeam})</span>
             )}
             {!isSuperAdmin && !isCommander && (
               TEAM_LEADS.includes(userName) ? (
-                <span className="role-badge sergeant" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem' }}>⚡ סמל ({workerTeam})</span>
+                <span className="role-badge sergeant" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem' }}>⚡ ראש צוות ({workerTeam})</span>
               ) : (
-                <span className="role-badge soldier">🪖 חייל ({workerTeam})</span>
+                <span className="role-badge soldier">🪖 עובד ({workerTeam})</span>
               )
             )}
             <button 
@@ -5585,10 +5558,10 @@ const App = () => {
           <div className="people-view" style={{ padding: '1rem' }}>
             {isAdmin && (
               <form onSubmit={handleAddWorker} className="glass-card" style={{ display: 'flex', gap: '0.8rem', padding: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>➕ רישום חייל חדש לצוות:</h4>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>➕ רישום עובד חדש לצוות:</h4>
                 <input 
                   className="input-field" 
-                  placeholder="שם מלא של החייל" 
+                  placeholder="שם מלא של העובד" 
                   value={newWorkerName} 
                   onChange={e => setNewWorkerName(e.target.value)} 
                   style={{ maxWidth: '220px', margin: 0, padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
@@ -5605,7 +5578,7 @@ const App = () => {
                     ))}
                   </select>
                 )}
-                <button className="btn btn-save" type="submit" style={{ padding: '0.45rem 1rem', fontSize: '0.9rem', width: 'auto', marginTop: 0 }}>רשום חייל</button>
+                <button className="btn btn-save" type="submit" style={{ padding: '0.45rem 1rem', fontSize: '0.9rem', width: 'auto', marginTop: 0 }}>רשום עובד</button>
               </form>
             )}
             <DndContext 
@@ -5622,7 +5595,7 @@ const App = () => {
                     <span>
                       {teamName === 'סוללה' ? '🔋' : teamName === 'אגם' ? '💧' : teamName === 'פלסם' ? '🛡️' : '🪖'}
                     </span>
-                    <span>חיילי צוות {teamName}</span>
+                    <span>עובדי צוות {teamName}</span>
                     <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 'normal', marginRight: '6px' }}>
                       ({workersByTeam[teamName].length} עובדים זמינים)
                     </span>
@@ -5879,11 +5852,11 @@ const App = () => {
                       </head>
                       <body>
                         <h1>ברקוד דיווח נוכחות עצמי</h1>
-                        <h2>גדוד 402</h2>
+                        <h2>הארגון</h2>
                         <div class="qr-container">
                           <img src="https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(checkinUrl)}" style="width:350px; height:350px;" />
                         </div>
-                        <p>הוראות לחייל:</p>
+                        <p>הוראות לעובד:</p>
                         <p>1. פתח מצלמה 📸 ➔ 2. סרוק את הברקוד 📱 ➔ 3. אשר נוכחות בטלפון שלך 🟢</p>
                         <div class="footer">הברקוד הינו קבוע ורב-פעמי. נא לשמור על התקינות שלו.</div>
                         <script>
@@ -5948,7 +5921,7 @@ const App = () => {
                     }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{memberName}</div>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'commander' ? 'מפקד' : 'חייל'}</div>
+                        <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'commander' ? 'מפקד' : 'עובד'}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{
