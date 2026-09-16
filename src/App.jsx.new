@@ -48,7 +48,7 @@ const KNOWN_TEAM_ROLES = {
   "לירי ת": { team: "תפעול", role: "super_admin" },
   "תמר ה": { team: "הנהלה", role: "manager" },
 
-  // תקשוב - מנהלים (Managers)
+  // תקשוב - מנהלים
   "דביר ד": { team: "דיגיטל", role: "manager" },
   "אור ד": { team: "דיגיטל", role: "manager" },
   "אורין ד": { team: "דיגיטל", role: "manager" },
@@ -66,7 +66,7 @@ const KNOWN_TEAM_ROLES = {
   "גרשון ד": { team: "דיגיטל", role: "employee" },
   "אלה ד": { team: "דיגיטל", role: "employee" },
 
-  // לוגיסטיקה - מנהלים (Managers)
+  // לוגיסטיקה - מנהלים
   "ליאל ת": { team: "תפעול", role: "manager" },
   "חסין ת": { team: "תפעול", role: "manager" },
   "מתן ת": { team: "תפעול", role: "manager" },
@@ -82,7 +82,7 @@ const KNOWN_TEAM_ROLES = {
   "אליה ת": { team: "תפעול", role: "employee" },
   "אייל ת": { team: "תפעול", role: "employee" },
 
-  // רכב וניוד - מנהלים (Managers)
+  // רכב וניוד - מנהלים
   "סמי ש": { team: "שינוע", role: "manager" },
   "ליאן ש": { team: "שינוע", role: "manager" },
 
@@ -105,7 +105,7 @@ const KNOWN_TEAM_ROLES = {
   "דניאל ש": { team: "שינוע", role: "employee" },
   "חיים ש": { team: "שינוע", role: "employee" },
 
-  // רפואה - מנהלים (Managers)
+  // רפואה - מנהלים
   "בן ב": { team: "בריאות", role: "manager" },
   "שחף ב": { team: "בריאות", role: "manager" },
 
@@ -119,33 +119,33 @@ const KNOWN_TEAM_ROLES = {
   "רז ב": { team: "בריאות", role: "employee" },
   "בני ב": { team: "בריאות", role: "employee" },
 
-  // טנא - מנהלים (Managers)
-  "עומר א": { team: "אחזקה", role: "manager" },
-  "עדי א": { team: "אחזקה", role: "manager" },
-  "דודו א": { team: "אחזקה", role: "manager" },
-  "מרק א": { team: "אחזקה", role: "manager" },
-  "אמיר א": { team: "אחזקה", role: "manager" },
-  "אביב א": { team: "אחזקה", role: "manager" },
-  "אור א": { team: "אחזקה", role: "manager" },
-  "סרגיי א": { team: "אחזקה", role: "manager" },
-  "רון א": { team: "אחזקה", role: "manager" },
-  "אבישג א": { team: "אחזקה", role: "manager" },
-  "אור א": { team: "אחזקה", role: "manager" },
-  "תאיר א": { team: "אחזקה", role: "manager" },
+  // טנ"א (חימוש) - מנהלים
+  "עומר גלבר": { team: "טנ\"א (חימוש)", role: "commander" },
+  "עדי טאוב": { team: "טנ\"א (חימוש)", role: "commander" },
+  "דודו דריי": { team: "טנ\"א (חימוש)", role: "commander" },
+  "מרק דלוב": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אמיר לוי": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אביב אמסלם": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אור טויטו": { team: "טנ\"א (חימוש)", role: "commander" },
+  "סרגיי מטיצין": { team: "טנ\"א (חימוש)", role: "commander" },
+  "רון אברהם": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אבישג סמואל": { team: "טנ\"א (חימוש)", role: "commander" },
+  "אור סוקוליק": { team: "טנ\"א (חימוש)", role: "commander" },
+  "תאיר חביב": { team: "טנ\"א (חימוש)", role: "commander" },
 
-  // טנא - עובדים (Soldiers)
-  "מאור א": { team: "אחזקה", role: "employee" },
-  "אליה א": { team: "אחזקה", role: "employee" },
-  "דמקה א": { team: "אחזקה", role: "employee" },
-  "עידו א": { team: "אחזקה", role: "employee" },
-  "עדן א": { team: "אחזקה", role: "employee" },
-  "בן א": { team: "אחזקה", role: "employee" },
-  "ליהי א": { team: "אחזקה", role: "employee" },
-  "אורי א": { team: "אחזקה", role: "employee" },
-  "אביאל א": { team: "אחזקה", role: "employee" },
-  "אורי א": { team: "אחזקה", role: "employee" },
+  // טנ"א (חימוש) - עובדים (Soldiers)
+  "מאור מנחם": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "אליה אוחיון": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "דמקה אזנאו": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "עידו בן טל": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "עדן לגריסי": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "בן עוז": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "ליהי ביטון": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "אורי מנטל": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "אביאל יעקוב": { team: "טנ\"א (חימוש)", role: "soldier" },
+  "אורי פינטו": { team: "טנ\"א (חימוש)", role: "soldier" },
 
-  // מטבח - מנהלים (Managers)
+  // מטבח - מנהלים
   "זוהר ק": { team: "קפיטריה", role: "manager" },
 
   // מטבח - עובדים (Soldiers / Cooks)
@@ -4234,11 +4234,11 @@ const App = () => {
     const teamSoldiers = allSoldiers.filter(s => s.team === sergeantTeam);
 
     const TEAM_COLORS = {
-      'תפעול': '#1d4ed8', // Royal Blue
-      'כוח אדם': '#db2777',    // Deep Magenta Pink
-      'אחזקה': '#ff6b00', // Electric Orange
+      'לוגיסטיקה': '#1d4ed8', // Royal Blue
+      'שלישות': '#db2777',    // Deep Magenta Pink
+      'טנ"א (חימוש)': '#ff6b00', // Electric Orange
       'טנ"א': '#ff6b00', // Electric Orange
-      'דיגיטל': '#eab308' // Canary Yellow
+      'תקשוב': '#eab308' // Canary Yellow
     };
 
     const getSoldierTeam = (name) => {
@@ -5448,7 +5448,7 @@ const App = () => {
                 className={`team-pill ${selectedTeam === team ? 'active' : ''}`}
                 onClick={() => setSelectedTeam(team)}
               >
-                {team === 'מטבח' ? '🍳' : team === 'לוגיסטיקה' ? '📦' : team === 'מפקדה' ? '🎖️' : team === 'תקשוב' ? '📡' : team === 'רכב וניוד' ? '🚚' : team === 'רפואה' ? '🩺' : team === 'טנא' ? '🛠️' : team === 'שלישות' ? '📋' : '🛡️'} {team}
+                {team === 'מטבח' ? '🍳' : team === 'לוגיסטיקה' ? '📦' : team === 'מפקדה' ? '🎖️' : team === 'תקשוב' ? '📡' : team === 'רכב וניוד' ? '🚚' : team === 'רפואה' ? '🩺' : team === 'טנ"א (חימוש)' ? '🛠️' : team === 'שלישות' ? '📋' : '🛡️'} {team}
               </button>
             ))}
           </div>
