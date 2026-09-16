@@ -37,6 +37,11 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    // 5.5 NFC Tags rules
+    match /nfc_tags/{tagId} {
+      allow read, write: if isAuthenticated();
+    }
+
     // 6. Settings rules
     match /settings/{docId} {
       allow read, write: if isAuthenticated();

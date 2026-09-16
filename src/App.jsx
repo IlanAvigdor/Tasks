@@ -1298,6 +1298,7 @@ const App = () => {
   const [customBundles, setCustomBundles] = useState([]);
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', message: '', action: null });
+  const [nfcAlert, setNfcAlert] = useState({ show: false, type: '', message: '' });
   const [assignmentModal, setAssignmentModal] = useState({ isOpen: false, type: 'task', targetId: null });
   const [hideAssigned, setHideAssigned] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
@@ -1307,6 +1308,78 @@ const App = () => {
   const [isRoleEditorOpen, setIsRoleEditorOpen] = useState(false);
   const [isKitchenDutyQrModalOpen, setIsKitchenDutyQrModalOpen] = useState(false);
   const [selectedRoleForEdit, setSelectedRoleForEdit] = useState('תורן חדר אוכל');
+
+  // NFC Scan Validation Logic
+  useEffect(() => {
+    if (!isAuthorized || !userName) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const nfcUid = urlParams.get('uid') || urlParams.get('nfc_uid');
+    const scanCount = urlParams.get('count');
+
+    if (nfcUid && scanCount) {
+      const validateNfcScan = async () => {
+        try {
+          const currentCount = parseInt(scanCount, 10);
+          if (isNaN(currentCount)) throw new Error("Invalid count");
+
+          const tagRef = doc(db, "nfc_tags", nfcUid);
+          const tagSnap = await getDoc(tagRef);
+          
+          let lastCount = -1;
+          if (tagSnap.exists()) {
+            lastCount = tagSnap.data().last_count || -1;
+          }
+
+          if (currentCount > lastCount) {
+            // Valid scan! Update tag and record attendance
+            await setDoc(tagRef, { last_count: currentCount }, { merge: true });
+            
+            // Format today's date YYYY-MM-DD
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+            
+            const attendanceRef = doc(db, "attendance", `${dateStr}_${userName}`);
+            await setDoc(attendanceRef, {
+              name: userName,
+              date: dateStr,
+              timestamp: new Date().toISOString(),
+              nfcScan: true,
+              nfcUid: nfcUid
+            }, { merge: true });
+
+            setNfcAlert({
+              show: true,
+              type: 'success',
+              message: '✅ נוכחות עודכנה בהצלחה (סריקת NFC)'
+            });
+          } else {
+            // Invalid/Duplicate scan
+            setNfcAlert({
+              show: true,
+              type: 'error',
+              message: '❌ פג תוקף הסריקה, יש לסרוק את התג הפיזי מחדש'
+            });
+          }
+        } catch (err) {
+          console.error("NFC Validation error:", err);
+          setNfcAlert({
+            show: true,
+            type: 'error',
+            message: '⚠️ שגיאה באימות סריקת NFC'
+          });
+        } finally {
+          // Clean the URL to prevent sharing and history saving
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      };
+
+      validateNfcScan();
+    }
+  }, [isAuthorized, userName]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "kitchen_layouts", "current_layout"), (docSnap) => {
@@ -1920,27 +1993,27 @@ const App = () => {
 
   // Redirect users to their specific landing tab on login - only once per login session
   const hasRedirectedRef = useRef(false);
+  const isSuperAdminRef = useRef(false);
+  isSuperAdminRef.current = isSuperAdmin; // Always up-to-date without being a dep
   useEffect(() => {
     if (!isAuthorized || !userName || hasRedirectedRef.current) return;
     hasRedirectedRef.current = true;
+    const isSuper = isSuperAdminRef.current;
     if (userName === 'תמר ביליה') {
       setActiveTab('bot-settings');
-    } else if (userName.includes('זוהר') && !isSuperAdmin) {
+    } else if (userName.includes('זוהר') && !isSuper) {
       setActiveTab('kitchen_manager');
     } else {
-      // All others (including super admins) go to tasks
       setActiveTab('tasks');
-      // For super_admin, also fix selectedTeam and clear bad localStorage
-      if (isSuperAdmin) {
+      if (isSuper) {
         setSelectedTeam('הכל');
-        // Clear stale kitchen-related localStorage for super admins
         if (localStorage.getItem('workerTeam') === 'מטבח') {
           localStorage.setItem('workerTeam', 'לוגיסטיקה');
           setWorkerTeam('לוגיסטיקה');
         }
       }
     }
-  }, [isAuthorized, userName, isSuperAdmin]);
+  }, [isAuthorized, userName]);
 
   // Guard: super_admin should never be stuck on kitchen-only tabs, and fix their team
   useEffect(() => {
@@ -3220,6 +3293,8 @@ const App = () => {
     else d = new Date(ts);
     return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
   };
+
+  if (activeWorkspaceTeam === 'מטבח' && userRole === 'commander' && userName === 'זוהר בורשטיין') {
     const cooks = Object.keys(KNOWN_TEAM_ROLES).filter(name => {
       const u = KNOWN_TEAM_ROLES[name];
       return u.team === 'מטבח' && u.role !== 'commander';
@@ -3291,12 +3366,26 @@ const App = () => {
             <span style={{ fontSize: '1.2rem' }}>👨‍🍳</span>
             <span>אתה נמצא במסך: <strong>ניהול משמרת מטבח (אחמ"ש)</strong> | מחובר כ: <strong>{userName}</strong></span>
           </div>
+          <button 
+            onClick={handleLogout}
+            style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', padding: '0.4rem 0.8rem', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+          >
+            🚪 עזיבה
+          </button>
         </div>
 
         {/* Header Bar with Essential Buttons */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '0.8rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>👨‍🍳 ניהול משמרת מטבח</h2>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+
+            <button 
+              className="btn" 
+              onClick={() => setIsDevicesModalOpen(true)}
+              style={{ background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '12px', padding: '0.55rem 1.1rem', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', margin: 0, boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)' }}
+            >
+              📱 נהל מכשירים
+            </button>
 
             <button 
               className="btn" 
@@ -3577,8 +3666,114 @@ const App = () => {
             </div>
           )}
         </div>
+        {renderKitchenRoleEditorModal()}
+        {isKitchenDutyQrModalOpen && (
+          <div className="registration-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={() => setIsKitchenDutyQrModalOpen(false)}>
+             <div className="glass-card" style={{width:'90%', maxWidth:'400px', textAlign:'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1.8rem', position: 'relative'}} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>📱 סרוק לרישום תורן מטבח</h3>
+                  <button onClick={() => setIsKitchenDutyQrModalOpen(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
+                </div>
+                <p style={{ opacity: 0.85, fontSize: '0.9rem', margin: '0' }}>התורנים סורקים את הברקוד בנייד וממלאים את שמם להרשמה למשמרת:</p>
+                
+                <div style={{ background: 'white', padding: '1rem', borderRadius: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.2)' }}>
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(getPublicAppUrl() + '?action=kitchen_duty')}`} 
+                    alt="Kitchen Duty QR Code" 
+                    style={{ width: '200px', height: '200px' }}
+                  />
+                </div>
+  
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                  <button 
+                    className="btn btn-save" 
+                    onClick={() => {
+                      const dutyUrl = getPublicAppUrl() + '?action=kitchen_duty';
+                      navigator.clipboard.writeText(dutyUrl).then(() => {
+                        alert("קישור הרשמת התורנים הועתק ללוח!");
+                      });
+                    }}
+                    style={{ width: '100%', margin: 0 }}
+                  >
+                    📋 העתק קישור ישיר להרשמה
+                  </button>
+                  <button 
+                    className="btn btn-cancel" 
+                    onClick={() => setIsKitchenDutyQrModalOpen(false)}
+                    style={{ width: '100%', margin: 0 }}
+                  >
+                    סגור
+                  </button>
+                </div>
+             </div>
+          </div>
+        )}
+        {isDevicesModalOpen && isAdmin && (
+          <div className="registration-overlay" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:2500, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={() => setIsDevicesModalOpen(false)}>
+            <div className="glass-card" style={{width:'95%', maxWidth:'800px', maxHeight:'85vh', overflowY:'auto', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '2rem'}} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}>
+                  <span>📱</span>
+                  <span>סטטוס חיבור מכשירים ונעילות ({activeWorkspaceTeam})</span>
+                </h3>
+                <button 
+                  onClick={() => setIsDevicesModalOpen(false)}
+                  style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.8 }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.8rem' }}>
+                {(() => {
+                  const visibleMembers = Object.keys(KNOWN_TEAM_ROLES).filter(memberName => {
+                    const mapped = KNOWN_TEAM_ROLES[memberName];
+                    return activeWorkspaceTeam === 'הכל' ? true : mapped.team === activeWorkspaceTeam;
+                  });
+                  return visibleMembers.map(memberName => {
+                    const mapped = KNOWN_TEAM_ROLES[memberName];
+                    const dbUser = whitelistUsers.find(u => u.name === memberName);
+                    const isAct = !!dbUser?.isActivated;
+                    
+                    return (
+                      <div key={memberName} style={{
+                        background: isAct ? 'rgba(16, 185, 129, 0.08)' : 'rgba(0, 0, 0, 0.03)',
+                        border: isAct ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(0, 0, 0, 0.08)',
+                        padding: '0.6rem 0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                      }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{memberName}</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'commander' ? 'מפקד' : 'חייל'}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.75rem', padding: '2px 8px', borderRadius: '9999px', fontWeight: 600,
+                            background: isAct ? 'rgba(16, 185, 129, 0.2)' : 'rgba(100, 116, 139, 0.15)',
+                            color: isAct ? '#059669' : '#64748b'
+                          }}>
+                            {isAct ? '🟢 מופעל' : '⚪ לא התחבר'}
+                          </span>
+                          {isAct && (
+                            <button
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                              title="אפס נעילת מכשיר"
+                              onClick={() => handleResetUserDevice(memberName)}
+                            >
+                              🔄
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
+  }
 
 
   const renderAttendanceBanner = () => {
@@ -3789,13 +3984,54 @@ const App = () => {
       msg += `\n`;
     });
     
-    navigator.clipboard.writeText(msg).then(() => {
-      alert("דוח נוכחות הועתק ללוח! ניתן להדביק בווטסאפ.");
-    }).catch(err => {
-      console.error("Clipboard copy error:", err);
-      alert("שגיאה בהעתקת הדוח ללוח.");
-    });
+    const encodedMsg = encodeURIComponent(msg);
+    window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
   };
+
+  const handleSendMorningReminder = () => {
+    const msg = `מחר מסדר דגל בשעה 08:30`;
+    const encodedMsg = encodeURIComponent(msg);
+    window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
+  };
+
+  const handleSendWeeklySchedule = () => {
+    const msg = `*לוז שבועי*☺️\n\n` +
+      `*יום ראשון*\n` +
+      `16:00 ח חזרה מהבית \n` +
+      `19:30 ח בין המגורים מסדר ערב\n` +
+      `1:00 *החרגה בגגש*   \n\n` +
+      `*יום שני*🧡\n` +
+      `8:30  מסדר דגל🇮🇱\n` +
+      `9:00 מסדר נקיון במגורים \n` +
+      `9:15 הגעה למחלקות\n` +
+      `12:30 ארוחת צהריים\n` +
+      `18:30 ארוחת ערב\n` +
+      `19:30 ח סגירת פלסם \n\n` +
+      `*יום שלישי*❤️\n` +
+      `8:00 מסדר דגל 🇮🇱\n` +
+      `8:30 בדיקת מסדר בחדרים *עם שטיפה*\n` +
+      `9:00 פיזור למחלקות\n` +
+      `12:30 ארוחת צהרים\n` +
+      `18:30 ארוחת ערב \n` +
+      `19:30 ח סגירת פלסם\n` +
+      `00:00 גגש\n\n\n` +
+      `*יום רביעי*🖤\n` +
+      `8:00 מסדר דגל🇮🇱\n` +
+      `8:30 בדיקת מסדר בחדרים *עם שטיפה*\n` +
+      `9:00 פיזור למחלקות\n` +
+      `12:30 ארוחת צהריים \n` +
+      `18:30 ארוחת ערב\n` +
+      `19:30 ח סגירת פלסמ \n\n\n` +
+      `*יום חמישי*\n` +
+      `8:00 מסדר דגל 🇮🇱 \n` +
+      `8:30 בדיקת מסדר בחדרים *עם שטיפה*\n` +
+      `9:00 פיזור למחלקות \n` +
+      `10:00 תדרצ \n` +
+      `10:30 יציאה לבית בהסעות`;
+    const encodedMsg = encodeURIComponent(msg);
+    window.open(`https://wa.me/?text=${encodedMsg}`, '_blank');
+  };
+
 
 
 
@@ -3826,7 +4062,7 @@ const App = () => {
     }
   };
 
-  const renderKitchenRoleEditorModal = () => {
+  function renderKitchenRoleEditorModal() {
     if (!isRoleEditorOpen) return null;
     const roleNames = Object.keys(kitchenRoleTemplates);
     const currentRoleTasks = kitchenRoleTemplates[selectedRoleForEdit] || [];
@@ -4812,12 +5048,18 @@ const App = () => {
             <h2 style={{ margin: '0 0 0.2rem 0', fontSize: '1.2rem', fontWeight: 800 }}>⏰ ניהול מסדרים גדודיים</h2>
             <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.8 }}>לחצי על מסדר כדי לצפות ברשימת הנוכחות שלו. המסדר נפתח אוטומטית 10 דקות לפני הזמן ונסגר 5 דקות אחריו.</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
             <button className="btn btn-save" style={{ margin: 0, padding: '0.5rem 1rem', width: 'auto' }} onClick={() => setIsQrModalOpen(true)}>
               📱 ברקוד מהיר
             </button>
             <button className="btn" style={{ margin: 0, padding: '0.5rem 1rem', background: '#2563eb', color: 'white', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={handleExportWhatsApp}>
-              <span>💬</span> העתק לווטסאפ
+              <span>📋</span> דו"ח נוכחות
+            </button>
+            <button className="btn" style={{ margin: 0, padding: '0.5rem 1rem', background: '#10b981', color: 'white', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={handleSendMorningReminder}>
+              <span>🔔</span> תזכורת בוקר
+            </button>
+            <button className="btn" style={{ margin: 0, padding: '0.5rem 1rem', background: '#8b5cf6', color: 'white', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={handleSendWeeklySchedule}>
+              <span>📅</span> לו"ז שבועי
             </button>
           </div>
         </div>
@@ -5095,13 +5337,14 @@ const App = () => {
 
   return (
     <div className="app-shell">
-      {/* Always-visible logout button - top left corner */}
+      {/* Always-visible logout button - bottom left corner */}
       {isAuthorized && userName && (
         <button
           onClick={handleLogout}
           style={{
             position: 'fixed',
-            top: '0.6rem',
+            top: 'auto',
+            bottom: '5rem',
             left: '0.6rem',
             zIndex: 9999,
             background: 'rgba(239, 68, 68, 0.85)',
@@ -5476,9 +5719,6 @@ const App = () => {
               <div className={`nav-tab ${activeTab === 'duties' ? 'active' : ''}`} onClick={() => setActiveTab('duties')}>
                 <i style={{fontSize:'1.3rem'}}>📆</i> <span>לוח תורנויות</span>
               </div>
-              <div className="nav-tab" onClick={handleLogout} style={{ color: '#ef4444' }}>
-                <i style={{fontSize:'1.3rem'}}>🚪</i> <span>התנתק</span>
-              </div>
             </>
           ) : PLATOON_SERGEANTS.includes(userName) ? (
             <>
@@ -5487,9 +5727,6 @@ const App = () => {
               </div>
               <div className={`nav-tab ${activeTab === 'duties' ? 'active' : ''}`} onClick={() => setActiveTab('duties')}>
                 <i style={{fontSize:'1.3rem'}}>📆</i> <span>לוח תורנויות</span>
-              </div>
-              <div className="nav-tab" onClick={handleLogout} style={{ color: '#ef4444' }}>
-                <i style={{fontSize:'1.3rem'}}>🚪</i> <span>התנתק</span>
               </div>
             </>
           ) : (
@@ -5512,9 +5749,6 @@ const App = () => {
                   </div>
                 </>
               )}
-              <div className="nav-tab" onClick={handleLogout} style={{ color: '#ef4444' }}>
-                <i style={{fontSize:'1.3rem'}}>🚪</i> <span>התנתק</span>
-              </div>
             </>
           )}
         </nav>
@@ -5743,6 +5977,25 @@ const App = () => {
         </div>
       )}
       {renderMeetingPopupModal()}
+      {nfcAlert.show && (
+        <div className="compact-form-overlay" onClick={() => setNfcAlert({ show: false, type: '', message: '' })}>
+          <div className="task-item compact-form" onClick={e => e.stopPropagation()} style={{ padding: '2rem', textAlign: 'center', borderRadius: '24px', flexDirection: 'column', alignItems: 'stretch' }}>
+            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: '700', color: nfcAlert.type === 'error' ? '#ef4444' : '#10b981' }}>
+              {nfcAlert.type === 'error' ? 'שגיאת סריקה' : 'אימות הצליח'}
+            </h3>
+            <p style={{ marginBottom: '2rem', color: 'var(--text-main)', fontSize: '1rem', lineHeight: '1.5' }}>{nfcAlert.message}</p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                className="btn btn-save" 
+                style={{ background: nfcAlert.type === 'error' ? '#ef4444' : '#10b981', color: 'white' }}
+                onClick={() => setNfcAlert({ show: false, type: '', message: '' })}
+              >
+                אישור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmModal.isOpen && (
         <div className="compact-form-overlay" onClick={() => setConfirmModal({ isOpen: false, type: '', message: '', action: null })}>
           <div className="task-item compact-form" onClick={e => e.stopPropagation()} style={{ padding: '2rem', textAlign: 'center', borderRadius: '24px', flexDirection: 'column', alignItems: 'stretch' }}>
