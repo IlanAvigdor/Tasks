@@ -39,48 +39,48 @@ import KitchenSketchboard from './components/KitchenSketchboard';
 const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.08';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
-const AVAILABLE_TEAMS = ['דיגיטל', 'תפעול', 'שינוע', 'בריאות', 'אחזקה', 'קפיטריה', 'כוח אדם', 'הנהלה'];
+const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'שינוע', 'בריאות', 'אחזקה', 'קפיטריה', 'כוח אדם', 'הנהלה'];
 const TEAM_LEADS = ["מעיין ת", "מעיין נ", "דביר ד", "דמקה א", "דמקה א"];
 
 const KNOWN_TEAM_ROLES = {
   // Super Admins
   "אילן ה": { team: "הנהלה", role: "super_admin" },
-  "לירי ת": { team: "תפעול", role: "super_admin" },
+  "לירי ת": { team: "לוגיסטיקה", role: "super_admin" },
   "תמר ה": { team: "הנהלה", role: "manager" },
 
   // תקשוב - מנהלים (Managers)
-  "דביר ד": { team: "דיגיטל", role: "manager" },
-  "אור ד": { team: "דיגיטל", role: "manager" },
-  "אורין ד": { team: "דיגיטל", role: "manager" },
-  "אמיתי ד": { team: "דיגיטל", role: "manager" },
-  "תמי ד": { team: "דיגיטל", role: "manager" },
-  "מישל ד": { team: "דיגיטל", role: "manager" },
+  "דביר ד": { team: "תקשוב", role: "manager" },
+  "אור ד": { team: "תקשוב", role: "manager" },
+  "אורין ד": { team: "תקשוב", role: "manager" },
+  "אמיתי ד": { team: "תקשוב", role: "manager" },
+  "תמי ד": { team: "תקשוב", role: "manager" },
+  "מישל ד": { team: "תקשוב", role: "manager" },
 
   // תקשוב - עובדים (Soldiers)
-  "אוראל ד": { team: "דיגיטל", role: "employee" },
-  "נגה ד": { team: "דיגיטל", role: "employee" },
-  "דביר ד": { team: "דיגיטל", role: "employee" },
-  "עדי ד": { team: "דיגיטל", role: "employee" },
-  "שוהם ד": { team: "דיגיטל", role: "employee" },
-  "קסם ד": { team: "דיגיטל", role: "employee" },
-  "גרשון ד": { team: "דיגיטל", role: "employee" },
-  "אלה ד": { team: "דיגיטל", role: "employee" },
+  "אוראל ד": { team: "תקשוב", role: "employee" },
+  "נגה ד": { team: "תקשוב", role: "employee" },
+  "דביר ד": { team: "תקשוב", role: "employee" },
+  "עדי ד": { team: "תקשוב", role: "employee" },
+  "שוהם ד": { team: "תקשוב", role: "employee" },
+  "קסם ד": { team: "תקשוב", role: "employee" },
+  "גרשון ד": { team: "תקשוב", role: "employee" },
+  "אלה ד": { team: "תקשוב", role: "employee" },
 
   // לוגיסטיקה - מנהלים (Managers)
-  "ליאל ת": { team: "תפעול", role: "manager" },
-  "חסין ת": { team: "תפעול", role: "manager" },
-  "מתן ת": { team: "תפעול", role: "manager" },
-  "פאר ת": { team: "תפעול", role: "manager" },
-  "שליו ת": { team: "תפעול", role: "manager" },
+  "ליאל ת": { team: "לוגיסטיקה", role: "manager" },
+  "חסין ת": { team: "לוגיסטיקה", role: "manager" },
+  "מתן ת": { team: "לוגיסטיקה", role: "manager" },
+  "פאר ת": { team: "לוגיסטיקה", role: "manager" },
+  "שליו ת": { team: "לוגיסטיקה", role: "manager" },
 
   // לוגיסטיקה - עובדים (Soldiers)
-  "מעיין ת": { team: "תפעול", role: "employee" },
-  "ירין ת": { team: "תפעול", role: "employee" },
-  "גיל ת": { team: "תפעול", role: "employee" },
-  "אליאב ת": { team: "תפעול", role: "employee" },
-  "ארטיום ת": { team: "תפעול", role: "employee" },
-  "אליה ת": { team: "תפעול", role: "employee" },
-  "אייל ת": { team: "תפעול", role: "employee" },
+  "מעיין ת": { team: "לוגיסטיקה", role: "employee" },
+  "ירין ת": { team: "לוגיסטיקה", role: "employee" },
+  "גיל ת": { team: "לוגיסטיקה", role: "employee" },
+  "אליאב ת": { team: "לוגיסטיקה", role: "employee" },
+  "ארטיום ת": { team: "לוגיסטיקה", role: "employee" },
+  "אליה ת": { team: "לוגיסטיקה", role: "employee" },
+  "אייל ת": { team: "לוגיסטיקה", role: "employee" },
 
   // רכב וניוד - מנהלים (Managers)
   "סמי ש": { team: "שינוע", role: "manager" },
@@ -158,7 +158,7 @@ const KNOWN_TEAM_ROLES = {
 
 
 const TASK_BANK_TEMPLATES = {
-  'תפעול': [
+  'לוגיסטיקה': [
     { title: 'בדיקת מלאי ציוד יומית', description: 'ספירת מלאי במחסני אספקה וציוד אישי' },
     { title: 'חלוקת אספקה וציוד', description: 'ניפוק ציוד ודלק ליחידות' },
     { title: 'סידור מחסנים ונעילה', description: 'ארגון המחסנים, סגירת רישומים ונעילה' },
@@ -173,7 +173,7 @@ const TASK_BANK_TEMPLATES = {
     { title: 'עדכון לוח זמנים ארגוני', description: 'סנכרון לו"ז אימונים, סיורים ומשימות' },
     { title: 'בדיקת כוננות מוקד', description: 'וידוא מוכנות אמצעי תקשורת ודיווח חמ"ל' }
   ],
-  'דיגיטל': [
+  'תקשוב': [
     { title: 'בדיקת תקשורת פנים ארגונית', description: 'בדיקת מופע תדרים ומכשירי קשר צוותיים' },
     { title: 'סריקת נקודות תקשורת ותשתיות', description: 'בדיקת אנטנות, כבלים וממירי מתח' },
     { title: 'טעינת סוללות מכשירי קשר', description: 'איסוף, טעינה וחלוקת סוללות גיבוי' }
@@ -206,9 +206,9 @@ const TASK_BANK_TEMPLATES = {
 };
 
 const DEFAULT_BUNDLES = {
-  'תפעול': [
+  'לוגיסטיקה': [
     {
-      name: '📦 ערכת בוקר תפעולי',
+      name: '📦 ערכת בוקר לוגיסטי',
       description: 'בדיקת מחסנים, ספירת ציוד וניפוק ראשוני',
       tasks: [
         { title: 'בדיקת מלאי ציוד יומית', description: 'ספירת מלאי במחסני אספקה וציוד אישי' },
@@ -217,7 +217,7 @@ const DEFAULT_BUNDLES = {
       ]
     },
     {
-      name: '🔒 ערכת סגירת יום תפעול',
+      name: '🔒 ערכת סגירת יום לוגיסטיקה',
       description: 'ארגון מחסנים, ספירת בלאי ונעילת ציוד',
       tasks: [
         { title: 'סידור מחסנים ונעילה', description: 'ארגון המחסנים, סגירת רישומים ונעילה' },
@@ -1303,7 +1303,7 @@ const App = () => {
   const [hideAssigned, setHideAssigned] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [newWorkerName, setNewWorkerName] = useState('');
-  const [newWorkerTeam, setNewWorkerTeam] = useState('תפעול');
+  const [newWorkerTeam, setNewWorkerTeam] = useState('לוגיסטיקה');
   const [kitchenRooms, setKitchenRooms] = useState([]);
   const [kitchenRoleTemplates, setKitchenRoleTemplates] = useState(DEFAULT_KITCHEN_ROLES);
   const [isRoleEditorOpen, setIsRoleEditorOpen] = useState(false);
@@ -2712,7 +2712,7 @@ const App = () => {
 
   const handleSeedWorkspaceTasks = async (teamName) => {
     const templates = {
-      'תפעול': [
+      'לוגיסטיקה': [
         { title: 'בדיקת מלאי ציוד יומית', description: 'ספירת מלאי במחסני אספקה וציוד אישי', timeOfDay: 'morning' },
         { title: 'חלוקת אספקה וציוד', description: 'ניפוק ציוד ודלק ליחידות', timeOfDay: 'noon' },
         { title: 'סידור מחסנים ונעילה', description: 'ארגון המחסנים, סגירת רישומים ונעילה', timeOfDay: 'evening' }
@@ -4235,11 +4235,11 @@ const App = () => {
     const teamSoldiers = allSoldiers.filter(s => s.team === sergeantTeam);
 
     const TEAM_COLORS = {
-      'תפעול': '#1d4ed8', // Royal Blue
+      'לוגיסטיקה': '#1d4ed8', // Royal Blue
       'כוח אדם': '#db2777',    // Deep Magenta Pink
       'אחזקה': '#ff6b00', // Electric Orange
       'טנ"א': '#ff6b00', // Electric Orange
-      'דיגיטל': '#eab308' // Canary Yellow
+      'תקשוב': '#eab308' // Canary Yellow
     };
 
     const getSoldierTeam = (name) => {
