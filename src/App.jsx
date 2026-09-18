@@ -1382,6 +1382,26 @@ const App = () => {
     }
   }, [isAuthorized, userName]);
 
+  const handleWriteNfc = async () => {
+    try {
+      if (!('NDEFReader' in window)) {
+        alert("המכשיר או הדפדפן אינם תומכים בצריבת NFC.");
+        return;
+      }
+      const ndef = new window.NDEFReader();
+      await ndef.write({
+        records: [{
+          recordType: "url",
+          data: "https://ilanavigdor.github.io/Tasks/?nfc_scan=true"
+        }]
+      });
+      alert("✅ הקישור נצרב לתגית בהצלחה! כעת גם מכשירי אייפון יזהו אותה.");
+    } catch (error) {
+      console.error("NFC Write Error:", error);
+      alert("⚠️ שגיאה בצריבת התגית: " + error.message);
+    }
+  };
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "kitchen_layouts", "current_layout"), (docSnap) => {
       if (docSnap.exists()) {
@@ -5456,6 +5476,13 @@ const App = () => {
             onClick={() => setIsBankModalOpen(true)}
           >
             📦 ערכות משימות & בנק ({activeWorkspaceTeam})
+          </button>
+          <button
+            className="btn-filter"
+            style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            onClick={handleWriteNfc}
+          >
+            <span>📱</span> צרוב קישור לתגית NFC
           </button>
         </div>
       )}
