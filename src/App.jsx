@@ -1417,12 +1417,12 @@ const App = () => {
   const isAdmin = isSuperAdmin || isCommander || isCook;
 
   const isDutyOrganizer = useMemo(() => {
-    return isAuthorized && (userName === 'תמר ביליה' || TEAM_LEADS.includes(userName));
+    return isAuthorized && (userName === 'תמר מ' || TEAM_LEADS.includes(userName));
   }, [isAuthorized, userName]);
 
   const statsList = useMemo(() => {
     if (!isAuthorized) return [];
-    const isTamar = userName === 'תמר ביליה';
+    const isTamar = userName === 'תמר מ';
     const sergeantTeam = whitelistUsers.find(u => u.name === userName)?.team || KNOWN_TEAM_ROLES[userName]?.team || 'תקשוב';
     
     const allSoldiers = getAllSoldiers();
@@ -2057,7 +2057,7 @@ const App = () => {
     if (!isAuthorized || !userName || hasRedirectedRef.current) return;
     hasRedirectedRef.current = true;
     const isSuper = isSuperAdminRef.current;
-    if (userName === 'תמר ביליה') {
+    if (userName === 'תמר מ') {
       setActiveTab('bot-settings');
     } else if (userName.includes('זוהר') && !isSuper) {
       setActiveTab('kitchen_manager');
@@ -2088,7 +2088,7 @@ const App = () => {
 
   // Auto-reset or Auto-delete meetings 5 minutes after their start time
   useEffect(() => {
-    if (!isAuthorized || userName !== 'תמר ביליה') return;
+    if (!isAuthorized || userName !== 'תמר מ') return;
     
     const checkAndCleanupMeetings = async () => {
       const today = getTodayDateStr();
@@ -2176,7 +2176,7 @@ const App = () => {
             time: '08:00',
             isRecurring: true,
             status: 'active',
-            scheduledBy: 'תמר ביליה',
+            scheduledBy: 'תמר מ',
             createdAt: new Date(),
             date: ''
           });
@@ -2190,7 +2190,7 @@ const App = () => {
             time: '20:00',
             isRecurring: true,
             status: 'active',
-            scheduledBy: 'תמר ביליה',
+            scheduledBy: 'תמר מ',
             createdAt: new Date(),
             date: ''
           });
@@ -2205,7 +2205,7 @@ const App = () => {
             isRecurring: true,
             recurringDay: 4, // Thursday (Sunday is 0, Thursday is 4)
             status: 'active',
-            scheduledBy: 'תמר ביליה',
+            scheduledBy: 'תמר מ',
             createdAt: new Date(),
             date: ''
           });
@@ -2215,7 +2215,7 @@ const App = () => {
       }
     };
     
-    if (userName === 'תמר ביליה') {
+    if (userName === 'תמר מ') {
       initDefaultMeetings();
     }
 
@@ -4290,7 +4290,7 @@ const App = () => {
   };
 
   const renderDutiesDashboard = () => {
-    const isTamar = userName === 'תמר ביליה';
+    const isTamar = userName === 'תמר מ';
     const sergeantTeam = whitelistUsers.find(u => u.name === userName)?.team || KNOWN_TEAM_ROLES[userName]?.team || 'תקשוב';
     
     const allSoldiers = getAllSoldiers();
@@ -5532,7 +5532,7 @@ const App = () => {
       <main className="container" style={activeTab === 'duties' ? { maxWidth: '1000px', width: '100%' } : activeTab === 'kitchen_sketchboard' ? { padding: 0, margin: 0, maxWidth: '100%', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', overscrollBehavior: 'none' } : undefined}>
         {renderMeetingReminderBanner()}
         {renderAttendanceBanner()}
-        {activeTab === 'bot-settings' && userName === 'תמר ביליה' ? (
+        {activeTab === 'bot-settings' && userName === 'תמר מ' ? (
           renderBotSettingsDashboard()
         ) : activeTab === 'tasks' ? (
           <div className="swipe-viewport" style={{overflow:'hidden', width: '100%'}}>
@@ -5619,7 +5619,7 @@ const App = () => {
           renderKitchenManagerDashboard()
         ) : (activeTab === 'kitchen_sketchboard' && (isKitchenCommander || isSuperAdmin)) ? (
           <KitchenSketchboard tasks={tasks} onBack={() => setActiveTab('tasks')} />
-        ) : (activeTab === 'attendance' && userName === 'תמר ביליה') ? (
+        ) : (activeTab === 'attendance' && userName === 'תמר מ') ? (
           renderAttendanceDashboard()
         ) : (activeTab === 'duties' && isDutyOrganizer) ? (
           renderDutiesDashboard()
@@ -5747,7 +5747,7 @@ const App = () => {
 
       {isAuthorized && (
         <nav className="bottom-nav">
-          {userName === 'תמר ביליה' ? (
+          {userName === 'תמר מ' ? (
             <>
               <div className={`nav-tab ${activeTab === 'bot-settings' ? 'active' : ''}`} onClick={() => setActiveTab('bot-settings')}>
                 <i style={{fontSize:'1.3rem'}}>🤖</i> <span>הגדרות בוט</span>
@@ -5798,7 +5798,7 @@ const App = () => {
 
 
 
-      {userName === 'תמר ביליה' && activeTab === 'attendance' && <button className="add-task-fab" onClick={() => setIsMeetingFormOpen(true)}>+</button>}
+      {userName === 'תמר מ' && activeTab === 'attendance' && <button className="add-task-fab" onClick={() => setIsMeetingFormOpen(true)}>+</button>}
       {renderMeetingFormModal()}
       {renderKitchenRoleEditorModal()}
 
