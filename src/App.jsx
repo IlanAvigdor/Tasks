@@ -39,14 +39,14 @@ import KitchenSketchboard from './components/KitchenSketchboard';
 const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.08';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
-const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'שינוע', 'בריאות', 'אחזקה', 'קפיטריה', 'כוח אדם', 'הנהלה'];
+const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'שינוע', 'בריאות', 'אחזקה', 'קפיטריה', 'כוח אדם', 'הנהלה', 'מפקדה'];
 const TEAM_LEADS = ["מעיין ת", "מעיין נ", "דביר ד", "דמקה א", "דמקה א"];
 
 const KNOWN_TEAM_ROLES = {
   // Super Admins
   "אילן ה": { team: "הנהלה", role: "super_admin" },
   "לירי ת": { team: "לוגיסטיקה", role: "super_admin" },
-  "תמר ה": { team: "הנהלה", role: "manager" },
+  "תמר מ": { team: "מפקדה", role: "manager" },
 
   // תקשוב - מנהלים (Managers)
   "דביר ד": { team: "תקשוב", role: "manager" },
@@ -72,6 +72,7 @@ const KNOWN_TEAM_ROLES = {
   "מתן ת": { team: "לוגיסטיקה", role: "manager" },
   "פאר ת": { team: "לוגיסטיקה", role: "manager" },
   "שליו ת": { team: "לוגיסטיקה", role: "manager" },
+  "יהושע גרינברג": { team: "לוגיסטיקה", role: "manager" },
 
   // לוגיסטיקה - עובדים (Soldiers)
   "מעיין ת": { team: "לוגיסטיקה", role: "employee" },
@@ -1668,9 +1669,43 @@ const App = () => {
     return null;
   };
 
-  const handleSelfCheckin = async (name, status = 'present') => {
+  const handleBurnNfcTag = async () => {
+    try {
+      if (!('NDEFReader' in window)) {
+        alert("❌ שגיאה: הדפדפן הזה אינו תומך בצריבת NFC (Web NFC נתמך רק ב-Chrome ל-Android).");
+        return;
+      }
+      const ndef = new window.NDEFReader();
+      const domainUrl = window.location.origin;
+      await ndef.write({
+        records: [{ recordType: "url", data: `${domainUrl}/?action=checkin&location=mistar&uid=00000000000000&c=000000` }]
+      });
+      alert("✅ הלינק נצרב בהצלחה! אל תשכח להדליק את ה-Counter באפליקציית TagWriter.");
+    } catch (error) {
+      console.error("NFC Write Error: ", error);
+      alert(`❌ שגיאה בצריבה: ${error.message}`);
+    }
+  };
+
+  const handleSelfCheckin = async (name, status = 'present', uid = null, c = null) => {
     if (!name) return;
     try {
+      if (uid && c) {
+        const parsedCounter = parseInt(c, 16);
+        if (!isNaN(parsedCounter)) {
+          const tagRef = doc(db, "nfc_tags", uid);
+          const tagSnap = await getDoc(tagRef);
+          if (tagSnap.exists()) {
+            const tagData = tagSnap.data();
+            if (tagData.lastCounter && parsedCounter <= tagData.lastCounter) {
+              alert("❌ שגיאה: סריקה לא חוקית. הלינק הזה כבר נוצל או פג תוקף.");
+              return;
+            }
+          }
+          await setDoc(tagRef, { lastCounter: parsedCounter, lastUser: name, lastScanned: new Date() }, { merge: true });
+        }
+      }
+
       const today = getTodayDateStr();
       const docId = `${today}_${name}`;
       const docRef = doc(db, "attendance", docId);
@@ -1904,7 +1939,7 @@ const App = () => {
             "לירי אביגדור", "אילן אביגדור",
             "דביר הרמן", "אור חממה", "אורין", "אמיתי בהדני", "תמי מזרחי", "מישל פיוטרובסקי",
             "אוראל חביב", "נגה שי", "דביר אגסי", "עדי כרמי", "שוהם פאר", "קסם סוויסה", "גרשון מירל", "אלה לידור",
-            "עמית דן", "מאור פרידר", "תמר ביליה", "נתנאל יובל ערבה", "רוניה אליהו",
+            "עמית דן", "מאור פרידר", "תמר מ", "יהושע גרינברג", "נתנאל יובל ערבה", "רוניה אליהו",
             "ליאל רוטנברג", "חסין סלותי", "מתן לוי", "פאר זנגאני", "שליו פאבון", "מעיין ישראלי",
             "ירין תורג׳מן", "גיל זיו", "אליאב ביטון", "ארטיום", "אליה עמר", "אייל הרשקוביץ",
             "סמי יגודייב", "ליאן קריסטופר", "אלון אופיר", "ליאב ביטון", "לירון שטרן", "ולריה סטלמק",
@@ -1977,14 +2012,36 @@ const App = () => {
 
   // Handle URL query parameter for self check-in and kitchen duty registration
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('action') === 'checkin') {
+    let searchString = window.location.search;
+    if (searchString.includes('??')) searchString = searchString.replace('??', '?');
+    if (searchString.includes('?uid=')) searchString = searchString.replace('?uid=', '&uid=');
+    
+    const params = new URLSearchParams(searchString);
+    let action = params.get('action');
+    if (action && action.includes('?uid=')) {
+      action = action.split('?uid=')[0];
+    }
+
+    if (action === 'checkin' || params.get('action') === 'checkin') {
+      let uid = params.get('uid');
+      let c = params.get('c');
+      
+      if (uid && uid.includes('x')) {
+        const parts = uid.split('x');
+        uid = parts[0];
+        if (!c && parts.length > 1) {
+          c = parts[1];
+        }
+      }
+
       const storedName = localStorage.getItem('workerName');
       if (storedName && isAuthorized) {
-        handleSelfCheckin(storedName);
+        handleSelfCheckin(storedName, 'present', uid, c);
         window.history.replaceState({}, document.title, window.location.pathname);
       } else {
         localStorage.setItem('pendingCheckin', 'true');
+        if (uid) localStorage.setItem('pendingCheckinUid', uid);
+        if (c) localStorage.setItem('pendingCheckinC', c);
       }
     } else if (params.get('action') === 'kitchen_duty') {
       setIsKitchenDutyModalOpen(true);
@@ -3252,6 +3309,11 @@ const App = () => {
                       setIsAuthorized(true);
                       if (localStorage.getItem('pendingCheckin') === 'true') {
                         localStorage.removeItem('pendingCheckin');
+                        const pendUid = localStorage.getItem('pendingCheckinUid');
+                        const pendC = localStorage.getItem('pendingCheckinC');
+                        if (pendUid) localStorage.removeItem('pendingCheckinUid');
+                        if (pendC) localStorage.removeItem('pendingCheckinC');
+                        handleSelfCheckin(resolved, 'present', pendUid, pendC);
                       }
                     }
                   } catch (e) {
@@ -5456,6 +5518,13 @@ const App = () => {
             onClick={() => setIsBankModalOpen(true)}
           >
             📦 ערכות משימות & בנק ({activeWorkspaceTeam})
+          </button>
+          <button
+            className="btn-filter"
+            style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 600 }}
+            onClick={handleBurnNfcTag}
+          >
+            📡 צרוב תג NFC למסדר
           </button>
         </div>
       )}
