@@ -36,10 +36,12 @@ import {
 } from '@dnd-kit/sortable';
 import {CSS} from '@dnd-kit/utilities';
 import KitchenSketchboard from './components/KitchenSketchboard';
+import { HRManagementPanel, DIRECTOR_TEAMS } from './components/HRManagementPanel.jsx';
+
 const ADMIN_GUID = 'admin-987654';
 const APP_VERSION = '1.08';
 const NOTIFICATION_SOUND = `${import.meta.env.BASE_URL}notification.mp3`;
-const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'שינוע', 'בריאות', 'אחזקה', 'קפיטריה', 'כוח אדם', 'הנהלה', 'מפקדה'];
+const AVAILABLE_TEAMS = ['תקשוב', 'לוגיסטיקה', 'רכב וניוד', 'רפואה', 'טנ"א (חימוש)', 'מטבח', 'שלישות', 'הנהלה', 'מפקדה'];
 const TEAM_LEADS = ["מעיין ת", "מעיין נ", "דביר ד", "דמקה א", "דמקה א"];
 
 const KNOWN_TEAM_ROLES = {
@@ -47,6 +49,13 @@ const KNOWN_TEAM_ROLES = {
   "אילן ה": { team: "הנהלה", role: "super_admin" },
   "לירי ת": { team: "לוגיסטיקה", role: "super_admin" },
   "תמר מ": { team: "מפקדה", role: "manager" },
+
+  // מנהלים ראשיים (Directors)
+  "ליאל ר": { team: "לוגיסטיקה", role: "director" },
+  "עדי ט": { team: 'טנ"א (חימוש)', role: "director" },
+  "תמר ב": { team: "הנהלה", role: "director" },
+  "אור ח": { team: "תקשוב", role: "director" },
+  "סמי י": { team: "רכב וניוד", role: "director" },
 
   // תקשוב - מנהלים (Managers)
   "דביר ד": { team: "תקשוב", role: "manager" },
@@ -56,7 +65,7 @@ const KNOWN_TEAM_ROLES = {
   "תמי ד": { team: "תקשוב", role: "manager" },
   "מישל ד": { team: "תקשוב", role: "manager" },
 
-  // תקשוב - עובדים (Soldiers)
+  // תקשוב - עובדים (Employees)
   "אוראל ד": { team: "תקשוב", role: "employee" },
   "נגה ד": { team: "תקשוב", role: "employee" },
   "דביר ד": { team: "תקשוב", role: "employee" },
@@ -74,7 +83,7 @@ const KNOWN_TEAM_ROLES = {
   "שליו ת": { team: "לוגיסטיקה", role: "manager" },
   "יהושע גרינברג": { team: "לוגיסטיקה", role: "manager" },
 
-  // לוגיסטיקה - עובדים (Soldiers)
+  // לוגיסטיקה - עובדים (Employees)
   "מעיין ת": { team: "לוגיסטיקה", role: "employee" },
   "ירין ת": { team: "לוגיסטיקה", role: "employee" },
   "גיל ת": { team: "לוגיסטיקה", role: "employee" },
@@ -84,77 +93,77 @@ const KNOWN_TEAM_ROLES = {
   "אייל ת": { team: "לוגיסטיקה", role: "employee" },
 
   // רכב וניוד - מנהלים (Managers)
-  "סמי ש": { team: "שינוע", role: "manager" },
-  "ליאן ש": { team: "שינוע", role: "manager" },
+  "סמי ש": { team: "רכב וניוד", role: "manager" },
+  "ליאן ש": { team: "רכב וניוד", role: "manager" },
 
-  // רכב וניוד - עובדים (Soldiers)
-  "אלון ש": { team: "שינוע", role: "employee" },
-  "ליאב ש": { team: "שינוע", role: "employee" },
-  "לירון ש": { team: "שינוע", role: "employee" },
-  "ולריה ש": { team: "שינוע", role: "employee" },
-  "שי ש": { team: "שינוע", role: "employee" },
-  "עידו ש": { team: "שינוע", role: "employee" },
-  "אלון ש": { team: "שינוע", role: "employee" },
-  "עדן ש": { team: "שינוע", role: "employee" },
-  "מתן ש": { team: "שינוע", role: "employee" },
-  "יניב ש": { team: "שינוע", role: "employee" },
-  "קים ש": { team: "שינוע", role: "employee" },
-  "רואי ש": { team: "שינוע", role: "employee" },
-  "אושר ש": { team: "שינוע", role: "employee" },
-  "טל ש": { team: "שינוע", role: "employee" },
-  "עידן ש": { team: "שינוע", role: "employee" },
-  "דניאל ש": { team: "שינוע", role: "employee" },
-  "חיים ש": { team: "שינוע", role: "employee" },
+  // רכב וניוד - עובדים (Employees)
+  "אלון ש": { team: "רכב וניוד", role: "employee" },
+  "ליאב ש": { team: "רכב וניוד", role: "employee" },
+  "לירון ש": { team: "רכב וניוד", role: "employee" },
+  "ולריה ש": { team: "רכב וניוד", role: "employee" },
+  "שי ש": { team: "רכב וניוד", role: "employee" },
+  "עידו ש": { team: "רכב וניוד", role: "employee" },
+  "אלון ש": { team: "רכב וניוד", role: "employee" },
+  "עדן ב": { team: "רכב וניוד", role: "employee" },
+  "מתן ש": { team: "רכב וניוד", role: "employee" },
+  "יניב ש": { team: "רכב וניוד", role: "employee" },
+  "קים ש": { team: "רכב וניוד", role: "employee" },
+  "רואי ש": { team: "רכב וניוד", role: "employee" },
+  "אושר ש": { team: "רכב וניוד", role: "employee" },
+  "טל ש": { team: "רכב וניוד", role: "employee" },
+  "עידן ש": { team: "רכב וניוד", role: "employee" },
+  "דניאל ש": { team: "רכב וניוד", role: "employee" },
+  "חיים ש": { team: "רכב וניוד", role: "employee" },
 
   // רפואה - מנהלים (Managers)
-  "בן ב": { team: "בריאות", role: "manager" },
-  "שחף ב": { team: "בריאות", role: "manager" },
+  "בן ב": { team: "רפואה", role: "manager" },
+  "שחף ב": { team: "רפואה", role: "manager" },
 
-  // רפואה - עובדים (Soldiers)
-  "אושר ב": { team: "בריאות", role: "employee" },
-  "סתו ב": { team: "בריאות", role: "employee" },
-  "יוסף ב": { team: "בריאות", role: "employee" },
-  "תכלת ב": { team: "בריאות", role: "employee" },
-  "ירדן ב": { team: "בריאות", role: "employee" },
-  "שליו ב": { team: "בריאות", role: "employee" },
-  "רז ב": { team: "בריאות", role: "employee" },
-  "בני ב": { team: "בריאות", role: "employee" },
+  // רפואה - עובדים (Employees)
+  "אושר ב": { team: "רפואה", role: "employee" },
+  "סתו ב": { team: "רפואה", role: "employee" },
+  "יוסף ב": { team: "רפואה", role: "employee" },
+  "תכלת ב": { team: "רפואה", role: "employee" },
+  "ירדן ב": { team: "רפואה", role: "employee" },
+  "שליו ב": { team: "רפואה", role: "employee" },
+  "רז ב": { team: "רפואה", role: "employee" },
+  "בני ב": { team: "רפואה", role: "employee" },
 
   // טנא - מנהלים (Managers)
-  "עומר א": { team: "אחזקה", role: "manager" },
-  "עדי א": { team: "אחזקה", role: "manager" },
-  "דודו א": { team: "אחזקה", role: "manager" },
-  "מרק א": { team: "אחזקה", role: "manager" },
-  "אמיר א": { team: "אחזקה", role: "manager" },
-  "אביב א": { team: "אחזקה", role: "manager" },
-  "אור א": { team: "אחזקה", role: "manager" },
-  "סרגיי א": { team: "אחזקה", role: "manager" },
-  "רון א": { team: "אחזקה", role: "manager" },
-  "אבישג א": { team: "אחזקה", role: "manager" },
-  "אור א": { team: "אחזקה", role: "manager" },
-  "תאיר א": { team: "אחזקה", role: "manager" },
+  "עומר א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "עדי א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "דודו א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "מרק א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אמיר א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אביב א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אור א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "סרגיי א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "רון א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אבישג א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אור א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "תאיר א": { team: 'טנ"א (חימוש)', role: "manager" },
 
-  // טנא - עובדים (Soldiers)
-  "מאור א": { team: "אחזקה", role: "employee" },
-  "אליה א": { team: "אחזקה", role: "employee" },
-  "דמקה א": { team: "אחזקה", role: "employee" },
-  "עידו א": { team: "אחזקה", role: "employee" },
-  "עדן א": { team: "אחזקה", role: "employee" },
-  "בן א": { team: "אחזקה", role: "employee" },
-  "ליהי א": { team: "אחזקה", role: "employee" },
-  "אורי א": { team: "אחזקה", role: "employee" },
-  "אביאל א": { team: "אחזקה", role: "employee" },
-  "אורי א": { team: "אחזקה", role: "employee" },
+  // טנא - עובדים (Employees)
+  "מאור א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "אליה א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "דמקה א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "עידו א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "עדן א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "בן א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "ליהי א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "אורי א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "אביאל א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "אורי א": { team: 'טנ"א (חימוש)', role: "employee" },
 
   // מטבח - מנהלים (Managers)
-  "זוהר ק": { team: "קפיטריה", role: "manager" },
+  "זוהר ק": { team: "מטבח", role: "manager" },
 
-  // מטבח - עובדים (Soldiers / Cooks)
-  "שיראל ק": { team: "קפיטריה", role: "employee" },
-  "אמיר ק": { team: "קפיטריה", role: "employee" },
-  "אייל ק": { team: "קפיטריה", role: "employee" },
-  "לירון ק": { team: "קפיטריה", role: "employee" },
-  "איתי ק": { team: "קפיטריה", role: "employee" }
+  // מטבח - עובדים (Employees / Cooks)
+  "שיראל ק": { team: "מטבח", role: "employee" },
+  "אמיר ק": { team: "מטבח", role: "employee" },
+  "אייל ק": { team: "מטבח", role: "employee" },
+  "לירון ק": { team: "מטבח", role: "employee" },
+  "איתי ק": { team: "מטבח", role: "employee" }
 };
 
 
@@ -163,7 +172,7 @@ const TASK_BANK_TEMPLATES = {
     { title: 'בדיקת מלאי ציוד יומית', description: 'ספירת מלאי במחסני אספקה וציוד אישי' },
     { title: 'חלוקת אספקה וציוד', description: 'ניפוק ציוד ודלק ליחידות' },
     { title: 'סידור מחסנים ונעילה', description: 'ארגון המחסנים, סגירת רישומים ונעילה' },
-    { title: 'בדיקת תקינות מלגזה/מנגנוני שינוע', description: 'בדיקת שמן, דלק ובטיחות כלי שינוע' },
+    { title: 'בדיקת תקינות מלגזה/מנגנוני רכב וניוד', description: 'בדיקת שמן, דלק ובטיחות כלי רכב וניוד' },
     { title: 'קליטת משלוח ציוד חדש', description: 'רישום, בחינה ופריקת משלוחי ציוד נכנסים' },
     { title: 'סקר בלאי וציוד תקול', description: 'איסוף דיווחים על ציוד בלאי והעברה לתיקון' }
   ],
@@ -179,27 +188,27 @@ const TASK_BANK_TEMPLATES = {
     { title: 'סריקת נקודות תקשורת ותשתיות', description: 'בדיקת אנטנות, כבלים וממירי מתח' },
     { title: 'טעינת סוללות מכשירי קשר', description: 'איסוף, טעינה וחלוקת סוללות גיבוי' }
   ],
-  'שינוע': [
+  'רכב וניוד': [
     { title: 'טיפול שבועי/יומי ברכבים', description: 'בדיקת שמן, מים, לחץ אוויר ומערכות בלמים' },
     { title: 'ניפוק ותדלוק כלים', description: 'רישום ותדלוק רכבי סיור ומנהלה' },
     { title: 'בדיקת רישיונות ויומני רכב', description: 'וידוא יומני נסיעה חתומים ועדכניים' }
   ],
-  'בריאות': [
+  'רפואה': [
     { title: 'בדיקת תרופות וציוד עזרה ראשונה', description: 'ספירת מלאי ותוקף ציוד רפואי' },
     { title: 'בדיקת כוננות אמבולנס/מרפאה', description: 'וידוא ציוד החייאה וציוד מילוט תקין' },
     { title: 'מסדר תברואה וחיטוי', description: 'חיטוי ציוד רפואי ובדיקת ניקיון התחנה' }
   ],
-  'אחזקה': [
+  'טנ"א (חימוש)': [
     { title: 'בחינת תקינות ציוד טכני', description: 'בדיקת תקינות מחסן טכני וחלפים טכניים' },
     { title: 'תיקון מכלולים ודיווח תקלות', description: 'מענה לתקלות נשק וכלים טכניים' },
     { title: 'שימון ותחזוקת ציוד טכני', description: 'שימון תקופתי לכלים ומערכות ירי' }
   ],
-  'קפיטריה': [
+  'מטבח': [
     { title: 'הכנת ארוחת בוקר', description: 'בישול, עריכת שולחנות וחלוקת מזון' },
     { title: 'נקיון וחיטוי מטבח', description: 'שטיפת כלים, ניקוי משטחי עבודה וריענון' },
     { title: 'ספירת מלאי מצרכים', description: 'בדיקת ירקות, מוצרי יבוא וקירור' }
   ],
-  'כוח אדם': [
+  'שלישות': [
     { title: 'עדכון נוכחות עובדים', description: 'ספירת נוכחות, ימי חופשה ומחלה' },
     { title: 'טיפול בטפסים ובקשות עובדים', description: 'אישור בקשות חופשה, היתרים ואישורים' },
     { title: 'ראיונות קליטה ושיחות מעקב', description: 'שיחות אישיות ועדכון תיקי עובדים' }
@@ -214,7 +223,7 @@ const DEFAULT_BUNDLES = {
       tasks: [
         { title: 'בדיקת מלאי ציוד יומית', description: 'ספירת מלאי במחסני אספקה וציוד אישי' },
         { title: 'חלוקת אספקה וציוד', description: 'ניפוק ציוד ודלק ליחידות' },
-        { title: 'בדיקת תקינות מלגזה/מנגנוני שינוע', description: 'בדיקת שמן, דלק ובטיחות כלי שינוע' }
+        { title: 'בדיקת תקינות מלגזה/מנגנוני רכב וניוד', description: 'בדיקת שמן, דלק ובטיחות כלי רכב וניוד' }
       ]
     },
     {
@@ -393,6 +402,7 @@ const TrashBin = ({ isAdmin, onLongPress }) => {
     setIsPressing(false);
   };
 
+  
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -793,10 +803,10 @@ const WorkerCard = ({ worker, tasks, isAdmin, viewTime, onOpenAssignment }) => {
             {worker.role === 'super_admin' && (
               <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.2)', color: '#d97706', borderRadius: '4px', fontWeight: 600 }}>👑 מנהל</span>
             )}
-            {worker.role === 'commander' && (
-              <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.2)', color: '#2563eb', borderRadius: '4px', fontWeight: 600 }}>🎖️ מפקד</span>
+            {worker.role === 'director' && (
+              <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.2)', color: '#2563eb', borderRadius: '4px', fontWeight: 600 }}>🎖️ מנהל</span>
             )}
-            {worker.role === 'soldier' && (
+            {worker.role === 'employee' && (
               TEAM_LEADS.includes(worker.name) ? (
                 <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', borderRadius: '4px', fontWeight: 600 }}>⚡ ראש צוות</span>
               ) : (
@@ -1208,6 +1218,7 @@ const TaskBankModal = ({ isOpen, onClose, activeTeam, onDeployTasks, onSaveCusto
 };
 
 const App = () => {
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [wallPeriod, setWallPeriod] = useState(new Date().getHours() < 12 ? 'morning' : 'evening');
   const [duties, setDuties] = useState({});
@@ -1240,11 +1251,11 @@ const App = () => {
       setKitchenMode(isKitchenFull ? 'full' : 'half');
     }
     
-    const hasRasarAssignment = dayData.rasar_morning || dayData.rasar_evening;
+    const hasRasarAssignment = dayData.general_duty_morning || dayData.general_duty_evening;
     if (!hasRasarAssignment) {
       setRasarMode('full');
     } else {
-      const isRasarFull = dayData.rasar_morning && dayData.rasar_evening && dayData.rasar_morning === dayData.rasar_evening;
+      const isRasarFull = dayData.general_duty_morning && dayData.general_duty_evening && dayData.general_duty_morning === dayData.general_duty_evening;
       setRasarMode(isRasarFull ? 'full' : 'half');
     }
   }, [selectedCalendarDay, monthlyDuties]);
@@ -1255,7 +1266,7 @@ const App = () => {
   const [registeredWorkers, setRegisteredWorkers] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
   const [showNav, setShowNav] = useState(true);
-  const [userRole, setUserRole] = useState(localStorage.getItem('workerRole') || 'soldier');
+  const [userRole, setUserRole] = useState(localStorage.getItem('workerRole') || 'employee');
   const [selectedTeam, setSelectedTeam] = useState(() => {
     const storedName = localStorage.getItem('workerName');
     const isSuperUser = (storedName === 'אילן אביגדור' || storedName === 'לירי אביגדור');
@@ -1264,6 +1275,8 @@ const App = () => {
     return localStorage.getItem('workerTeam') || 'מטבח';
   });
   const [userName, setUserName] = useState(localStorage.getItem('workerName') || '');
+  // Migration and cleanup scripts removed.
+
   const [workerTeam, setWorkerTeam] = useState(localStorage.getItem('workerTeam') || '');
 
   // Security Whitelist States (Declared before useMemo hooks)
@@ -1271,6 +1284,7 @@ const App = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
   const [whitelistUsers, setWhitelistUsers] = useState([]);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [attendanceTeamFilter, setAttendanceTeamFilter] = useState('הכל');
@@ -1398,38 +1412,38 @@ const App = () => {
     return isAuthorized && (userRole === 'super_admin' || userName === 'אילן אביגדור' || userName === 'לירי אביגדור');
   }, [isAuthorized, userName, userRole]);
 
-  const isCommander = useMemo(() => {
-    return isAuthorized && (userRole === 'commander' || isSuperAdmin || (userName && userName.includes('זוהר')));
+  const isDirector = useMemo(() => {
+    return isAuthorized && (userRole === 'director' || isSuperAdmin || (userName && userName.includes('זוהר')));
   }, [isAuthorized, userRole, isSuperAdmin, userName]);
 
-  const isKitchenCommander = useMemo(() => {
-    return isAuthorized && !isSuperAdmin && ((userName && userName.includes('זוהר')) || (userRole === 'commander' && workerTeam === 'מטבח'));
+  const isKitchenDirector = useMemo(() => {
+    return isAuthorized && !isSuperAdmin && ((userName && userName.includes('זוהר')) || (userRole === 'director' && workerTeam === 'מטבח'));
   }, [isAuthorized, isSuperAdmin, userRole, userName, workerTeam]);
 
   const isCook = useMemo(() => {
-    const isDutySoldier = registeredWorkers.some(w => w.name === userName && w.isKitchenDuty) || 
+    const isDutyEmployee = registeredWorkers.some(w => w.name === userName && w.isKitchenDuty) || 
                           kitchenDuties.some(d => d.name === userName) ||
                           (typeof window !== 'undefined' && localStorage.getItem('isKitchenDuty') === 'true');
-    return isAuthorized && workerTeam === 'מטבח' && userRole !== 'commander' && !isDutySoldier && (userRole === 'cook' || KNOWN_TEAM_ROLES[userName]?.role === 'cook' || userName === 'גרשון מירל');
+    return isAuthorized && workerTeam === 'מטבח' && userRole !== 'director' && !isDutyEmployee && (userRole === 'cook' || KNOWN_TEAM_ROLES[userName]?.role === 'cook' || userName === 'גרשון מירל');
   }, [isAuthorized, workerTeam, userRole, userName, registeredWorkers, kitchenDuties]);
 
-  // Cooks can also act as limited admins for their duty soldiers
-  const isAdmin = isSuperAdmin || isCommander || isCook;
+  // Cooks can also act as limited admins for their duty employees
+  const isAdmin = isSuperAdmin || isDirector || isCook;
 
   const isDutyOrganizer = useMemo(() => {
-    return isAuthorized && (userName === 'תמר מ' || TEAM_LEADS.includes(userName));
+    return isAuthorized && (userName === 'תמר ב' || TEAM_LEADS.includes(userName));
   }, [isAuthorized, userName]);
 
   const statsList = useMemo(() => {
     if (!isAuthorized) return [];
-    const isTamar = userName === 'תמר מ';
+    const isTamar = userName === 'תמר ב';
     const sergeantTeam = whitelistUsers.find(u => u.name === userName)?.team || KNOWN_TEAM_ROLES[userName]?.team || 'תקשוב';
     
-    const allSoldiers = getAllSoldiers();
-    const teamSoldiers = allSoldiers.filter(s => s.team === sergeantTeam);
-    const targetList = isTamar ? allSoldiers : teamSoldiers;
+    const allEmployees = getAllEmployees();
+    const teamEmployees = allEmployees.filter(s => s.team === sergeantTeam);
+    const targetList = isTamar ? allEmployees : teamEmployees;
     
-    return targetList.map(soldier => {
+    return targetList.map(employee => {
       let kitchenCount = 0;
       let rasarCount = 0;
       let shabbatCount = 0;
@@ -1437,17 +1451,17 @@ const App = () => {
       Object.keys(monthlyDuties).forEach(dateStr => {
         if (dateStr.startsWith(currentCalendarMonth)) {
           const d = monthlyDuties[dateStr];
-          if (d.kitchen_morning === soldier.name) kitchenCount += 0.5;
-          if (d.kitchen_evening === soldier.name) kitchenCount += 0.5;
-          if (d.rasar_morning === soldier.name) rasarCount += 0.5;
-          if (d.rasar_evening === soldier.name) rasarCount += 0.5;
-          if (d.closed_shabbat === soldier.name || d[`closed_shabbat_${soldier.team}`] === soldier.name) shabbatCount += 1;
+          if (d.kitchen_morning === employee.name) kitchenCount += 0.5;
+          if (d.kitchen_evening === employee.name) kitchenCount += 0.5;
+          if (d.general_duty_morning === employee.name) rasarCount += 0.5;
+          if (d.general_duty_evening === employee.name) rasarCount += 0.5;
+          if (d.closed_weekend === employee.name || d[`closed_weekend_${employee.team}`] === employee.name) shabbatCount += 1;
         }
       });
       
       return {
-        name: soldier.name,
-        team: soldier.team,
+        name: employee.name,
+        team: employee.team,
         kitchen: kitchenCount,
         rasar: rasarCount,
         shabbat: shabbatCount,
@@ -1472,13 +1486,10 @@ const App = () => {
         const nameClean = w.name.trim();
         const mapped = KNOWN_TEAM_ROLES[nameClean];
         
-        // Filter for commanders: SOLDIERS ONLY
-        if (isCommander && !isSuperAdmin) {
-          if (mapped && mapped.role !== 'soldier') return;
-        }
+        // Directors see all their team members (not just employees)
 
         const teamName = mapped?.team || w.team || 'לוגיסטיקה';
-        const role = mapped?.role || w.role || 'soldier';
+        const role = mapped?.role || w.role || 'employee';
         if (!isSuperAdmin || activeWorkspaceTeam !== 'הכל') {
           if (teamName !== activeWorkspaceTeam) return;
         }
@@ -1490,14 +1501,11 @@ const App = () => {
       }
     });
 
-    // Also include whitelisted soldiers for the active workspace so commanders can assign tasks even before soldiers log in
+    // Also include whitelisted employees for the active workspace so commanders can assign tasks even before employees log in
     Object.keys(KNOWN_TEAM_ROLES).forEach(nameClean => {
       const mapped = KNOWN_TEAM_ROLES[nameClean];
       
-      // Filter for commanders: SOLDIERS ONLY
-      if (isCommander && !isSuperAdmin) {
-        if (mapped.role !== 'soldier') return;
-      }
+      // Directors see all their team members
 
       if (!isSuperAdmin || activeWorkspaceTeam !== 'הכל') {
         if (mapped.team !== activeWorkspaceTeam) return;
@@ -1510,7 +1518,7 @@ const App = () => {
     });
 
     return list;
-  }, [registeredWorkers, isCommander, isSuperAdmin, activeWorkspaceTeam]);
+  }, [registeredWorkers, isDirector, isSuperAdmin, activeWorkspaceTeam]);
 
   const getPublicAppUrl = () => {
     if (typeof window === 'undefined') return 'https://ilanavigdor.github.io/Tasks/';
@@ -1526,7 +1534,7 @@ const App = () => {
     localStorage.removeItem('workerRole');
     localStorage.removeItem('workerTeam');
     setUserName('');
-    setUserRole('soldier');
+    setUserRole('employee');
     setWorkerTeam('');
     setRegistrationName('');
     setRegistrationTeam('');
@@ -1553,7 +1561,7 @@ const App = () => {
       await setDoc(doc(db, "whitelist", newWorkerName.trim()), {
         name: newWorkerName.trim(),
         team: targetTeam,
-        role: 'soldier',
+        role: 'employee',
         isActivated: false,
         uid: null,
         createdAt: new Date()
@@ -1812,15 +1820,24 @@ const App = () => {
           localStorage.removeItem('workerRole');
           localStorage.removeItem('workerTeam');
           setUserName('');
-          setUserRole('soldier');
+          setUserRole('employee');
           setWorkerTeam('');
           setIsAuthorized(false);
-          setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
+          setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למנהל לאיפוס המכשיר.');
           return false;
         }
 
-        const detectedRole = isSuper ? 'super_admin' : (mapped?.role || userData.role || 'soldier');
+        const detectedRole = isSuper ? 'super_admin' : (mapped?.role || userData.role || 'employee');
         const detectedTeam = isSuper ? (mapped?.team || 'לוגיסטיקה') : (mapped?.team || userData.team || 'לוגיסטיקה');
+
+        if (uid) {
+          await setDoc(doc(db, "whitelist_uids", uid), {
+            name: nameResolved,
+            role: detectedRole,
+            team: detectedTeam,
+            activatedAt: new Date()
+          }, { merge: true });
+        }
 
         // Pair and bind to this device UID
         await setDoc(userDocRef, {
@@ -1832,20 +1849,11 @@ const App = () => {
           activatedAt: userData.activatedAt || new Date(),
           lastActive: new Date()
         }, { merge: true });
-
-        if (uid) {
-          await setDoc(doc(db, "whitelist_uids", uid), {
-            name: nameResolved,
-            role: detectedRole,
-            team: detectedTeam,
-            activatedAt: new Date()
-          }, { merge: true });
-        }
       } catch (firestoreError) {
         console.warn("Firestore sync skipped/failed:", firestoreError);
       }
 
-      const detectedRole = isSuper ? 'super_admin' : (mapped?.role || userData.role || 'soldier');
+      const detectedRole = isSuper ? 'super_admin' : (mapped?.role || userData.role || 'employee');
       const detectedTeam = isSuper ? (mapped?.team || 'לוגיסטיקה') : (mapped?.team || userData.team || 'לוגיסטיקה');
 
       setUserName(nameResolved);
@@ -1863,7 +1871,7 @@ const App = () => {
       const nameResolved = resolveWhitelistedName(name);
       const mapped = KNOWN_TEAM_ROLES[nameResolved];
       const isSuper = (nameResolved === 'אילן אביגדור' || nameResolved === 'לירי אביגדור');
-      const detectedRole = mapped?.role || (isSuper ? 'super_admin' : 'soldier');
+      const detectedRole = mapped?.role || (isSuper ? 'super_admin' : 'employee');
       const detectedTeam = mapped?.team || 'לוגיסטיקה';
       setUserName(nameResolved);
       setUserRole(detectedRole);
@@ -1960,7 +1968,7 @@ const App = () => {
             const mappedInfo = KNOWN_TEAM_ROLES[cleanName];
             const isSuper = (cleanName === 'אילן אביגדור' || cleanName === 'לירי אביגדור');
             
-            const role = mappedInfo?.role || (isSuper ? 'super_admin' : 'soldier');
+            const role = mappedInfo?.role || (isSuper ? 'super_admin' : 'employee');
             const team = mappedInfo?.team || (isSuper ? 'מפקדה' : 'תקשוב');
 
             batch.set(docRef, { 
@@ -2057,7 +2065,7 @@ const App = () => {
     if (!isAuthorized || !userName || hasRedirectedRef.current) return;
     hasRedirectedRef.current = true;
     const isSuper = isSuperAdminRef.current;
-    if (userName === 'תמר מ') {
+    if (userName === 'תמר ב') {
       setActiveTab('bot-settings');
     } else if (userName.includes('זוהר') && !isSuper) {
       setActiveTab('kitchen_manager');
@@ -2088,7 +2096,7 @@ const App = () => {
 
   // Auto-reset or Auto-delete meetings 5 minutes after their start time
   useEffect(() => {
-    if (!isAuthorized || userName !== 'תמר מ') return;
+    if (!isAuthorized || userName !== 'תמר ב') return;
     
     const checkAndCleanupMeetings = async () => {
       const today = getTodayDateStr();
@@ -2117,27 +2125,29 @@ const App = () => {
             // Reset recurring meeting attendance for today
             try {
               const meetingRecords = attendanceRecords.filter(r => r.date === today && r.meetingId === meeting.id);
-              for (const r of meetingRecords) {
-                const docRef = doc(db, "attendance", `${today}_${r.name}`);
-                
-                // Determine if we clear morning or evening attendance
-                if (meeting.id === 'meeting_morning' || meeting.title.includes('בוקר')) {
-                  await setDoc(docRef, {
-                    morning: null,
-                    morningTime: null,
-                    meetingId: null,
-                    meetingTitle: null
-                  }, { merge: true });
-                } else {
-                  await setDoc(docRef, {
-                    evening: null,
-                    eveningTime: null,
-                    meetingId: null,
-                    meetingTitle: null
-                  }, { merge: true });
+              if (meetingRecords.length > 0) {
+                for (const r of meetingRecords) {
+                  const docRef = doc(db, "attendance", `${today}_${r.name}`);
+                  
+                  // Determine if we clear morning or evening attendance
+                  if (meeting.id === 'meeting_morning' || meeting.title.includes('בוקר')) {
+                    await setDoc(docRef, {
+                      morning: null,
+                      morningTime: null,
+                      meetingId: null,
+                      meetingTitle: null
+                    }, { merge: true });
+                  } else {
+                    await setDoc(docRef, {
+                      evening: null,
+                      eveningTime: null,
+                      meetingId: null,
+                      meetingTitle: null
+                    }, { merge: true });
+                  }
                 }
+                console.log("Auto-reset recurring meeting attendance past 5 minutes:", meeting.title);
               }
-              console.log("Auto-reset recurring meeting attendance past 5 minutes:", meeting.title);
             } catch (err) {
               console.error("Error auto-resetting recurring meeting:", err);
             }
@@ -2176,7 +2186,7 @@ const App = () => {
             time: '08:00',
             isRecurring: true,
             status: 'active',
-            scheduledBy: 'תמר מ',
+            scheduledBy: 'תמר ב',
             createdAt: new Date(),
             date: ''
           });
@@ -2190,7 +2200,7 @@ const App = () => {
             time: '20:00',
             isRecurring: true,
             status: 'active',
-            scheduledBy: 'תמר מ',
+            scheduledBy: 'תמר ב',
             createdAt: new Date(),
             date: ''
           });
@@ -2205,7 +2215,7 @@ const App = () => {
             isRecurring: true,
             recurringDay: 4, // Thursday (Sunday is 0, Thursday is 4)
             status: 'active',
-            scheduledBy: 'תמר מ',
+            scheduledBy: 'תמר ב',
             createdAt: new Date(),
             date: ''
           });
@@ -2215,7 +2225,7 @@ const App = () => {
       }
     };
     
-    if (userName === 'תמר מ') {
+    if (userName === 'תמר ב') {
       initDefaultMeetings();
     }
 
@@ -2300,16 +2310,27 @@ const App = () => {
             localStorage.removeItem('workerRole');
             localStorage.removeItem('workerTeam');
             setUserName('');
-            setUserRole('soldier');
+            setUserRole('employee');
             setWorkerTeam('');
             setIsAuthorized(false);
-            setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למפקד לאיפוס המכשיר.');
+            setAuthError('שם זה כבר מופעל במכשיר אחר. פנה למנהל לאיפוס המכשיר.');
           }
         }
       });
       setWhitelistUsers(uList);
     }, (error) => {
       console.error("Firestore whitelist query error:", error);
+    });
+
+    // pending_approvals subscription (HR management)
+    const pendingApprovalsUnsub = onSnapshot(collection(db, "pending_approvals"), (snapshot) => {
+      const list = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setPendingApprovals(list);
+    }, (error) => {
+      console.error("Pending approvals subscription error:", error);
     });
 
     const bundlesUnsubscribe = onSnapshot(collection(db, "task_bundles"), (snapshot) => {
@@ -2385,7 +2406,8 @@ const App = () => {
       console.error("Role templates subscription error:", error);
     });
 
-    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); bundlesUnsubscribe(); attendanceUnsubscribe(); dutiesUnsubscribe(); logsUnsubscribe(); kitchenDutiesUnsubscribe(); roleTemplatesUnsubscribe(); };
+    return () => { unsubscribe(); workersUnsubscribe(); whitelistUnsubscribe(); pendingApprovalsUnsub();
+      bundlesUnsubscribe(); attendanceUnsubscribe(); dutiesUnsubscribe(); logsUnsubscribe(); kitchenDutiesUnsubscribe(); roleTemplatesUnsubscribe(); };
   }, [isAdmin, isMuted, isAuthorized, userName]);
 
   useEffect(() => {
@@ -2400,7 +2422,7 @@ const App = () => {
             await setDoc(doc(db, "whitelist", nameKey), {
               name: nameKey,
               team: w.team || 'לוגיסטיקה',
-              role: 'soldier',
+              role: 'employee',
               isActivated: false,
               uid: null,
               createdAt: new Date()
@@ -2467,7 +2489,7 @@ const App = () => {
       await setDoc(doc(db, "whitelist", nameClean), {
         name: nameClean,
         team: 'מטבח',
-        role: 'soldier',
+        role: 'employee',
         isKitchenDuty: true,
         originalTeam: teamClean,
         avatar: kitchenDutyForm.avatar || null,
@@ -2479,7 +2501,7 @@ const App = () => {
       if (uid) {
         await setDoc(doc(db, "whitelist_uids", uid), {
           name: nameClean,
-          role: 'soldier',
+          role: 'employee',
           team: 'מטבח',
           activatedAt: new Date()
         }, { merge: true });
@@ -2531,11 +2553,11 @@ const App = () => {
       // 4. Save local state & storage
       localStorage.setItem('workerName', nameClean);
       localStorage.setItem('workerTeam', 'מטבח');
-      localStorage.setItem('workerRole', 'soldier');
+      localStorage.setItem('workerRole', 'employee');
       localStorage.setItem('isKitchenDuty', 'true');
       setUserName(nameClean);
       setWorkerTeam('מטבח');
-      setUserRole('soldier');
+      setUserRole('employee');
       setIsAuthorized(true);
       setIsKitchenDutyModalOpen(false);
       setAuthError('');
@@ -2641,7 +2663,7 @@ const App = () => {
       batch.set(whitelistRef, {
         name: duty.name,
         team: 'מטבח',
-        role: 'soldier',
+        role: 'employee',
         isActivated: false,
         uid: null,
         isKitchenDuty: true,
@@ -3003,15 +3025,15 @@ const App = () => {
       return true;
     });
 
-    if (isSuperAdmin || isCommander) {
+    if (isSuperAdmin || isDirector) {
       if (hideAssigned) {
         return filtered.filter(t => !t.assignees || t.assignees.length === 0);
       }
       return filtered;
     }
     if (isCook) {
-      const myDutySoldiers = registeredWorkers.filter(w => w.assignedToCook === userName).map(w => w.name);
-      const assigneesToMatch = [userName, ...myDutySoldiers];
+      const myDutyEmployees = registeredWorkers.filter(w => w.assignedToCook === userName).map(w => w.name);
+      const assigneesToMatch = [userName, ...myDutyEmployees];
       return filtered.filter(t => t.assignees?.some(a => assigneesToMatch.includes(a)) && !t.isVerified);
     }
     return filtered.filter(t => t.assignees?.includes(userName) && !t.isVerified);
@@ -3223,7 +3245,7 @@ const App = () => {
   const isKitchenDutyParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('action') === 'kitchen_duty';
   const isKitchenDutyFlow = isKitchenDutyModalOpen || isKitchenDutyParam;
 
-  if (isKitchenDutyFlow && (!isAuthorized || userRole !== 'commander')) {
+  if (isKitchenDutyFlow && (!isAuthorized || userRole !== 'director')) {
     return renderKitchenDutyWelcomeScreen();
   }
 
@@ -3345,7 +3367,7 @@ const App = () => {
   const myAttendance = attendanceRecords.find(r => r.date === todayDateStr && r.name === userName);
   const morningChecked = myAttendance?.morning === 'present';
   const eveningChecked = myAttendance?.evening === 'present';
-  const isSoldierUser = userRole === 'soldier';
+  const isEmployeeUser = userRole === 'employee';
   const isCheckedIn = isMorningSession ? morningChecked : eveningChecked;
   
   const formatTime = (ts) => {
@@ -3357,10 +3379,10 @@ const App = () => {
     return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
   };
 
-  if (activeWorkspaceTeam === 'מטבח' && userRole === 'commander' && userName === 'זוהר בורשטיין') {
+  if (activeWorkspaceTeam === 'מטבח' && userRole === 'director' && userName === 'זוהר בורשטיין') {
     const cooks = Object.keys(KNOWN_TEAM_ROLES).filter(name => {
       const u = KNOWN_TEAM_ROLES[name];
-      return u.team === 'מטבח' && u.role !== 'commander';
+      return u.team === 'מטבח' && u.role !== 'director';
     });
 
     const todayStr = getTodayDateStr();
@@ -3806,7 +3828,7 @@ const App = () => {
                       }}>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{memberName}</div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'commander' ? 'מפקד' : 'עובד'}</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'director' ? 'מנהל' : 'עובד'}</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{
@@ -3909,15 +3931,74 @@ const App = () => {
     return null;
   };
 
-  function getAllSoldiers() {
+  // ── HR Management Handlers ──────────────────────────
+  async function handleRemoveEmployee(employeeName) {
+    if (!window.confirm(`האם למחוק את ${employeeName} מהצוות? פעולה זו בלתי הפיכה.`)) return;
+    try {
+      await deleteDoc(doc(db, 'whitelist', employeeName));
+    } catch (e) {
+      console.error('Error removing employee:', e);
+      alert('שגיאה במחיקת העובד');
+    }
+  }
+
+  async function handleRequestAddEmployee(candidateName, team) {
+    try {
+      await addDoc(collection(db, 'pending_approvals'), {
+        candidateName,
+        team,
+        requestedBy: userName,
+        requestedAt: new Date(),
+        status: 'pending',
+      });
+    } catch (e) {
+      console.error('Error requesting add:', e);
+      throw e;
+    }
+  }
+
+  async function handleApproveRequest(requestId, candidateName, team) {
+    try {
+      // Add to whitelist
+      await setDoc(doc(db, 'whitelist', candidateName), {
+        name: candidateName,
+        team: team,
+        role: 'employee',
+        isActivated: false,
+      });
+      // Update request status
+      await setDoc(doc(db, 'pending_approvals', requestId), { status: 'approved' }, { merge: true });
+    } catch (e) {
+      console.error('Error approving request:', e);
+      alert('שגיאה באישור הבקשה');
+    }
+  }
+
+  async function handleRejectRequest(requestId, candidateName, requestedBy) {
+    try {
+      await setDoc(doc(db, 'pending_approvals', requestId), {
+        status: 'rejected',
+        rejectedAt: new Date(),
+      }, { merge: true });
+    } catch (e) {
+      console.error('Error rejecting request:', e);
+      alert('שגיאה בדחיית הבקשה');
+    }
+  }
+  // ── End HR Management Handlers ───────────────────────
+
+  function getAllEmployees() {
     const list = [];
     const seen = new Set();
     const reserves = ["טל זדורייב", "עידן יוסף", "דניאל אלימוב", "חיים גבריאלוב"];
+    // Roles that should appear in attendance lists (everyone except super_admin)
+    const attendanceRoles = ['employee', 'employee', 'manager', 'director'];
     
     whitelistUsers.forEach(u => {
+      if (u.name === '_reseed_v6') return;
       if (reserves.includes(u.name)) return;
-      const role = u.role || KNOWN_TEAM_ROLES[u.name]?.role || 'soldier';
-      if (role === 'soldier') {
+      const role = u.role || KNOWN_TEAM_ROLES[u.name]?.role || 'employee';
+      if (attendanceRoles.includes(role)) {
         list.push({
           name: u.name,
           team: u.team || KNOWN_TEAM_ROLES[u.name]?.team || 'תקשוב',
@@ -3928,26 +4009,13 @@ const App = () => {
       }
     });
 
-    Object.keys(KNOWN_TEAM_ROLES).forEach(name => {
-      if (reserves.includes(name)) return;
-      const info = KNOWN_TEAM_ROLES[name];
-      if (info.role === 'soldier' && !seen.has(name.toLowerCase())) {
-        list.push({
-          name: name,
-          team: info.team,
-          isActivated: false,
-          role: 'soldier'
-        });
-      }
-    });
-
     return list;
   }
 
-  const handleToggleAttendance = async (soldierName, period, currentVal, meetingId = null) => {
+  const handleToggleAttendance = async (employeeName, period, currentVal, meetingId = null) => {
     try {
       const today = getTodayDateStr();
-      const docId = `${today}_${soldierName}`;
+      const docId = `${today}_${employeeName}`;
       const docRef = doc(db, "attendance", docId);
       
       const nextStatusMap = {
@@ -3962,11 +4030,11 @@ const App = () => {
       
       const nextVal = nextStatusMap[currentVal] || 'present';
       
-      const userDoc = whitelistUsers.find(u => u.name === soldierName);
-      const teamVal = userDoc?.team || KNOWN_TEAM_ROLES[soldierName]?.team || 'תקשוב';
+      const userDoc = whitelistUsers.find(u => u.name === employeeName);
+      const teamVal = userDoc?.team || KNOWN_TEAM_ROLES[employeeName]?.team || 'תקשוב';
       
       const updateData = {
-        name: soldierName,
+        name: employeeName,
         date: today,
         team: teamVal,
         updatedAt: new Date()
@@ -3999,10 +4067,10 @@ const App = () => {
     const today = getTodayDateStr().split('-').reverse().join('.');
     let msg = `*דוח נוכחות - הארגון - ${today}*\n\n`;
     
-    const soldiersOnly = getAllSoldiers();
+    const employeesOnly = getAllEmployees();
 
     const teams = {};
-    soldiersOnly.forEach(u => {
+    employeesOnly.forEach(u => {
       const teamVal = u.team || 'תקשוב';
       if (!teams[teamVal]) teams[teamVal] = [];
       teams[teamVal].push(u);
@@ -4290,23 +4358,23 @@ const App = () => {
   };
 
   const renderDutiesDashboard = () => {
-    const isTamar = userName === 'תמר מ';
+    const isTamar = userName === 'תמר ב';
     const sergeantTeam = whitelistUsers.find(u => u.name === userName)?.team || KNOWN_TEAM_ROLES[userName]?.team || 'תקשוב';
     
-    const allSoldiers = getAllSoldiers();
-    const teamSoldiers = allSoldiers.filter(s => s.team === sergeantTeam);
+    const allEmployees = getAllEmployees();
+    const teamEmployees = allEmployees.filter(s => s.team === sergeantTeam);
 
     const TEAM_COLORS = {
       'לוגיסטיקה': '#1d4ed8', // Royal Blue
-      'כוח אדם': '#db2777',    // Deep Magenta Pink
-      'אחזקה': '#ff6b00', // Electric Orange
+      'שלישות': '#db2777',    // Deep Magenta Pink
+      'טנ"א (חימוש)': '#ff6b00', // Electric Orange
       'טנ"א': '#ff6b00', // Electric Orange
       'תקשוב': '#eab308' // Canary Yellow
     };
 
-    const getSoldierTeam = (name) => {
+    const getEmployeeTeam = (name) => {
       if (!name) return null;
-      const s = allSoldiers.find(x => x.name === name);
+      const s = allEmployees.find(x => x.name === name);
       return s ? s.team : null;
     };
 
@@ -4461,7 +4529,7 @@ const App = () => {
             <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '1rem', marginTop: 0 }}>
               {isTamar 
                 ? 'לחצי על יום בלוח השנה כדי לשבץ צוותים לתורנות מקלחות ושירותים.'
-                : `שלום ${userName} (${sergeantTeam}). לחץ על יום כדי לשבץ את עובדי הצוות שלך למטבח, רס"ר ושבת.`
+                : `שלום ${userName} (${sergeantTeam}). לחץ על יום כדי לשבץ את עובדי הצוות שלך למטבח, תורן כללי וסופ"ש.`
               }
             </p>
 
@@ -4473,7 +4541,7 @@ const App = () => {
                 <div>רביעי</div>
                 <div>חמישי</div>
                 {!isTamar && <div>שישי</div>}
-                {!isTamar && <div style={{ color: '#f87171' }}>שבת</div>}
+                {!isTamar && <div style={{ color: '#f87171' }}>סופ"ש</div>}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isTamar ? 'repeat(5, 1fr)' : 'repeat(7, 1fr)', gap: '0.4rem' }}>
@@ -4491,13 +4559,13 @@ const App = () => {
                       // Tamar does not track shabbat closers
                       return [];
                     } else {
-                      const teamVal = dayData[`closed_shabbat_${sergeantTeam}`];
+                      const teamVal = dayData[`closed_weekend_${sergeantTeam}`];
                       if (teamVal) {
                         list.push(teamVal);
-                      } else if (dayData.closed_shabbat) {
-                        const legacyTeam = getSoldierTeam(dayData.closed_shabbat);
+                      } else if (dayData.closed_weekend) {
+                        const legacyTeam = getEmployeeTeam(dayData.closed_weekend);
                         if (legacyTeam === sergeantTeam) {
-                          list.push(dayData.closed_shabbat);
+                          list.push(dayData.closed_weekend);
                         }
                       }
                     }
@@ -4559,7 +4627,7 @@ const App = () => {
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis'
-                        }} title={`סוגר שבת: ${visibleClosers.join(', ')}`}>
+                        }} title={`סוגר סופ"ש: ${visibleClosers.join(', ')}`}>
                           ⚡ {visibleClosers.map(c => c.split(' ')[0]).join(', ')}
                         </div>
                       )}
@@ -4585,13 +4653,13 @@ const App = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', flex: 1, paddingTop: '0' }}>
                             {/* Kitchen Row */}
                             {(() => {
-                              const morningSoldier = dayData.kitchen_morning;
-                              const eveningSoldier = dayData.kitchen_evening;
-                              const morningTeam = getSoldierTeam(morningSoldier);
-                              const eveningTeam = getSoldierTeam(eveningSoldier);
-                              const isFull = morningSoldier && eveningSoldier && morningSoldier === eveningSoldier;
+                              const morningEmployee = dayData.kitchen_morning;
+                              const eveningEmployee = dayData.kitchen_evening;
+                              const morningTeam = getEmployeeTeam(morningEmployee);
+                              const eveningTeam = getEmployeeTeam(eveningEmployee);
+                              const isFull = morningEmployee && eveningEmployee && morningEmployee === eveningEmployee;
 
-                              if (!morningSoldier && !eveningSoldier) {
+                              if (!morningEmployee && !eveningEmployee) {
                                 return (
                                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', opacity: 0.25, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                     🍳
@@ -4615,8 +4683,8 @@ const App = () => {
                                     textOverflow: 'ellipsis',
                                     borderBottom: '1px solid rgba(255,255,255,0.06)',
                                     padding: '0 2px'
-                                  }} title={`🍳 מטבח: ${morningSoldier}`}>
-                                    🍳 {morningSoldier.split(' ')[0]}
+                                  }} title={`🍳 מטבח: ${morningEmployee}`}>
+                                    🍳 {morningEmployee.split(' ')[0]}
                                   </div>
                                 );
                               }
@@ -4625,7 +4693,7 @@ const App = () => {
                                 <div style={{ flex: 1, display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                                   <div style={{
                                     flex: 1,
-                                    background: morningSoldier ? getTeamColor(morningTeam) : 'transparent',
+                                    background: morningEmployee ? getTeamColor(morningTeam) : 'transparent',
                                     color: '#fff',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -4637,12 +4705,12 @@ const App = () => {
                                     textOverflow: 'ellipsis',
                                     borderLeft: '1px solid rgba(255,255,255,0.06)',
                                     padding: '0 2px'
-                                  }} title={morningSoldier ? `🍳 בוקר: ${morningSoldier}` : ''}>
-                                    {morningSoldier ? morningSoldier.split(' ')[0] : '🍳'}
+                                  }} title={morningEmployee ? `🍳 בוקר: ${morningEmployee}` : ''}>
+                                    {morningEmployee ? morningEmployee.split(' ')[0] : '🍳'}
                                   </div>
                                   <div style={{
                                     flex: 1,
-                                    background: eveningSoldier ? getTeamColor(eveningTeam) : 'transparent',
+                                    background: eveningEmployee ? getTeamColor(eveningTeam) : 'transparent',
                                     color: '#fff',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -4653,8 +4721,8 @@ const App = () => {
                                     whiteSpace: 'nowrap',
                                     textOverflow: 'ellipsis',
                                     padding: '0 2px'
-                                  }} title={eveningSoldier ? `🍳 ערב: ${eveningSoldier}` : ''}>
-                                    {eveningSoldier ? eveningSoldier.split(' ')[0] : '🍳'}
+                                  }} title={eveningEmployee ? `🍳 ערב: ${eveningEmployee}` : ''}>
+                                    {eveningEmployee ? eveningEmployee.split(' ')[0] : '🍳'}
                                   </div>
                                 </div>
                               );
@@ -4662,13 +4730,13 @@ const App = () => {
 
                             {/* Rasar Row */}
                             {(() => {
-                              const morningSoldier = dayData.rasar_morning;
-                              const eveningSoldier = dayData.rasar_evening;
-                              const morningTeam = getSoldierTeam(morningSoldier);
-                              const eveningTeam = getSoldierTeam(eveningSoldier);
-                              const isFull = morningSoldier && eveningSoldier && morningSoldier === eveningSoldier;
+                              const morningEmployee = dayData.general_duty_morning;
+                              const eveningEmployee = dayData.general_duty_evening;
+                              const morningTeam = getEmployeeTeam(morningEmployee);
+                              const eveningTeam = getEmployeeTeam(eveningEmployee);
+                              const isFull = morningEmployee && eveningEmployee && morningEmployee === eveningEmployee;
 
-                              if (!morningSoldier && !eveningSoldier) {
+                              if (!morningEmployee && !eveningEmployee) {
                                 return (
                                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', opacity: 0.25 }}>
                                     🛠️
@@ -4691,8 +4759,8 @@ const App = () => {
                                     whiteSpace: 'nowrap',
                                     textOverflow: 'ellipsis',
                                     padding: '0 2px'
-                                  }} title={`🛠️ רס"ר: ${morningSoldier}`}>
-                                    🛠️ {morningSoldier.split(' ')[0]}
+                                  }} title={`🛠️ תורן כללי: ${morningEmployee}`}>
+                                    🛠️ {morningEmployee.split(' ')[0]}
                                   </div>
                                 );
                               }
@@ -4701,7 +4769,7 @@ const App = () => {
                                 <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                                   <div style={{
                                     flex: 1,
-                                    background: morningSoldier ? getTeamColor(morningTeam) : 'transparent',
+                                    background: morningEmployee ? getTeamColor(morningTeam) : 'transparent',
                                     color: '#fff',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -4713,12 +4781,12 @@ const App = () => {
                                     textOverflow: 'ellipsis',
                                     borderLeft: '1px solid rgba(255,255,255,0.06)',
                                     padding: '0 2px'
-                                  }} title={morningSoldier ? `🛠️ בוקר: ${morningSoldier}` : ''}>
-                                    {morningSoldier ? morningSoldier.split(' ')[0] : '🛠️'}
+                                  }} title={morningEmployee ? `🛠️ בוקר: ${morningEmployee}` : ''}>
+                                    {morningEmployee ? morningEmployee.split(' ')[0] : '🛠️'}
                                   </div>
                                   <div style={{
                                     flex: 1,
-                                    background: eveningSoldier ? getTeamColor(eveningTeam) : 'transparent',
+                                    background: eveningEmployee ? getTeamColor(eveningTeam) : 'transparent',
                                     color: '#fff',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -4729,8 +4797,8 @@ const App = () => {
                                     whiteSpace: 'nowrap',
                                     textOverflow: 'ellipsis',
                                     padding: '0 2px'
-                                  }} title={eveningSoldier ? `🛠️ ערב: ${eveningSoldier}` : ''}>
-                                    {eveningSoldier ? eveningSoldier.split(' ')[0] : '🛠️'}
+                                  }} title={eveningEmployee ? `🛠️ ערב: ${eveningEmployee}` : ''}>
+                                    {eveningEmployee ? eveningEmployee.split(' ')[0] : '🛠️'}
                                   </div>
                                 </div>
                               );
@@ -4759,28 +4827,28 @@ const App = () => {
                   <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700 }}>שם עובד</th>
                   {isTamar && <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700 }}>צוות</th>}
                   <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>ימי מטבח (🍳)</th>
-                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>ימי רס"ר (🛠️)</th>
-                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>שבתות שסגר (⚡)</th>
+                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>ימי תורן כללי (🛠️)</th>
+                  <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>סופ"שות שסגר (⚡)</th>
                   <th style={{ padding: '0.6rem 0.4rem', fontWeight: 700, textAlign: 'center' }}>סך הכל עומס</th>
                 </tr>
               </thead>
               <tbody>
-                {statsList.map(soldier => (
-                  <tr key={soldier.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '0.6rem 0.4rem', fontWeight: 600 }}>{soldier.name}</td>
-                    {isTamar && <td style={{ padding: '0.6rem 0.4rem', opacity: 0.8 }}>{soldier.team}</td>}
-                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center' }}>{soldier.kitchen}</td>
-                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center' }}>{soldier.rasar}</td>
-                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center', fontWeight: soldier.shabbat > 0 ? 'bold' : 'normal', color: soldier.shabbat > 0 ? '#f87171' : 'inherit' }}>
-                      {soldier.shabbat}
+                {statsList.map(employee => (
+                  <tr key={employee.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '0.6rem 0.4rem', fontWeight: 600 }}>{employee.name}</td>
+                    {isTamar && <td style={{ padding: '0.6rem 0.4rem', opacity: 0.8 }}>{employee.team}</td>}
+                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center' }}>{employee.kitchen}</td>
+                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center' }}>{employee.rasar}</td>
+                    <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center', fontWeight: employee.shabbat > 0 ? 'bold' : 'normal', color: employee.shabbat > 0 ? '#f87171' : 'inherit' }}>
+                      {employee.shabbat}
                     </td>
                     <td style={{ padding: '0.6rem 0.4rem', textAlign: 'center' }}>
                       <span style={{
-                        background: soldier.total === 0 ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.08)',
-                        color: soldier.total === 0 ? '#34d399' : '#fff',
+                        background: employee.total === 0 ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.08)',
+                        color: employee.total === 0 ? '#34d399' : '#fff',
                         padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold'
                       }}>
-                        {soldier.total}
+                        {employee.total}
                       </span>
                     </td>
                   </tr>
@@ -4864,7 +4932,7 @@ const App = () => {
                             style={{ margin: 0 }}
                           >
                             <option value="">-- בחר עובד ליום שלם --</option>
-                            {teamSoldiers.map(s => (
+                            {teamEmployees.map(s => (
                               <option key={s.name} value={s.name}>{s.name}</option>
                             ))}
                           </select>
@@ -4880,7 +4948,7 @@ const App = () => {
                               style={{ margin: 0, fontSize: '0.85rem' }}
                             >
                               <option value="">-- בחר עובד --</option>
-                              {teamSoldiers.map(s => (
+                              {teamEmployees.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
                               ))}
                             </select>
@@ -4894,7 +4962,7 @@ const App = () => {
                               style={{ margin: 0, fontSize: '0.85rem' }}
                             >
                               <option value="">-- בחר עובד --</option>
-                              {teamSoldiers.map(s => (
+                              {teamEmployees.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
                               ))}
                             </select>
@@ -4906,7 +4974,7 @@ const App = () => {
                     {/* Rasar Section */}
                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>🛠️ תורנות רס"ר:</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>🛠️ תורנות תורן כללי:</span>
                         <select
                           className="input-field"
                           value={rasarMode}
@@ -4922,12 +4990,12 @@ const App = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <select
                             className="input-field"
-                            value={dayData.rasar_morning || ''}
+                            value={dayData.general_duty_morning || ''}
                             onChange={(e) => handleSaveFullDayDuty(selectedCalendarDay, 'rasar', e.target.value)}
                             style={{ margin: 0 }}
                           >
                             <option value="">-- בחר עובד ליום שלם --</option>
-                            {teamSoldiers.map(s => (
+                            {teamEmployees.map(s => (
                               <option key={s.name} value={s.name}>{s.name}</option>
                             ))}
                           </select>
@@ -4938,12 +5006,12 @@ const App = () => {
                             <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>חלק ראשון (בוקר):</label>
                             <select
                               className="input-field"
-                              value={dayData.rasar_morning || ''}
-                              onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'rasar_morning', e.target.value)}
+                              value={dayData.general_duty_morning || ''}
+                              onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'general_duty_morning', e.target.value)}
                               style={{ margin: 0, fontSize: '0.85rem' }}
                             >
                               <option value="">-- בחר עובד --</option>
-                              {teamSoldiers.map(s => (
+                              {teamEmployees.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
                               ))}
                             </select>
@@ -4952,12 +5020,12 @@ const App = () => {
                             <label style={{ fontSize: '0.75rem', opacity: 0.8 }}>חלק שני (ערב):</label>
                             <select
                               className="input-field"
-                              value={dayData.rasar_evening || ''}
-                              onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'rasar_evening', e.target.value)}
+                              value={dayData.general_duty_evening || ''}
+                              onChange={(e) => handleSaveDayDuty(selectedCalendarDay, 'general_duty_evening', e.target.value)}
                               style={{ margin: 0, fontSize: '0.85rem' }}
                             >
                               <option value="">-- בחר עובד --</option>
-                              {teamSoldiers.map(s => (
+                              {teamEmployees.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
                               ))}
                             </select>
@@ -4969,15 +5037,15 @@ const App = () => {
                     {/* Shabbat Closer - Only shown on Saturdays */}
                     {new Date(selectedCalendarDay).getDay() === 6 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#f87171' }}>⚡ סוגר שבת (לסופ"ש הקרוב):</label>
+                        <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#f87171' }}>⚡ סוגר סופ"ש (לסופ"ש הקרוב):</label>
                         <select
                           className="input-field"
-                          value={dayData[`closed_shabbat_${sergeantTeam}`] || dayData.closed_shabbat || ''}
-                          onChange={(e) => handleSaveDayDuty(selectedCalendarDay, `closed_shabbat_${sergeantTeam}`, e.target.value)}
+                          value={dayData[`closed_weekend_${sergeantTeam}`] || dayData.closed_weekend || ''}
+                          onChange={(e) => handleSaveDayDuty(selectedCalendarDay, `closed_weekend_${sergeantTeam}`, e.target.value)}
                           style={{ margin: 0 }}
                         >
                           <option value="">-- בחר עובד לסגירה --</option>
-                          {teamSoldiers.map(s => (
+                          {teamEmployees.map(s => (
                             <option key={s.name} value={s.name}>{s.name}</option>
                           ))}
                         </select>
@@ -5165,7 +5233,7 @@ const App = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, fontSize: '1.15rem' }}>
                     {meeting.id === 'meeting_morning' ? '🌅' : meeting.id === 'meeting_evening' ? '🌙' : '⏰'} {meeting.title}
-                    {meeting.recurringDay !== undefined && meeting.recurringDay !== null && meeting.recurringDay !== '' ? ` (יום ${['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'][meeting.recurringDay]})` : ''}
+                    {meeting.recurringDay !== undefined && meeting.recurringDay !== null && meeting.recurringDay !== '' ? ` (יום ${['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'סופ"ש'][meeting.recurringDay]})` : ''}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ 
@@ -5243,10 +5311,10 @@ const App = () => {
           const selectedMeeting = meetings.find(m => m.id === selectedMeetingId);
           if (!selectedMeeting) return null;
 
-          const allSoldiers = getAllSoldiers();
+          const allEmployees = getAllEmployees();
           
           // Filter users checking in to this specific meeting
-          const filteredUsers = allSoldiers.filter(u => {
+          const filteredUsers = allEmployees.filter(u => {
             const matchesSearch = u.name.toLowerCase().includes(attendanceSearchQuery.toLowerCase());
             const matchesTeam = attendanceTeamFilter === 'הכל' ? true : u.team === attendanceTeamFilter;
             return matchesSearch && matchesTeam;
@@ -5417,14 +5485,14 @@ const App = () => {
             {isSuperAdmin && (
               <span className="role-badge super-admin">👑 מנהל ראשי</span>
             )}
-            {isCommander && !isSuperAdmin && (
-              <span className="role-badge commander">🎖️ מנהל צוות ({workerTeam})</span>
+            {isDirector && !isSuperAdmin && (
+              <span className="role-badge director">🎖️ מנהל צוות ({workerTeam})</span>
             )}
-            {!isSuperAdmin && !isCommander && (
+            {!isSuperAdmin && !isDirector && (
               TEAM_LEADS.includes(userName) ? (
                 <span className="role-badge sergeant" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.4)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 600, fontSize: '0.85rem' }}>⚡ ראש צוות ({workerTeam})</span>
               ) : (
-                <span className="role-badge soldier">🪖 עובד ({workerTeam})</span>
+                <span className="role-badge employee">🪖 עובד ({workerTeam})</span>
               )
             )}
             <button 
@@ -5483,7 +5551,7 @@ const App = () => {
                 className={`team-pill ${selectedTeam === team ? 'active' : ''}`}
                 onClick={() => setSelectedTeam(team)}
               >
-                {team === 'מטבח' ? '🍳' : team === 'לוגיסטיקה' ? '📦' : team === 'מפקדה' ? '🎖️' : team === 'תקשוב' ? '📡' : team === 'רכב וניוד' ? '🚚' : team === 'רפואה' ? '🩺' : team === 'טנא' ? '🛠️' : team === 'שלישות' ? '📋' : '🛡️'} {team}
+                {team === 'מטבח' ? '🍳' : team === 'לוגיסטיקה' ? '📦' : team === 'מפקדה' ? '🎖️' : team === 'תקשוב' ? '📡' : team === 'רכב וניוד' ? '🚚' : team === 'רפואה' ? '🩺' : team === 'טנ"א (חימוש)' ? '🛠️' : team === 'שלישות' ? '📋' : '🛡️'} {team}
               </button>
             ))}
           </div>
@@ -5532,7 +5600,7 @@ const App = () => {
       <main className="container" style={activeTab === 'duties' ? { maxWidth: '1000px', width: '100%' } : activeTab === 'kitchen_sketchboard' ? { padding: 0, margin: 0, maxWidth: '100%', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', overscrollBehavior: 'none' } : undefined}>
         {renderMeetingReminderBanner()}
         {renderAttendanceBanner()}
-        {activeTab === 'bot-settings' && userName === 'תמר מ' ? (
+        {activeTab === 'bot-settings' && userName === 'תמר ב' ? (
           renderBotSettingsDashboard()
         ) : activeTab === 'tasks' ? (
           <div className="swipe-viewport" style={{overflow:'hidden', width: '100%'}}>
@@ -5615,11 +5683,23 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (activeTab === 'kitchen_manager' && isKitchenCommander && !isSuperAdmin) ? (
+        ) : (activeTab === 'kitchen_manager' && isKitchenDirector && !isSuperAdmin) ? (
           renderKitchenManagerDashboard()
-        ) : (activeTab === 'kitchen_sketchboard' && (isKitchenCommander || isSuperAdmin)) ? (
+        ) : (activeTab === 'kitchen_sketchboard' && (isKitchenDirector || isSuperAdmin)) ? (
           <KitchenSketchboard tasks={tasks} onBack={() => setActiveTab('tasks')} />
-        ) : (activeTab === 'attendance' && userName === 'תמר מ') ? (
+        ) : (activeTab === 'hr' && isDirector) ? (
+          <HRManagementPanel
+            userName={userName}
+            userRole={userRole}
+            workerTeam={workerTeam}
+            whitelistUsers={whitelistUsers}
+            pendingApprovals={pendingApprovals}
+            onRemoveEmployee={handleRemoveEmployee}
+            onRequestAddEmployee={handleRequestAddEmployee}
+            onApproveRequest={handleApproveRequest}
+            onRejectRequest={handleRejectRequest}
+          />
+        ) : (activeTab === 'attendance' && userName === 'תמר ב') ? (
           renderAttendanceDashboard()
         ) : (activeTab === 'duties' && isDutyOrganizer) ? (
           renderDutiesDashboard()
@@ -5747,7 +5827,7 @@ const App = () => {
 
       {isAuthorized && (
         <nav className="bottom-nav">
-          {userName === 'תמר מ' ? (
+          {userName === 'תמר ב' ? (
             <>
               <div className={`nav-tab ${activeTab === 'bot-settings' ? 'active' : ''}`} onClick={() => setActiveTab('bot-settings')}>
                 <i style={{fontSize:'1.3rem'}}>🤖</i> <span>הגדרות בוט</span>
@@ -5776,12 +5856,20 @@ const App = () => {
               <div className={`nav-tab ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
                 <i style={{fontSize:'1.3rem'}}>📋</i> <span>משימות</span>
               </div>
-              {(isAdmin || isCommander || isSuperAdmin) && activeWorkspaceTeam !== 'מטבח' && (
+              {(isAdmin || isDirector || isSuperAdmin) && activeWorkspaceTeam !== 'מטבח' && (
                 <div className={`nav-tab ${activeTab === 'people' ? 'active' : ''}`} onClick={() => setActiveTab('people')}>
                   <i style={{fontSize:'1.3rem'}}>🪖</i> <span>עובדים ושיבוץ</span>
                 </div>
               )}
-              {(isKitchenCommander || (userName && userName.includes('זוהר')) || workerTeam === 'מטבח') && (
+              {isDirector && !isSuperAdmin && DIRECTOR_TEAMS[userName] && (
+                <div className={`nav-tab ${activeTab === 'hr' ? 'active' : ''}`} onClick={() => setActiveTab('hr')} style={{position:'relative'}}>
+                  <i style={{fontSize:'1.3rem'}}>👥</i> <span>שלישות</span>
+                  {pendingApprovals.filter(p => p.requestedBy === userName && p.status === 'rejected').length > 0 && (
+                    <span className="hr-nav-dot" style={{background:'#ef4444'}} />
+                  )}
+                </div>
+              )}
+              {(isKitchenDirector || (userName && userName.includes('זוהר')) || workerTeam === 'מטבח') && (
                 <>
                   <div className={`nav-tab ${activeTab === 'kitchen_manager' ? 'active' : ''}`} onClick={() => setActiveTab('kitchen_manager')}>
                     <i style={{fontSize:'1.3rem'}}>👨‍🍳</i> <span>ניהול משמרת</span>
@@ -5798,7 +5886,7 @@ const App = () => {
 
 
 
-      {userName === 'תמר מ' && activeTab === 'attendance' && <button className="add-task-fab" onClick={() => setIsMeetingFormOpen(true)}>+</button>}
+      {userName === 'תמר ב' && activeTab === 'attendance' && <button className="add-task-fab" onClick={() => setIsMeetingFormOpen(true)}>+</button>}
       {renderMeetingFormModal()}
       {renderKitchenRoleEditorModal()}
 
@@ -5990,7 +6078,7 @@ const App = () => {
                     }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{memberName}</div>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'commander' ? 'מפקד' : 'עובד'}</div>
+                        <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{mapped.team} • {mapped.role === 'super_admin' ? 'מנהל ראשי' : mapped.role === 'director' ? 'מפקד' : 'עובד'}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{

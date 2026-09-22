@@ -68,3 +68,97 @@
 [debug] [2026-09-08T12:49:13.911Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases/cloud.firestore [none]
 [debug] [2026-09-08T12:49:13.911Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases/cloud.firestore {"release":{"name":"projects/tasks-b9e9e/releases/cloud.firestore","rulesetName":"projects/tasks-b9e9e/rulesets/b6aef6ca-2726-45b6-9fab-6c0c3da50dc4"}}
 [debug] [2026-09-08T12:49:15.028Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e/releases/cloud.firestore 200
+[debug] [2026-09-21T18:50:22.959Z] ----------------------------------------------------------------------
+[debug] [2026-09-21T18:50:22.965Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Chen\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules
+[debug] [2026-09-21T18:50:22.966Z] CLI Version:   15.30.2
+[debug] [2026-09-21T18:50:22.966Z] Platform:      win32
+[debug] [2026-09-21T18:50:22.966Z] Node Version:  v24.18.0
+[debug] [2026-09-21T18:50:22.967Z] Detected Agent: antigravity
+[debug] [2026-09-21T18:50:22.967Z] Time:          Mon Sep 21 2026 21:50:22 GMT+0300 (Israel Daylight Time)
+[debug] [2026-09-21T18:50:22.967Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-21T18:50:23.011Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-09-21T18:51:18.083Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-21T18:51:18.084Z] > authorizing via signed-in user (liriavigdor1302@gmail.com)
+[error] 
+[error] Error: No currently active project.
+To run this command, you need to specify a project. You have two options:
+- Run this command with --project <alias_or_project_id>.
+- Set an active project by running firebase use --add, then rerun this command.
+To list all the Firebase projects to which you have access, run firebase projects:list.
+To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases
+
+
+[debug] [2026-09-21T18:51:48.028Z] ----------------------------------------------------------------------
+[debug] [2026-09-21T18:51:48.043Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Chen\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --project tasks-b9e9e
+[debug] [2026-09-21T18:51:48.046Z] CLI Version:   15.30.2
+[debug] [2026-09-21T18:51:48.050Z] Platform:      win32
+[debug] [2026-09-21T18:51:48.052Z] Node Version:  v24.18.0
+[debug] [2026-09-21T18:51:48.053Z] Detected Agent: antigravity
+[debug] [2026-09-21T18:51:48.053Z] Time:          Mon Sep 21 2026 21:51:48 GMT+0300 (Israel Daylight Time)
+[debug] [2026-09-21T18:51:48.054Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-21T18:51:48.151Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-09-21T18:51:51.440Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-21T18:51:51.441Z] > authorizing via signed-in user (liriavigdor1302@gmail.com)
+[debug] [2026-09-21T18:51:51.441Z] [iam] checking project tasks-b9e9e for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-09-21T18:51:51.445Z] Checked if tokens are valid: false, expires at: 1789830016178
+[debug] [2026-09-21T18:51:51.445Z] Checked if tokens are valid: false, expires at: 1789830016178
+[debug] [2026-09-21T18:51:51.446Z] > refreshing access token with scopes: []
+[debug] [2026-09-21T18:51:51.449Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-09-21T18:51:51.449Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-21T18:51:51.845Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-09-21T18:51:51.846Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-21T18:51:51.939Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions [none]
+[debug] [2026-09-21T18:51:51.940Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions  x-goog-user-project=tasks-b9e9e
+[debug] [2026-09-21T18:51:51.940Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-09-21T18:51:51.964Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-09-21T18:51:51.964Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-09-21T18:51:53.308Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions 403
+[debug] [2026-09-21T18:51:53.309Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions {"error":{"code":403,"message":"Caller does not have required permission to use project tasks-b9e9e. Grant the caller the roles/serviceusage.serviceUsageConsumer role, or a custom role with the serviceusage.services.use permission, by visiting https://console.developers.google.com/iam-admin/iam?project=tasks-b9e9e and then retry. Propagation of the new permission may take a few minutes.","status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"USER_PROJECT_DENIED","domain":"googleapis.com","metadata":{"consoleUrl":"https://console.developers.google.com/iam-admin/iam?project=tasks-b9e9e","service":"cloudresourcemanager.googleapis.com","containerInfo":"tasks-b9e9e","consumer":"projects/tasks-b9e9e"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Caller does not have required permission to use project tasks-b9e9e. Grant the caller the roles/serviceusage.serviceUsageConsumer role, or a custom role with the serviceusage.services.use permission, by visiting https://console.developers.google.com/iam-admin/iam?project=tasks-b9e9e and then retry. Propagation of the new permission may take a few minutes."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developer console IAM admin","url":"https://console.developers.google.com/iam-admin/iam?project=tasks-b9e9e"}]}]}}
+[debug] [2026-09-21T18:51:53.315Z] [iam] error while checking permissions, command may fail: Request to https://cloudresourcemanager.googleapis.com/v1/projects/tasks-b9e9e:testIamPermissions had HTTP Error: 403, Caller does not have required permission to use project tasks-b9e9e. Grant the caller the roles/serviceusage.serviceUsageConsumer role, or a custom role with the serviceusage.services.use permission, by visiting https://console.developers.google.com/iam-admin/iam?project=tasks-b9e9e and then retry. Propagation of the new permission may take a few minutes.
+[info] 
+[info] === Deploying to 'tasks-b9e9e'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-09-21T18:51:53.339Z] Checked if tokens are valid: true, expires at: 1790020310847
+[debug] [2026-09-21T18:51:53.339Z] Checked if tokens are valid: true, expires at: 1790020310847
+[debug] [2026-09-21T18:51:53.340Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/tasks-b9e9e/databases/(default) [none]
+[debug] [2026-09-21T18:51:53.896Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/tasks-b9e9e/databases/(default) 403
+[debug] [2026-09-21T18:51:53.896Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/tasks-b9e9e/databases/(default) {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-09-21T18:51:53.898Z] Checked if tokens are valid: true, expires at: 1790020310847
+[debug] [2026-09-21T18:51:53.898Z] Checked if tokens are valid: true, expires at: 1790020310847
+[debug] [2026-09-21T18:51:53.898Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test [none]
+[debug] [2026-09-21T18:51:53.898Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test [omitted]
+[debug] [2026-09-21T18:51:55.340Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test 403
+[debug] [2026-09-21T18:51:55.340Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"IAM_PERMISSION_DENIED","domain":"iam.googleapis.com","metadata":{"resource":"projects/tasks-b9e9e","error_info_id":"CiQwMWEwYzU0Zi04YWNiLTc2NDgtYWJjMC04ODY4NTYxY2U2YmUSFHByb2plY3RzL3Rhc2tzLWI5ZTll","troubleshooter_url":"https://console.cloud.google.com/iam-admin/troubleshooter/summary;errorId=CiQwMWEwYzU0Zi04YWNiLTc2NDgtYWJjMC04ODY4NTYxY2U2YmUSFHByb2plY3RzL3Rhc2tzLWI5ZTll","permission":"firebaserules.rulesets.test"}}]}}
+[error] 
+[error] Error: Request to https://firebaserules.googleapis.com/v1/projects/tasks-b9e9e:test had HTTP Error: 403, The caller does not have permission
+[debug] [2026-09-21T18:51:55.355Z] Error Context: {
+  "body": {
+    "error": {
+      "code": 403,
+      "message": "The caller does not have permission",
+      "status": "PERMISSION_DENIED",
+      "details": [
+        {
+          "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+          "reason": "IAM_PERMISSION_DENIED",
+          "domain": "iam.googleapis.com",
+          "metadata": {
+            "resource": "projects/tasks-b9e9e",
+            "error_info_id": "CiQwMWEwYzU0Zi04YWNiLTc2NDgtYWJjMC04ODY4NTYxY2U2YmUSFHByb2plY3RzL3Rhc2tzLWI5ZTll",
+            "troubleshooter_url": "https://console.cloud.google.com/iam-admin/troubleshooter/summary;errorId=CiQwMWEwYzU0Zi04YWNiLTc2NDgtYWJjMC04ODY4NTYxY2U2YmUSFHByb2plY3RzL3Rhc2tzLWI5ZTll",
+            "permission": "firebaserules.rulesets.test"
+          }
+        }
+      ]
+    }
+  },
+  "response": {
+    "statusCode": 403
+  }
+}

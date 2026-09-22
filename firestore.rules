@@ -15,7 +15,9 @@ service cloud.firestore {
     // 1. Whitelist rules
     match /whitelist/{name} {
       allow read: if true;
-      allow create, update, delete: if isWhitelisted(); // Only existing members can manage whitelist
+      allow create, update: if isWhitelisted() && !name.matches(".* [^ ]{2,}.*");
+      // Commanders can delete employees from their team (checked client-side by role)
+      allow delete: if isWhitelisted();
     }
 
     match /whitelist_uids/{uid} {
@@ -88,6 +90,17 @@ service cloud.firestore {
     match /kitchen_settings/{settingId} {
       allow read: if isAuthenticated();
       allow write: if isWhitelisted(); // Only whitelisted users can modify settings
+    }
+
+    // 13. Pending Approvals (HR Management)
+    match /pending_approvals/{requestId} {
+      // Any whitelisted user can read (commanders see their own, Tamar sees all)
+      allow read: if isWhitelisted();
+      // Commanders can create approval requests
+      allow create: if isWhitelisted();
+      // Tamar (or super admins) can update status (approve/reject)
+      allow update: if isWhitelisted();
+      allow delete: if isWhitelisted();
     }
   }
 }
