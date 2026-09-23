@@ -1269,7 +1269,7 @@ const App = () => {
   const [userRole, setUserRole] = useState(localStorage.getItem('workerRole') || 'employee');
   const [selectedTeam, setSelectedTeam] = useState(() => {
     const storedName = localStorage.getItem('workerName');
-    const isSuperUser = (storedName === 'אילן אביגדור' || storedName === 'לירי אביגדור');
+    const isSuperUser = (storedName === 'אילן א' || storedName === 'לירי א');
     // Super admins always start with 'הכל' view
     if (isSuperUser) return 'הכל';
     return localStorage.getItem('workerTeam') || 'מטבח';
@@ -1409,7 +1409,7 @@ const App = () => {
   }, []);
 
   const isSuperAdmin = useMemo(() => {
-    return isAuthorized && (userRole === 'super_admin' || userName === 'אילן אביגדור' || userName === 'לירי אביגדור');
+    return isAuthorized && (userRole === 'super_admin' || userName === 'אילן א' || userName === 'לירי א');
   }, [isAuthorized, userName, userRole]);
 
   const isDirector = useMemo(() => {
@@ -1783,8 +1783,8 @@ const App = () => {
     if (KNOWN_TEAM_ROLES[clean]) return clean;
 
     const cleanLower = clean.toLowerCase();
-    if (cleanLower === 'לירי' || cleanLower === 'liri') return 'לירי אביגדור';
-    if (cleanLower === 'אילן' || cleanLower === 'ilan') return 'אילן אביגדור';
+    if (cleanLower === 'לירי' || cleanLower === 'liri') return 'לירי א';
+    if (cleanLower === 'אילן' || cleanLower === 'ilan') return 'אילן א';
     if (cleanLower === 'זוהר' || cleanLower === 'zohar') return 'זוהר בורשטיין';
 
     const match = Object.keys(KNOWN_TEAM_ROLES).find(k => 
@@ -1800,7 +1800,7 @@ const App = () => {
     try {
       const nameResolved = resolveWhitelistedName(name);
       const mapped = KNOWN_TEAM_ROLES[nameResolved];
-      const isSuper = (nameResolved === 'אילן אביגדור' || nameResolved === 'לירי אביגדור');
+      const isSuper = (nameResolved === 'אילן א' || nameResolved === 'לירי א');
       
       let userData = {};
       try {
@@ -1870,7 +1870,7 @@ const App = () => {
       // Fallback for known team/super admin users
       const nameResolved = resolveWhitelistedName(name);
       const mapped = KNOWN_TEAM_ROLES[nameResolved];
-      const isSuper = (nameResolved === 'אילן אביגדור' || nameResolved === 'לירי אביגדור');
+      const isSuper = (nameResolved === 'אילן א' || nameResolved === 'לירי א');
       const detectedRole = mapped?.role || (isSuper ? 'super_admin' : 'employee');
       const detectedTeam = mapped?.team || 'לוגיסטיקה';
       setUserName(nameResolved);
@@ -1938,13 +1938,13 @@ const App = () => {
     // Initial whitelist seeding
     const seedWhitelist = async () => {
       try {
-        const liriRef = doc(db, "whitelist", "לירי אביגדור");
+        const liriRef = doc(db, "whitelist", "לירי א");
         const liriSnap = await getDoc(liriRef);
         
-        // If "לירי אביגדור" doc doesn't exist, seed the entire list
+        // If "לירי א" doc doesn't exist, seed the entire list
         if (!liriSnap.exists()) {
           const names = [
-            "לירי אביגדור", "אילן אביגדור",
+            "לירי א", "אילן א",
             "דביר הרמן", "אור חממה", "אורין", "אמיתי בהדני", "תמי מזרחי", "מישל פיוטרובסקי",
             "אוראל חביב", "נגה שי", "דביר אגסי", "עדי כרמי", "שוהם פאר", "קסם סוויסה", "גרשון מירל", "אלה לידור",
             "עמית דן", "מאור פרידר", "תמר מ", "יהושע גרינברג", "נתנאל יובל ערבה", "רוניה אליהו",
@@ -1966,7 +1966,7 @@ const App = () => {
             const cleanName = name.trim();
             const docRef = doc(db, "whitelist", cleanName);
             const mappedInfo = KNOWN_TEAM_ROLES[cleanName];
-            const isSuper = (cleanName === 'אילן אביגדור' || cleanName === 'לירי אביגדור');
+            const isSuper = (cleanName === 'אילן א' || cleanName === 'לירי א');
             
             const role = mappedInfo?.role || (isSuper ? 'super_admin' : 'employee');
             const team = mappedInfo?.team || (isSuper ? 'מפקדה' : 'תקשוב');
@@ -2300,7 +2300,7 @@ const App = () => {
         // Strict single-device lock enforcement (exempt super admins & localhost testing)
         if (userName && docSnap.id === userName && currentFirebaseUser) {
           const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-          const isSuper = (userName === 'אילן אביגדור' || userName === 'לירי אביגדור');
+          const isSuper = (userName === 'אילן א' || userName === 'לירי א');
           if (!isSuper && !isLocalhost && d.isActivated && d.uid && d.uid !== currentFirebaseUser.uid) {
             localStorage.removeItem('workerName');
             localStorage.removeItem('workerRole');
