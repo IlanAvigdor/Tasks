@@ -46,9 +46,9 @@ const TEAM_LEADS = ["מעיין ת", "מעיין נ", "דביר ד", "דמקה �
 
 const KNOWN_TEAM_ROLES = {
   // Super Admins
-  "אילן ה": { team: "הנהלה", role: "super_admin" },
-  "לירי ת": { team: "לוגיסטיקה", role: "super_admin" },
-  "תמר מ": { team: "מפקדה", role: "manager" },
+  "אילן א": { team: "הנהלה", role: "super_admin" },
+  "לירי א": { team: "לוגיסטיקה", role: "super_admin" },
+  "תמר ב": { team: "מפקדה", role: "manager" },
 
   // מנהלים ראשיים (Directors)
   "ליאל ר": { team: "לוגיסטיקה", role: "director" },
@@ -58,112 +58,112 @@ const KNOWN_TEAM_ROLES = {
   "סמי י": { team: "רכב וניוד", role: "director" },
 
   // תקשוב - מנהלים (Managers)
-  "דביר ד": { team: "תקשוב", role: "manager" },
-  "אור ד": { team: "תקשוב", role: "manager" },
-  "אורין ד": { team: "תקשוב", role: "manager" },
-  "אמיתי ד": { team: "תקשוב", role: "manager" },
-  "תמי ד": { team: "תקשוב", role: "manager" },
-  "מישל ד": { team: "תקשוב", role: "manager" },
+  "דביר ה": { team: "תקשוב", role: "manager" },
+  "אור ח": { team: "תקשוב", role: "manager" },
+  "אורין": { team: "תקשוב", role: "manager" },
+  "אמיתי ב": { team: "תקשוב", role: "manager" },
+  "תמי מ": { team: "תקשוב", role: "manager" },
+  "מישל פ": { team: "תקשוב", role: "manager" },
 
   // תקשוב - עובדים (Employees)
-  "אוראל ד": { team: "תקשוב", role: "employee" },
-  "נגה ד": { team: "תקשוב", role: "employee" },
-  "דביר ד": { team: "תקשוב", role: "employee" },
-  "עדי ד": { team: "תקשוב", role: "employee" },
-  "שוהם ד": { team: "תקשוב", role: "employee" },
-  "קסם ד": { team: "תקשוב", role: "employee" },
-  "גרשון ד": { team: "תקשוב", role: "employee" },
-  "אלה ד": { team: "תקשוב", role: "employee" },
+  "אוראל ח": { team: "תקשוב", role: "employee" },
+  "נגה ש": { team: "תקשוב", role: "employee" },
+  "דביר א": { team: "תקשוב", role: "employee" },
+  "עדי כ": { team: "תקשוב", role: "employee" },
+  "שוהם פ": { team: "תקשוב", role: "employee" },
+  "קסם ס": { team: "תקשוב", role: "employee" },
+  "גרשון מ": { team: "תקשוב", role: "employee" },
+  "אלה ל": { team: "תקשוב", role: "employee" },
 
   // לוגיסטיקה - מנהלים (Managers)
-  "ליאל ת": { team: "לוגיסטיקה", role: "manager" },
-  "חסין ת": { team: "לוגיסטיקה", role: "manager" },
-  "מתן ת": { team: "לוגיסטיקה", role: "manager" },
-  "פאר ת": { team: "לוגיסטיקה", role: "manager" },
-  "שליו ת": { team: "לוגיסטיקה", role: "manager" },
-  "יהושע גרינברג": { team: "לוגיסטיקה", role: "manager" },
+  "ליאל ר": { team: "לוגיסטיקה", role: "manager" },
+  "חסין ס": { team: "לוגיסטיקה", role: "manager" },
+  "מתן ל": { team: "לוגיסטיקה", role: "manager" },
+  "פאר ז": { team: "לוגיסטיקה", role: "manager" },
+  "שליו פ": { team: "לוגיסטיקה", role: "manager" },
+  "יהושע ג": { team: "לוגיסטיקה", role: "manager" },
 
   // לוגיסטיקה - עובדים (Employees)
-  "מעיין ת": { team: "לוגיסטיקה", role: "employee" },
+  "מעיין י": { team: "לוגיסטיקה", role: "employee" },
   "ירין ת": { team: "לוגיסטיקה", role: "employee" },
-  "גיל ת": { team: "לוגיסטיקה", role: "employee" },
-  "אליאב ת": { team: "לוגיסטיקה", role: "employee" },
-  "ארטיום ת": { team: "לוגיסטיקה", role: "employee" },
-  "אליה ת": { team: "לוגיסטיקה", role: "employee" },
-  "אייל ת": { team: "לוגיסטיקה", role: "employee" },
+  "גיל ז": { team: "לוגיסטיקה", role: "employee" },
+  "אליאב ב": { team: "לוגיסטיקה", role: "employee" },
+  "ארטיום": { team: "לוגיסטיקה", role: "employee" },
+  "אליה ע": { team: "לוגיסטיקה", role: "employee" },
+  "אייל ה": { team: "לוגיסטיקה", role: "employee" },
 
   // רכב וניוד - מנהלים (Managers)
-  "סמי ש": { team: "רכב וניוד", role: "manager" },
-  "ליאן ש": { team: "רכב וניוד", role: "manager" },
+  "סמי י": { team: "רכב וניוד", role: "manager" },
+  "ליאן ק": { team: "רכב וניוד", role: "manager" },
 
   // רכב וניוד - עובדים (Employees)
-  "אלון ש": { team: "רכב וניוד", role: "employee" },
-  "ליאב ש": { team: "רכב וניוד", role: "employee" },
+  "אלון א": { team: "רכב וניוד", role: "employee" },
+  "ליאב ב": { team: "רכב וניוד", role: "employee" },
   "לירון ש": { team: "רכב וניוד", role: "employee" },
-  "ולריה ש": { team: "רכב וניוד", role: "employee" },
-  "שי ש": { team: "רכב וניוד", role: "employee" },
-  "עידו ש": { team: "רכב וניוד", role: "employee" },
-  "אלון ש": { team: "רכב וניוד", role: "employee" },
+  "ולריה ס": { team: "רכב וניוד", role: "employee" },
+  "שי ו": { team: "רכב וניוד", role: "employee" },
+  "עידו כ": { team: "רכב וניוד", role: "employee" },
+  "אלון מ": { team: "רכב וניוד", role: "employee" },
   "עדן ב": { team: "רכב וניוד", role: "employee" },
-  "מתן ש": { team: "רכב וניוד", role: "employee" },
-  "יניב ש": { team: "רכב וניוד", role: "employee" },
-  "קים ש": { team: "רכב וניוד", role: "employee" },
-  "רואי ש": { team: "רכב וניוד", role: "employee" },
-  "אושר ש": { team: "רכב וניוד", role: "employee" },
-  "טל ש": { team: "רכב וניוד", role: "employee" },
-  "עידן ש": { team: "רכב וניוד", role: "employee" },
-  "דניאל ש": { team: "רכב וניוד", role: "employee" },
-  "חיים ש": { team: "רכב וניוד", role: "employee" },
+  "מתן ב": { team: "רכב וניוד", role: "employee" },
+  "יניב ח": { team: "רכב וניוד", role: "employee" },
+  "קים פ": { team: "רכב וניוד", role: "employee" },
+  "רואי ע": { team: "רכב וניוד", role: "employee" },
+  "אושר ח": { team: "רכב וניוד", role: "employee" },
+  "טל ז": { team: "רכב וניוד", role: "employee" },
+  "עידן י": { team: "רכב וניוד", role: "employee" },
+  "דניאל א": { team: "רכב וניוד", role: "employee" },
+  "חיים ג": { team: "רכב וניוד", role: "employee" },
 
   // רפואה - מנהלים (Managers)
-  "בן ב": { team: "רפואה", role: "manager" },
+  "בן פ": { team: "רפואה", role: "manager" },
   "שחף ב": { team: "רפואה", role: "manager" },
 
   // רפואה - עובדים (Employees)
-  "אושר ב": { team: "רפואה", role: "employee" },
-  "סתו ב": { team: "רפואה", role: "employee" },
-  "יוסף ב": { team: "רפואה", role: "employee" },
-  "תכלת ב": { team: "רפואה", role: "employee" },
-  "ירדן ב": { team: "רפואה", role: "employee" },
-  "שליו ב": { team: "רפואה", role: "employee" },
-  "רז ב": { team: "רפואה", role: "employee" },
-  "בני ב": { team: "רפואה", role: "employee" },
+  "אושר א": { team: "רפואה", role: "employee" },
+  "סתו ג": { team: "רפואה", role: "employee" },
+  "יוסף ח": { team: "רפואה", role: "employee" },
+  "תכלת ז": { team: "רפואה", role: "employee" },
+  "ירדן ח": { team: "רפואה", role: "employee" },
+  "שליו ס": { team: "רפואה", role: "employee" },
+  "רז ח": { team: "רפואה", role: "employee" },
+  "בני ו": { team: "רפואה", role: "employee" },
 
   // טנא - מנהלים (Managers)
-  "עומר א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "עדי א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "דודו א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "מרק א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "אמיר א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "עומר ג": { team: 'טנ"א (חימוש)', role: "manager" },
+  "עדי ט": { team: 'טנ"א (חימוש)', role: "manager" },
+  "דודו ד": { team: 'טנ"א (חימוש)', role: "manager" },
+  "מרק ד": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אמיר ל": { team: 'טנ"א (חימוש)', role: "manager" },
   "אביב א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "אור א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "סרגיי א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אור ט": { team: 'טנ"א (חימוש)', role: "manager" },
+  "סרגיי מ": { team: 'טנ"א (חימוש)', role: "manager" },
   "רון א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "אבישג א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "אור א": { team: 'טנ"א (חימוש)', role: "manager" },
-  "תאיר א": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אבישג ס": { team: 'טנ"א (חימוש)', role: "manager" },
+  "אור ס": { team: 'טנ"א (חימוש)', role: "manager" },
+  "תאיר ח": { team: 'טנ"א (חימוש)', role: "manager" },
 
   // טנא - עובדים (Employees)
-  "מאור א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "מאור מ": { team: 'טנ"א (חימוש)', role: "employee" },
   "אליה א": { team: 'טנ"א (חימוש)', role: "employee" },
   "דמקה א": { team: 'טנ"א (חימוש)', role: "employee" },
-  "עידו א": { team: 'טנ"א (חימוש)', role: "employee" },
-  "עדן א": { team: 'טנ"א (חימוש)', role: "employee" },
-  "בן א": { team: 'טנ"א (חימוש)', role: "employee" },
-  "ליהי א": { team: 'טנ"א (חימוש)', role: "employee" },
-  "אורי א": { team: 'טנ"א (חימוש)', role: "employee" },
-  "אביאל א": { team: 'טנ"א (חימוש)', role: "employee" },
-  "אורי א": { team: 'טנ"א (חימוש)', role: "employee" },
+  "עידו ב": { team: 'טנ"א (חימוש)', role: "employee" },
+  "עדן ל": { team: 'טנ"א (חימוש)', role: "employee" },
+  "בן ע": { team: 'טנ"א (חימוש)', role: "employee" },
+  "ליהי ב": { team: 'טנ"א (חימוש)', role: "employee" },
+  "אורי מ": { team: 'טנ"א (חימוש)', role: "employee" },
+  "אביאל י": { team: 'טנ"א (חימוש)', role: "employee" },
+  "אורי פ": { team: 'טנ"א (חימוש)', role: "employee" },
 
   // מטבח - מנהלים (Managers)
-  "זוהר ק": { team: "מטבח", role: "manager" },
+  "זוהר ב": { team: "מטבח", role: "manager" },
 
   // מטבח - עובדים (Employees / Cooks)
-  "שיראל ק": { team: "מטבח", role: "employee" },
-  "אמיר ק": { team: "מטבח", role: "employee" },
-  "אייל ק": { team: "מטבח", role: "employee" },
-  "לירון ק": { team: "מטבח", role: "employee" },
-  "איתי ק": { team: "מטבח", role: "employee" }
+  "שיראל": { team: "מטבח", role: "employee" },
+  "אמיר": { team: "מטבח", role: "employee" },
+  "אייל": { team: "מטבח", role: "employee" },
+  "לירון": { team: "מטבח", role: "employee" },
+  "איתי": { team: "מטבח", role: "employee" }
 };
 
 
@@ -1933,7 +1933,7 @@ const App = () => {
 
   // Auth, Whitelist Seeding, and Database Listeners
   useEffect(() => {
-    audioRef.current = new Audio(NOTIFICATION_SOUND);
+    audioRef.current = new Audio(NOTIFICATION_SOUND + "?v=" + Date.now());
 
     // Initial whitelist seeding
     const seedWhitelist = async () => {
@@ -2068,7 +2068,7 @@ const App = () => {
     if (userName === 'תמר ב') {
       setActiveTab('bot-settings');
     } else if (userName.includes('זוהר') && !isSuper) {
-      setActiveTab('kitchen_manager');
+      setActiveTab('kitchen_sketchboard');
     } else {
       setActiveTab('tasks');
       if (isSuper) {
@@ -2081,18 +2081,14 @@ const App = () => {
     }
   }, [isAuthorized, userName]);
 
-  // Guard: super_admin should never be stuck on kitchen-only tabs, and fix their team
+  // Guard: super_admin should never be stuck on kitchen-only tabs
   useEffect(() => {
     if (!isSuperAdmin) return;
-    // Fix selectedTeam if it was wrongly set to מטבח
-    if (selectedTeam === 'מטבח' && workerTeam !== 'מטבח') {
-      setSelectedTeam('הכל');
-    }
     // Redirect off kitchen-only tabs
     if (activeTab === 'kitchen_manager' || activeTab === 'kitchen_sketchboard') {
       setActiveTab('tasks');
     }
-  }, [isSuperAdmin, activeTab, selectedTeam, workerTeam]);
+  }, [isSuperAdmin, activeTab]);
 
   // Auto-reset or Auto-delete meetings 5 minutes after their start time
   useEffect(() => {
@@ -3292,7 +3288,7 @@ const App = () => {
 
               <input 
                 className="input-field" 
-                placeholder="השם שלך (לדוגמה: לירי אביגדור או לירי)" 
+                placeholder="שם פרטי + אות ראשונה של שם משפחה" 
                 value={registrationName} 
                 onChange={e => {
                   setRegistrationName(e.target.value);
@@ -3991,8 +3987,7 @@ const App = () => {
     const list = [];
     const seen = new Set();
     const reserves = ["טל זדורייב", "עידן יוסף", "דניאל אלימוב", "חיים גבריאלוב"];
-    // Roles that should appear in attendance lists (everyone except super_admin)
-    const attendanceRoles = ['employee', 'employee', 'manager', 'director'];
+    const attendanceRoles = ['employee', 'manager', 'director', 'super_admin'];
     
     whitelistUsers.forEach(u => {
       if (u.name === '_reseed_v6') return;
@@ -5683,8 +5678,6 @@ const App = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        ) : (activeTab === 'kitchen_manager' && isKitchenDirector && !isSuperAdmin) ? (
-          renderKitchenManagerDashboard()
         ) : (activeTab === 'kitchen_sketchboard' && (isKitchenDirector || isSuperAdmin)) ? (
           <KitchenSketchboard tasks={tasks} onBack={() => setActiveTab('tasks')} />
         ) : (activeTab === 'hr' && isDirector) ? (
@@ -5871,9 +5864,6 @@ const App = () => {
               )}
               {(isKitchenDirector || (userName && userName.includes('זוהר')) || workerTeam === 'מטבח') && (
                 <>
-                  <div className={`nav-tab ${activeTab === 'kitchen_manager' ? 'active' : ''}`} onClick={() => setActiveTab('kitchen_manager')}>
-                    <i style={{fontSize:'1.3rem'}}>👨‍🍳</i> <span>ניהול משמרת</span>
-                  </div>
                   <div className={`nav-tab ${activeTab === 'kitchen_sketchboard' ? 'active' : ''}`} onClick={() => setActiveTab('kitchen_sketchboard')}>
                     <i style={{fontSize:'1.3rem'}}>🗺️</i> <span>סקאטצבורד</span>
                   </div>
