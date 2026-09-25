@@ -3990,7 +3990,7 @@ const App = () => {
     const attendanceRoles = ['employee', 'manager', 'director', 'super_admin'];
     
     whitelistUsers.forEach(u => {
-      if (u.name === '_reseed_v6') return;
+      if (u.name.startsWith('_reseed')) return;
       if (reserves.includes(u.name)) return;
       const role = u.role || KNOWN_TEAM_ROLES[u.name]?.role || 'employee';
       if (attendanceRoles.includes(role)) {
